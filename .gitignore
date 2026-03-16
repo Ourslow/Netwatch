@@ -1,0 +1,18 @@
+# Données
+pcap/*.pcap
+pcap/*.pcapng
+
+# Elasticsearch data
+elasticsearch/data/
+
+# Secrets (si ajoutés)
+.env
+*.key
+*.crt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs locaux
+*.log
