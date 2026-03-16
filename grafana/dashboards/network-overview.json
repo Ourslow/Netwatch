@@ -1,0 +1,13 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "title": "NetWatch — Vue Générale Réseau",
+  "uid": "netwatch-network-overview",
+  "version": 1,
+  "panels": [],
+  "schemaVersion": 39,
+  "tags": ["netwatch"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {}
+}

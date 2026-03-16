@@ -1,0 +1,36 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /zeek/logs/current/conn.log
+      - /zeek/logs/current/dns.log
+      - /zeek/logs/current/http.log
+      - /zeek/logs/current/ssl.log
+      - /zeek/logs/current/notice.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.ignore_decoding_error: true
+    fields_under_root: true
+    fields:
+      log_type: zeek
+
+processors:
+  - add_host_metadata: ~
+  - timestamp:
+      field: ts
+      layouts:
+        - '2006-01-02T15:04:05.999999Z07:00'
+      test:
+        - '2024-01-01T12:00:00.000000Z'
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "zeek-%{[log_type]:unknown}-%{+yyyy.MM.dd}"
+  bulk_max_size: 200
+
+setup.template.name: "zeek"
+setup.template.pattern: "zeek-*"
+setup.ilm.enabled: false
+
+logging.level: info
+logging.to_files: false

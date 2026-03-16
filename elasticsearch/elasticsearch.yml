@@ -1,0 +1,15 @@
+cluster.name: netwatch
+node.name: netwatch-node-1
+
+network.host: 0.0.0.0
+http.port: 9200
+
+discovery.type: single-node
+
+# Désactive la sécurité pour le lab (NE PAS utiliser en prod)
+xpack.security.enabled: false
+xpack.security.http.ssl.enabled: false
+
+# Performances
+indices.memory.index_buffer_size: 20%
+thread_pool.write.queue_size: 1000
