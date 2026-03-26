@@ -1,7 +1,7 @@
 FROM zeek/zeek:6.2
 
-RUN zeek-pkg install zeek/ja3 && \
-    zeek-pkg install zeek/hassh
+RUN zkg install https://github.com/salesforce/ja3 --force && \
+    zkg install https://github.com/salesforce/hassh --force
 
 WORKDIR /zeek
 
