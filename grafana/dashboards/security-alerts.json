@@ -1,13 +1,1 @@
-{
-  "__inputs": [],
-  "__requires": [],
-  "annotations": { "list": [] },
-  "title": "NetWatch — Alertes Sécurité",
-  "uid": "netwatch-security-alerts",
-  "version": 1,
-  "panels": [],
-  "schemaVersion": 39,
-  "tags": ["netwatch"],
-  "time": { "from": "now-1h", "to": "now" },
-  "timepicker": {}
-}
+[]
