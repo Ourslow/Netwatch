@@ -1,12 +1,10 @@
 # NetWatch — Zeek local config
-# Active les logs JSON et les scripts de détection
 
 @load base/protocols/conn
 @load base/protocols/dns
 @load base/protocols/http
 @load base/protocols/ssl
 @load base/frameworks/notice
-@load policy/frameworks/notice/base
 @load policy/protocols/conn/known-hosts
 @load policy/protocols/conn/known-services
 @load policy/protocols/ssl/expiring-certs

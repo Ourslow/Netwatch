@@ -10,21 +10,23 @@ export {
 
 function shannon_entropy(s: string): double
 {
-    local freq: table[string] of count;
+    local freq: table[count] of count;
     local len = |s|;
     if (len == 0) return 0.0;
 
-    for (i in s)
+    local idx: count = 0;
+    while (idx < len)
     {
-        local c = s[i];
-        if (c !in freq) freq[c] = 0;
-        freq[c] += 1;
+        local byte_val = bytestring_to_count(s[idx]);
+        if (byte_val !in freq) freq[byte_val] = 0;
+        freq[byte_val] += 1;
+        idx += 1;
     }
 
     local entropy = 0.0;
-    for (c in freq)
+    for (key, val in freq)
     {
-        local p = freq[c] / (len * 1.0);
+        local p = val / (len * 1.0);
         entropy -= p * log2(p);
     }
     return entropy;
