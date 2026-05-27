@@ -156,3 +156,72 @@ groups:
           summary: "Pic d'alertes Suricata"
           description: "Suricata génère plus de 50 alertes par minute — possible attaque en cours."
           value: "{{ $values.A.Value }} alertes/min"
+
+      - uid: netwatch-zeek-volume-anomaly
+        title: Trafic réseau — Anomalie de volume (3x baseline)
+        condition: E
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: zeek-es
+            model:
+              query: "orig_bytes:*"
+              timeField: "@timestamp"
+              metrics:
+                - id: "1"
+                  type: count
+              bucketAggs:
+                - id: "2"
+                  type: date_histogram
+                  field: "@timestamp"
+                  settings: { interval: "5m", min_doc_count: "0" }
+              refId: A
+          - refId: B
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              refId: B
+              reducer: last
+              expression: "A"
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              refId: C
+              reducer: mean
+              expression: "A"
+          - refId: D
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: math
+              refId: D
+              expression: "$B / $C"
+          - refId: E
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: E
+              conditions:
+                - evaluator: { params: [3], type: gt }
+                  operator: { type: and }
+                  query: { params: [D] }
+                  reducer: { params: [], type: last }
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+          team: netwatch
+        annotations:
+          summary: "Anomalie de volume réseau détectée"
+          description: "Le trafic réseau (Zeek conn) est 3x supérieur à la moyenne de la dernière heure — possible scan, exfiltration ou DDoS."
+          value: "Ratio: {{ $values.D.Value | printf \"%.1f\" }}x la baseline"

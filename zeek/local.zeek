@@ -14,6 +14,14 @@
 @load ./scripts/port-scan-detect.zeek
 @load ./scripts/dns-entropy.zeek
 
+# Intel Framework — Threat Intelligence feeds (ip_watchlist.dat, domain_watchlist.dat)
+@load frameworks/intel/seen
+@load frameworks/intel/do_notice
+redef Intel::read_files += {
+    "/usr/local/zeek/share/zeek/site/intel/ip_watchlist.dat",
+    "/usr/local/zeek/share/zeek/site/intel/domain_watchlist.dat"
+};
+
 # Format JSON pour tous les logs
 redef LogAscii::use_json = T;
 redef LogAscii::json_timestamps = JSON::TS_ISO8601;
