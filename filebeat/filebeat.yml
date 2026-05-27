@@ -10,7 +10,9 @@ filebeat.inputs:
       - /zeek/logs/current/dns.log
       - /zeek/logs/current/http.log
       - /zeek/logs/current/ssl.log
+      - /zeek/logs/current/ssh.log
       - /zeek/logs/current/notice.log
+      - /zeek/logs/current/intel.log
     json.keys_under_root: true
     json.add_error_key: true
     json.ignore_decoding_error: true

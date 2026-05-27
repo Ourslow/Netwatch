@@ -1,0 +1,10 @@
+#fields	indicator	indicator_type	meta.source	meta.desc	meta.url
+#separator \x09
+# Fichier généré par update-intel.sh — ne pas éditer manuellement
+# Sources : URLhaus (abuse.ch), OpenPhish
+# Format : https://docs.zeek.org/en/master/frameworks/intel.html
+#
+# Domaines d'exemple — lancer ./update-intel.sh pour télécharger les feeds réels
+#
+# Domaines malveillants connus (exemples)
+# malware.example.com	Intel::DOMAIN	URLhaus	Malware distribution	https://urlhaus.abuse.ch

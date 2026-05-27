@@ -1,0 +1,237 @@
+{
+  "uid": "netwatch-toptalkers",
+  "title": "NetWatch — Top Talkers",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["netwatch", "zeek", "network"],
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Connexions",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "count" }],
+          "bucketAggs": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "IPs Sources Uniques",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "cardinality", "field": "id.orig_h.keyword" }],
+          "bucketAggs": []
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "IPs Destinations Uniques",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "cardinality", "field": "id.resp_h.keyword" }],
+          "bucketAggs": []
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Volume Total (bytes)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "sum", "field": "orig_bytes" }],
+          "bucketAggs": []
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Connexions réseau dans le temps",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "drawStyle": "line" }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "alias": "Connexions",
+          "metrics": [{ "id": "1", "type": "count" }],
+          "bucketAggs": [{ "id": "2", "type": "date_histogram", "field": "@timestamp", "settings": { "interval": "auto", "min_doc_count": "1" } }]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Top IPs Sources (par connexions)",
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 12 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "count" }],
+          "bucketAggs": [{ "id": "2", "type": "terms", "field": "id.orig_h.keyword", "settings": { "size": "15", "order": "desc", "orderBy": "1" } }]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top IPs Destinations (par connexions)",
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 12 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "count" }],
+          "bucketAggs": [{ "id": "2", "type": "terms", "field": "id.resp_h.keyword", "settings": { "size": "15", "order": "desc", "orderBy": "1" } }]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Top Ports Destination",
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 12 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "count" }],
+          "bucketAggs": [{ "id": "2", "type": "terms", "field": "id.resp_p", "settings": { "size": "15", "order": "desc", "orderBy": "1" } }]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "bargauge",
+      "title": "Top Sources par Volume (bytes envoyés)",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 22 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 10000000 },
+            { "color": "red", "value": 100000000 }
+          ]}
+        }
+      },
+      "options": { "orientation": "horizontal", "reduceOptions": { "calcs": ["sum"] }, "displayMode": "gradient" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "sum", "field": "orig_bytes" }],
+          "bucketAggs": [{ "id": "2", "type": "terms", "field": "id.orig_h.keyword", "settings": { "size": "10", "order": "desc", "orderBy": "1" } }]
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "Top Destinations par Volume (bytes reçus)",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 22 },
+      "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 10000000 },
+            { "color": "red", "value": 100000000 }
+          ]}
+        }
+      },
+      "options": { "orientation": "horizontal", "reduceOptions": { "calcs": ["sum"] }, "displayMode": "gradient" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "zeek-es" },
+          "query": "orig_bytes:*",
+          "metrics": [{ "id": "1", "type": "sum", "field": "resp_bytes" }],
+          "bucketAggs": [{ "id": "2", "type": "terms", "field": "id.resp_h.keyword", "settings": { "size": "10", "order": "desc", "orderBy": "1" } }]
+        }
+      ]
+    }
+  ]
+}

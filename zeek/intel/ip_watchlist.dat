@@ -1,0 +1,11 @@
+#fields	indicator	indicator_type	meta.source	meta.desc	meta.url
+#separator \x09
+# Fichier généré par update-intel.sh — ne pas éditer manuellement
+# Sources : Feodo Tracker (abuse.ch), Emerging Threats
+# Format : https://docs.zeek.org/en/master/frameworks/intel.html
+#
+# IPs d'exemple — lancer ./update-intel.sh pour télécharger les feeds réels
+#
+# Emotet / TrickBot / QakBot C2 (exemples publics désactivés)
+# 185.220.101.45	Intel::ADDR	Feodo Tracker	Emotet C2	https://feodotracker.abuse.ch
+# 185.220.101.46	Intel::ADDR	Feodo Tracker	Emotet C2	https://feodotracker.abuse.ch

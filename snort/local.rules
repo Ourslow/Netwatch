@@ -2,10 +2,10 @@
 # Complement des scripts Zeek (port-scan-detect, dns-entropy)
 
 # Detection ICMP ping sweep
-alert icmp any any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep"; itype:8; threshold:type both, track by_src, count 10, seconds 60; sid:1000001; rev:1; classtype:network-scan; )
+alert icmp any any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep"; itype:8; threshold:type both, track by_src, count 10, seconds 60; metadata:mitre_technique T1018, mitre_tactic Reconnaissance; sid:1000001; rev:2; classtype:network-scan; )
 
 # Detection tentative SSH brute force
-alert tcp any any -> $HOME_NET 22 ( msg:"NETWATCH - SSH Brute Force Attempt"; flow:to_server,established; threshold:type both, track by_src, count 5, seconds 60; sid:1000002; rev:1; classtype:attempted-admin; )
+alert tcp any any -> $HOME_NET 22 ( msg:"NETWATCH - SSH Brute Force Attempt"; flow:to_server,established; threshold:type both, track by_src, count 5, seconds 60; metadata:mitre_technique T1110.001, mitre_tactic CredentialAccess; sid:1000002; rev:2; classtype:attempted-admin; )
 
 # Detection requete DNS vers TLD suspect
 alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|xyz"; nocase; sid:1000003; rev:1; classtype:bad-unknown; )
@@ -14,13 +14,13 @@ alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; cont
 alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|biz"; nocase; sid:1000006; rev:1; classtype:bad-unknown; )
 
 # Detection trafic HTTP non chiffre sur port 80 avec credentials
-alert tcp any any -> any 80 ( msg:"NETWATCH - Cleartext credentials over HTTP"; flow:to_server,established; content:"POST"; http_method; content:"password"; http_client_body; nocase; sid:1000007; rev:1; classtype:policy-violation; )
+alert tcp any any -> any 80 ( msg:"NETWATCH - Cleartext credentials over HTTP"; flow:to_server,established; content:"POST"; http_method; content:"password"; http_client_body; nocase; metadata:mitre_technique T1040, mitre_tactic CredentialAccess; sid:1000007; rev:2; classtype:policy-violation; )
 
 # Detection exfiltration potentielle (gros upload)
-alert tcp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - Possible data exfiltration (large upload)"; flow:to_server,established; dsize:>10000; threshold:type both, track by_src, count 50, seconds 60; sid:1000008; rev:1; classtype:policy-violation; )
+alert tcp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - Possible data exfiltration (large upload)"; flow:to_server,established; dsize:>10000; threshold:type both, track by_src, count 50, seconds 60; metadata:mitre_technique T1048, mitre_tactic Exfiltration; sid:1000008; rev:2; classtype:policy-violation; )
 
 # Detection connexion vers port non standard
-alert tcp $HOME_NET any -> $EXTERNAL_NET [!21,!22,!25,!53,!80,!110,!143,!443,!993,!995,!8080,!8443] ( msg:"NETWATCH - Connection to non-standard port"; flow:to_server,established; threshold:type both, track by_src, count 3, seconds 120; sid:1000009; rev:1; classtype:bad-unknown; )
+alert tcp $HOME_NET any -> $EXTERNAL_NET [!21,!22,!25,!53,!80,!110,!143,!443,!993,!995,!8080,!8443] ( msg:"NETWATCH - Connection to non-standard port"; flow:to_server,established; threshold:type both, track by_src, count 3, seconds 120; metadata:mitre_technique T1571, mitre_tactic CommandAndControl; sid:1000009; rev:2; classtype:bad-unknown; )
 
 # Detection User-Agent suspect (outils automatises)
 alert tcp any any -> any any ( msg:"NETWATCH - Suspicious User-Agent (curl)"; flow:to_server,established; content:"User-Agent|3a| curl"; nocase; http_header; sid:1000010; rev:1; classtype:bad-unknown; )
@@ -45,7 +45,7 @@ alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER 80 ( msg:"NETWATCH - Acces HTTP
 alert tcp any any -> $MONITORED_SERVER 22 ( msg:"NETWATCH - Tentative SSH vers $MONITORED_SERVER"; flags:S; threshold:type limit, track by_src, count 1, seconds 60; sid:1000015; rev:1; classtype:attempted-admin; )
 
 # Scan de ports SYN cible vers $MONITORED_SERVER
-alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Scan de ports SYN vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 15, seconds 10; sid:1000016; rev:1; classtype:network-scan; )
+alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Scan de ports SYN vers serveur surveille"; flags:S; detection_filter:track by_src, count 15, seconds 10; metadata:mitre_technique T1046, mitre_tactic Reconnaissance; sid:1000016; rev:2; classtype:network-scan; )
 
 # SYN flood vers port HTTP (attention: detecte volume SYN depuis meme source, pas sweep d'IPs distinctes)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 80 ( msg:"NETWATCH - SYN flood vers port HTTP"; flags:S; detection_filter:track by_src, count 20, seconds 10; sid:1000017; rev:1; classtype:attempted-dos; )

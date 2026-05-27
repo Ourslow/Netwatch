@@ -17,6 +17,7 @@ services:
     volumes:
       - ./zeek/local.zeek:/usr/local/zeek/share/zeek/site/local.zeek:ro
       - ./zeek/scripts:/usr/local/zeek/share/zeek/site/scripts:ro
+      - ./zeek/intel:/usr/local/zeek/share/zeek/site/intel:ro
       - zeek-logs:/zeek/logs
       - ./pcap:/pcap:ro
     depends_on:
