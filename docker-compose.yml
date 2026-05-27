@@ -153,6 +153,49 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ============================================================
+  # ANALYSE COMPORTEMENTALE (RITA-lite)
+  # ============================================================
+
+  beacon-detect:
+    build: ./beacon-detect
+    container_name: netwatch-beacon-detect
+    environment:
+      - ES_URL=http://elasticsearch:9200
+      - SCAN_INTERVAL_MIN=15
+      - LOOKBACK_HOURS=2
+      - MIN_CONNECTIONS=8
+      - BEACON_CV_THRESHOLD=0.25
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================================
+  # REPONSE AUTOMATIQUE (AutoBlock webhook)
+  # ============================================================
+
+  autoblock:
+    build: ./autoblock
+    container_name: netwatch-autoblock
+    network_mode: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - ES_URL=http://localhost:9200
+      - WEBHOOK_PORT=5001
+      - BLOCK_DURATION_MIN=${BLOCK_DURATION_MIN:-60}
+      - MAX_BLOCKS_PER_HOUR=20
+      - DRY_RUN=${AUTOBLOCK_DRY_RUN:-true}
+      - ALLOWLIST=${AUTOBLOCK_ALLOWLIST:-}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   zeek-logs:
   snort-logs:

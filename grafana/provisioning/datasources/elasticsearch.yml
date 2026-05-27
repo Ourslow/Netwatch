@@ -48,3 +48,27 @@ datasources:
       timeField: "@timestamp"
       esVersion: "8.0.0"
     editable: true
+
+  - name: Beacons-ES
+    type: elasticsearch
+    uid: beacons-es
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "netwatch-beacons-*"
+    isDefault: false
+    jsonData:
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+    editable: true
+
+  - name: AutoBlock-ES
+    type: elasticsearch
+    uid: autoblock-es
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "netwatch-autoblock-*"
+    isDefault: false
+    jsonData:
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+    editable: true

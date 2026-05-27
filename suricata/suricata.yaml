@@ -70,9 +70,13 @@ detect:
   sgh-mpm-context: auto
   inspection-recursion-limit: 3000
 
-# Multi-threading
+# Multi-threading — workers = nb de CPU alloues a la VM
 threading:
   set-cpu-affinity: no
+  detect-thread-ratio: 2.0
+
+# Performance capture
+max-pending-packets: 65535
 
 # Regles
 default-rule-path: /var/lib/suricata/rules
