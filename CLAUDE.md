@@ -50,28 +50,42 @@ Trafic réseau (SPAN / PCAP)
 - Simulateur de trafic Python (simulate-traffic.py)
 - README complet, docs, MoSCoW/WBS/Gantt, pitch 5 min
 
-### v2 (EN COURS)
-- [x] Docker Compose 6 services (+ Snort 3 + Suricata)
+### v2 (COMPLETE)
+- [x] Docker Compose 10 services (Zeek, Snort, Suricata, Filebeat, ES, Grafana, Prometheus, node-exporter, beacon-detect, autoblock)
 - [x] Dockerfile Snort 3 (build from source + libdaq + tcmalloc)
-- [x] Config Snort 3 (snort.lua, alert_json, règles custom)
-- [x] Dockerfile Suricata 7 (jasonish/suricata + ET Open)
-- [x] Config Suricata (suricata.yaml, EVE JSON, Community ID)
-- [x] Filebeat multi-sources (3 inputs, index par engine)
-- [x] Datasources Grafana (Zeek-ES, Snort-ES, Suricata-ES)
+- [x] Config Snort 3 (snort.lua, alert_json, règles custom SID 1000001-1000017 + MITRE)
+- [x] Dockerfile Suricata 7 (jasonish/suricata + ET Open + suricata-update auto)
+- [x] Config Suricata (suricata.yaml, EVE JSON, Community ID, threading)
+- [x] Filebeat multi-sources (3 inputs, index par engine, ssh.log + intel.log)
+- [x] Datasources Grafana (6 datasources : Zeek, Snort, Suricata, Beacons, AutoBlock, Prometheus)
 - [x] Script replay-pcap.sh (replay sur les 3 moteurs)
-- [ ] Tester le build complet sur la VM
-- [ ] Dashboards Grafana pour alertes Snort
-- [ ] Dashboards Grafana pour alertes Suricata
-- [ ] Dashboard corrélation multi-moteurs
-- [ ] Mettre à jour simulate-traffic.py pour Snort/Suricata
-- [ ] Mettre à jour README pour v2
-- [ ] Mettre à jour docs/architecture.md
+- [x] Dashboards Grafana pour alertes Snort (+ MITRE ATT&CK)
+- [x] Dashboards Grafana pour alertes Suricata (+ MITRE ATT&CK)
+- [x] Dashboard corrélation multi-moteurs
+- [x] Dashboards : vm-health, top-talkers, ja3-hassh, beacon-detect (11 total)
+- [x] beacon-detect RITA-lite (beaconing CV, longues connexions, DNS tunneling)
+- [x] autoblock webhook Flask → iptables (DRY_RUN=true par défaut)
+- [x] Zeek Intel Framework (ip_watchlist.dat + domain_watchlist.dat + update-intel.sh)
+- [x] JA3/HASSH fingerprinting dans logs SSL/SSH Zeek
+- [x] Prometheus + node-exporter + dashboard vm-health
+- [x] GeoIP pipeline Elasticsearch (setup-geoip.sh)
+- [x] Grafana alerting (CPU, RAM, disk, Suricata spike, volume anomaly)
+- [x] Contact points Grafana (Slack + AutoBlock webhook)
+- [x] Mettre à jour simulate-traffic.py (JA3/HASSH, MITRE, beaconing, Intel, DNS tunneling)
+- [x] Mettre à jour README pour v2 (10 services, 11 dashboards, AGPL v3)
+- [x] Mettre à jour docs/architecture.md
+- [x] demo.sh — script de démonstration interactif
+- [x] Makefile — make start/stop/demo/logs/build/health/clean
+- [x] Licence MIT → AGPL v3
+- [x] Suppression IP en clair de l'historique git
+- [x] .env.example propre (SNORT_MONITORED_SERVER, DRY_RUN=true)
+- [ ] Tester le build complet sur la VM physique
 
 ### v3 (PLANIFIE)
-- Migration ESXi → Proxmox VE
-- Portail web custom (Flask/FastAPI + API Proxmox) pour gérer les VMs
-- Templates VM pour outils commerciaux (Netscout, Gigamon, Riverbed)
-- Mode comparaison côte à côte
+- [ ] Déploiement physique sur Shuttle Proxmox (Intel i350-T2 + SPAN)
+- [ ] Portail web custom (Flask/FastAPI + API Proxmox) pour gérer les VMs
+- [ ] Templates VM pour outils commerciaux (Netscout, Gigamon, Riverbed)
+- [ ] Mode comparaison côte à côte open-source vs commercial
 
 ## CONVENTIONS
 - Fichiers de config en français (commentaires)
