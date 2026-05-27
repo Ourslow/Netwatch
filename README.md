@@ -3,7 +3,7 @@
 > Observabilité réseau avec **Zeek + Snort 3 + Suricata 7 + Elasticsearch + Grafana**
 > Trois moteurs d'analyse en parallèle sur le même trafic, pipeline unifié, 7 dashboards.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](docker-compose.yml)
 [![Zeek](https://img.shields.io/badge/Zeek-6.2-orange.svg)](https://zeek.org)
 [![Snort](https://img.shields.io/badge/Snort-3.3.5-red.svg)](https://snort.org)
