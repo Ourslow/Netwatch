@@ -1,0 +1,158 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: VM Health
+    folder: NetWatch
+    interval: 1m
+    rules:
+      - uid: netwatch-cpu-critical
+        title: CPU > 90%
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle",instance="netwatch-vm"}[2m])) * 100)
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: C
+              conditions:
+                - evaluator: { params: [90], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: critical
+          team: netwatch
+        annotations:
+          summary: "CPU critique sur netwatch-vm"
+          description: "Le CPU dépasse 90% depuis plus de 2 minutes."
+          value: "{{ $values.A.Value | printf \"%.1f\" }}%"
+
+      - uid: netwatch-memory-critical
+        title: RAM > 90%
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: 100 * (1 - (node_memory_MemAvailable_bytes{instance="netwatch-vm"} / node_memory_MemTotal_bytes{instance="netwatch-vm"}))
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: C
+              conditions:
+                - evaluator: { params: [90], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: critical
+          team: netwatch
+        annotations:
+          summary: "RAM critique sur netwatch-vm"
+          description: "La mémoire dépasse 90% depuis plus de 2 minutes."
+          value: "{{ $values.A.Value | printf \"%.1f\" }}%"
+
+      - uid: netwatch-disk-warning
+        title: Disk / > 85%
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: 100 - (node_filesystem_avail_bytes{instance="netwatch-vm",mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{instance="netwatch-vm",mountpoint="/",fstype!="tmpfs"} * 100)
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: C
+              conditions:
+                - evaluator: { params: [85], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+          team: netwatch
+        annotations:
+          summary: "Disque / bientôt plein sur netwatch-vm"
+          description: "Le disque racine dépasse 85% d'utilisation."
+          value: "{{ $values.A.Value | printf \"%.1f\" }}%"
+
+  - orgId: 1
+    name: IDS Alerts
+    folder: NetWatch
+    interval: 1m
+    rules:
+      - uid: netwatch-suricata-spike
+        title: Suricata — Pic d'alertes (> 50/min)
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: suricata-es
+            model:
+              query: "event_type:alert"
+              timeField: "@timestamp"
+              metrics:
+                - id: "1"
+                  type: count
+              bucketAggs:
+                - id: "2"
+                  type: date_histogram
+                  field: "@timestamp"
+                  settings: { interval: "1m", min_doc_count: "0" }
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: C
+              conditions:
+                - evaluator: { params: [50], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { params: [], type: last }
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: warning
+          team: netwatch
+          engine: suricata
+        annotations:
+          summary: "Pic d'alertes Suricata"
+          description: "Suricata génère plus de 50 alertes par minute — possible attaque en cours."
+          value: "{{ $values.A.Value }} alertes/min"

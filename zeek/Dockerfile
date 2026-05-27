@@ -1,7 +1,8 @@
 FROM zeek/zeek:6.2
 
 RUN zkg install https://github.com/salesforce/ja3 --force && \
-    zkg install https://github.com/salesforce/hassh --force
+    zkg install https://github.com/salesforce/hassh --force && \
+    zkg install corelight/zeek-community-id --force
 
 WORKDIR /zeek
 

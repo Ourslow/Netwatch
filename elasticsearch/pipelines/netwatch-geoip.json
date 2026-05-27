@@ -1,0 +1,39 @@
+{
+  "description": "NetWatch — GeoIP enrichment (géolocalisation des IPs source)",
+  "processors": [
+    {
+      "geoip": {
+        "field": "id.orig_h",
+        "target_field": "source.geo",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "properties": ["city_name", "country_name", "country_iso_code", "location", "continent_name"]
+      }
+    },
+    {
+      "geoip": {
+        "field": "src_addr",
+        "target_field": "source.geo",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "properties": ["city_name", "country_name", "country_iso_code", "location", "continent_name"]
+      }
+    },
+    {
+      "geoip": {
+        "field": "src_ip",
+        "target_field": "source.geo",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "properties": ["city_name", "country_name", "country_iso_code", "location", "continent_name"]
+      }
+    },
+    {
+      "set": {
+        "field": "_source.geoip_applied",
+        "value": true,
+        "ignore_failure": true
+      }
+    }
+  ]
+}

@@ -1,6 +1,16 @@
 apiVersion: 1
 
 datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://netwatch-prometheus:9090
+    isDefault: false
+    jsonData:
+      timeInterval: "15s"
+    editable: true
+
   - name: Zeek-ES
     type: elasticsearch
     uid: zeek-es

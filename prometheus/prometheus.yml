@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'netwatch'
+
+scrape_configs:
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['netwatch-node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'netwatch-vm'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'elasticsearch'
+    metrics_path: '/_prometheus/metrics'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    # Necessite le plugin ES prometheus-exporter (optionnel)
+    honor_labels: true
