@@ -3,6 +3,7 @@ apiVersion: 1
 datasources:
   - name: Zeek-ES
     type: elasticsearch
+    uid: zeek-es
     access: proxy
     url: http://elasticsearch:9200
     database: "zeek-*"
@@ -16,6 +17,7 @@ datasources:
 
   - name: Snort-ES
     type: elasticsearch
+    uid: snort-es
     access: proxy
     url: http://elasticsearch:9200
     database: "snort-*"
@@ -27,6 +29,7 @@ datasources:
 
   - name: Suricata-ES
     type: elasticsearch
+    uid: suricata-es
     access: proxy
     url: http://elasticsearch:9200
     database: "suricata-*"

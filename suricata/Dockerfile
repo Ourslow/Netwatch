@@ -9,5 +9,5 @@ RUN mkdir -p /var/log/suricata
 
 WORKDIR /var/log/suricata
 
-ENTRYPOINT ["suricata"]
-CMD ["-c", "/etc/suricata/suricata.yaml", "-i", "eth0"]
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["suricata -c /etc/suricata/suricata.yaml -i ${IFACE:-eth0}"]

@@ -5,5 +5,5 @@ RUN zkg install https://github.com/salesforce/ja3 --force && \
 
 WORKDIR /zeek
 
-ENTRYPOINT ["zeek"]
-CMD ["-i", "eth0", "/usr/local/zeek/share/zeek/site/local.zeek"]
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["zeek -i ${IFACE:-eth0} /usr/local/zeek/share/zeek/site/local.zeek"]
