@@ -1,4 +1,8 @@
 filebeat.inputs:
+
+  # ============================================================
+  # ZEEK LOGS (analyse protocolaire)
+  # ============================================================
   - type: log
     enabled: true
     paths:
@@ -13,6 +17,37 @@ filebeat.inputs:
     fields_under_root: true
     fields:
       log_type: zeek
+      engine: zeek
+
+  # ============================================================
+  # SNORT 3 LOGS (IDS signatures)
+  # ============================================================
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/snort/alert_json.txt
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.ignore_decoding_error: true
+    fields_under_root: true
+    fields:
+      log_type: snort
+      engine: snort
+
+  # ============================================================
+  # SURICATA LOGS (IDS EVE JSON)
+  # ============================================================
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/eve.json
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.ignore_decoding_error: true
+    fields_under_root: true
+    fields:
+      log_type: suricata
+      engine: suricata
 
 processors:
   - add_host_metadata: ~
@@ -20,16 +55,21 @@ processors:
       field: ts
       layouts:
         - '2006-01-02T15:04:05.999999Z07:00'
+        - '2006-01-02T15:04:05.999999+0000'
       test:
         - '2024-01-01T12:00:00.000000Z'
+      ignore_failure: true
 
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]
-  index: "zeek-%{[log_type]:unknown}-%{+yyyy.MM.dd}"
-  bulk_max_size: 200
+  index: "%{[engine]:unknown}-%{+yyyy.MM.dd}"
+  bulk_max_size: 500
 
-setup.template.name: "zeek"
-setup.template.pattern: "zeek-*"
+setup.template.name: "netwatch"
+setup.template.pattern: "*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
 setup.ilm.enabled: false
 
 logging.level: info

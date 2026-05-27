@@ -1,0 +1,124 @@
+%YAML 1.1
+---
+
+# NetWatch — Suricata 7 Configuration
+# EVE JSON output pour integration Filebeat -> Elasticsearch
+
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]"
+    EXTERNAL_NET: "!$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
+    TELNET_SERVERS: "$HOME_NET"
+
+  port-groups:
+    HTTP_PORTS: "80"
+    SHELLCODE_PORTS: "!80"
+    SSH_PORTS: "22"
+    DNS_PORTS: "53"
+
+# Sortie EVE JSON (principale)
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      pcap-file: false
+      community-id: true
+      types:
+        - alert:
+            tagged-packets: yes
+            metadata: yes
+        - dns:
+            enabled: yes
+            query: yes
+            answer: yes
+        - http:
+            enabled: yes
+            extended: yes
+        - tls:
+            enabled: yes
+            extended: yes
+        - files:
+            enabled: yes
+            force-magic: no
+        - flow
+        - stats:
+            enabled: yes
+            totals: yes
+            threads: no
+            deltas: no
+
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+
+  - stats:
+      enabled: yes
+      filename: stats.log
+      append: no
+      totals: yes
+      threads: no
+
+# Detection
+detect:
+  profile: medium
+  sgh-mpm-context: auto
+  inspection-recursion-limit: 3000
+
+# Multi-threading
+threading:
+  set-cpu-affinity: no
+
+# Regles
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - suricata.rules
+  - /etc/suricata/rules/local.rules
+
+# Protocoles applicatifs
+app-layer:
+  protocols:
+    http:
+      enabled: yes
+    tls:
+      enabled: yes
+    dns:
+      enabled: yes
+      tcp:
+        enabled: yes
+      udp:
+        enabled: yes
+    ssh:
+      enabled: yes
+    smtp:
+      enabled: yes
+    ftp:
+      enabled: yes
+
+# Capture
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+
+pcap-file:
+  checksum-checks: no
+
+# Logging interne
+logging:
+  default-log-level: info
+  outputs:
+    - console:
+        enabled: yes
+    - file:
+        enabled: yes
+        level: info
+        filename: suricata.log
