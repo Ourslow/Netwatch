@@ -7,6 +7,8 @@ services:
     build: ./zeek
     container_name: netwatch-zeek
     network_mode: host
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -26,6 +28,8 @@ services:
     build: ./snort
     container_name: netwatch-snort
     network_mode: host
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -46,6 +50,8 @@ services:
     build: ./suricata
     container_name: netwatch-suricata
     network_mode: host
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -131,7 +137,7 @@ services:
     image: grafana/grafana:10.4.0
     container_name: netwatch-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_UNIFIED_ALERTING_ENABLED=true
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}

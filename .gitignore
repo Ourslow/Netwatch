@@ -5,10 +5,14 @@ pcap/*.pcapng
 # Elasticsearch data
 elasticsearch/data/
 
-# Secrets (si ajoutés)
+# Secrets
 .env
+.env.local
 *.key
 *.crt
+*.cert
+*.pem
+snort.local.lua
 
 # OS
 .DS_Store
