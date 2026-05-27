@@ -5,6 +5,10 @@
 HOME_NET = '10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16'
 EXTERNAL_NET = '!$HOME_NET'
 
+-- Serveur surveille en specifique — definir via variable d'env ou surcharge locale
+-- Ne pas mettre d'IP en clair ici : creer snort.local.lua avec MONITORED_SERVER = 'x.x.x.x'
+MONITORED_SERVER = os.getenv('SNORT_MONITORED_SERVER') or '127.0.0.1'
+
 -- Decodeurs
 wizard = default_wizard
 

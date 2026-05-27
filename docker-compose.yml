@@ -31,6 +31,7 @@ services:
       - NET_RAW
     environment:
       - IFACE=eth0
+      - SNORT_MONITORED_SERVER=${SNORT_MONITORED_SERVER:-127.0.0.1}
     volumes:
       - ./snort/snort.lua:/usr/local/etc/snort/snort.lua:ro
       - ./snort/local.rules:/usr/local/etc/rules/local.rules:ro

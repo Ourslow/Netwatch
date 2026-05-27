@@ -26,7 +26,7 @@ alert tcp $HOME_NET any -> $EXTERNAL_NET [!21,!22,!25,!53,!80,!110,!143,!443,!99
 alert tcp any any -> any any ( msg:"NETWATCH - Suspicious User-Agent (curl)"; flow:to_server,established; content:"User-Agent|3a| curl"; nocase; http_header; sid:1000010; rev:1; classtype:bad-unknown; )
 
 # ============================================================
-# SURVEILLANCE SERVEUR REDACTED + ICMP
+# SURVEILLANCE SERVEUR $MONITORED_SERVER + ICMP
 # ============================================================
 
 # Ping sweep entrant (EXTERNAL -> HOME) - plus specifique que 1000001
@@ -35,17 +35,17 @@ alert icmp $EXTERNAL_NET any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep 
 # Volume ICMP Reply sortant - threshold pour eviter le spam
 alert icmp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - ICMP Reply sortant volume eleve"; itype:0; icode:0; detection_filter:track by_src, count 20, seconds 30; sid:1000012; rev:1; classtype:network-scan; )
 
-# Nouveaux flux TCP vers REDACTED (remplace alert ip sans threshold)
-alert tcp $EXTERNAL_NET any -> REDACTED any ( msg:"NETWATCH - Nouveaux flux TCP vers REDACTED"; flags:S; detection_filter:track by_src, count 3, seconds 60; sid:1000013; rev:1; classtype:network-scan; )
+# Nouveaux flux TCP vers $MONITORED_SERVER (remplace alert ip sans threshold)
+alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Nouveaux flux TCP vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 3, seconds 60; sid:1000013; rev:1; classtype:network-scan; )
 
-# Acces HTTP vers REDACTED - seuil haut pour eviter faux positifs sur trafic legitime
-alert tcp $EXTERNAL_NET any -> REDACTED 80 ( msg:"NETWATCH - Acces HTTP volume eleve vers REDACTED"; flow:to_server,established; detection_filter:track by_src, count 50, seconds 60; sid:1000014; rev:1; classtype:policy-violation; )
+# Acces HTTP vers $MONITORED_SERVER - seuil haut pour eviter faux positifs sur trafic legitime
+alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER 80 ( msg:"NETWATCH - Acces HTTP volume eleve vers $MONITORED_SERVER"; flow:to_server,established; detection_filter:track by_src, count 50, seconds 60; sid:1000014; rev:1; classtype:policy-violation; )
 
-# Tentative connexion SSH vers REDACTED (SYN uniquement = tentative, pas session etablie)
-alert tcp any any -> REDACTED 22 ( msg:"NETWATCH - Tentative SSH vers REDACTED"; flags:S; threshold:type limit, track by_src, count 1, seconds 60; sid:1000015; rev:1; classtype:attempted-admin; )
+# Tentative connexion SSH vers $MONITORED_SERVER (SYN uniquement = tentative, pas session etablie)
+alert tcp any any -> $MONITORED_SERVER 22 ( msg:"NETWATCH - Tentative SSH vers $MONITORED_SERVER"; flags:S; threshold:type limit, track by_src, count 1, seconds 60; sid:1000015; rev:1; classtype:attempted-admin; )
 
-# Scan de ports SYN cible vers REDACTED
-alert tcp $EXTERNAL_NET any -> REDACTED any ( msg:"NETWATCH - Scan de ports SYN vers REDACTED"; flags:S; detection_filter:track by_src, count 15, seconds 10; sid:1000016; rev:1; classtype:network-scan; )
+# Scan de ports SYN cible vers $MONITORED_SERVER
+alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Scan de ports SYN vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 15, seconds 10; sid:1000016; rev:1; classtype:network-scan; )
 
 # SYN flood vers port HTTP (attention: detecte volume SYN depuis meme source, pas sweep d'IPs distinctes)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 80 ( msg:"NETWATCH - SYN flood vers port HTTP"; flags:S; detection_filter:track by_src, count 20, seconds 10; sid:1000017; rev:1; classtype:attempted-dos; )
