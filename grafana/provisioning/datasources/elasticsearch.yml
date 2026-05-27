@@ -13,3 +13,25 @@ datasources:
       logMessageField: message
       logLevelField: fields.level
     editable: true
+
+  - name: Snort-ES
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "snort-*"
+    isDefault: false
+    jsonData:
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+    editable: true
+
+  - name: Suricata-ES
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "suricata-*"
+    isDefault: false
+    jsonData:
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+    editable: true

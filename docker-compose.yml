@@ -1,6 +1,8 @@
-version: '3.8'
-
 services:
+  # ============================================================
+  # MOTEURS D'ANALYSE
+  # ============================================================
+
   zeek:
     build: ./zeek
     container_name: netwatch-zeek
@@ -18,6 +20,45 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  snort:
+    build: ./snort
+    container_name: netwatch-snort
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./snort/snort.lua:/usr/local/etc/snort/snort.lua:ro
+      - ./snort/local.rules:/usr/local/etc/rules/local.rules:ro
+      - snort-logs:/var/log/snort
+      - ./pcap:/pcap:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  suricata:
+    build: ./suricata
+    container_name: netwatch-suricata
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    volumes:
+      - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./suricata/local.rules:/etc/suricata/rules/local.rules:ro
+      - suricata-logs:/var/log/suricata
+      - ./pcap:/pcap:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================================
+  # PIPELINE DE DONNEES
+  # ============================================================
+
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.13.0
     container_name: netwatch-filebeat
@@ -25,6 +66,8 @@ services:
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - zeek-logs:/zeek/logs:ro
+      - snort-logs:/var/log/snort:ro
+      - suricata-logs:/var/log/suricata:ro
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -36,7 +79,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
     volumes:
       - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - es-data:/usr/share/elasticsearch/data
@@ -68,5 +111,7 @@ services:
 
 volumes:
   zeek-logs:
+  snort-logs:
+  suricata-logs:
   es-data:
   grafana-data:

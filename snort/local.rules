@@ -1,0 +1,26 @@
+# NetWatch — Regles Snort 3 custom
+# Complement des scripts Zeek (port-scan-detect, dns-entropy)
+
+# Detection ICMP ping sweep
+alert icmp any any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep"; itype:8; threshold:type both, track by_src, count 10, seconds 60; sid:1000001; rev:1; classtype:network-scan; )
+
+# Detection tentative SSH brute force
+alert tcp any any -> $HOME_NET 22 ( msg:"NETWATCH - SSH Brute Force Attempt"; flow:to_server,established; threshold:type both, track by_src, count 5, seconds 60; sid:1000002; rev:1; classtype:attempted-admin; )
+
+# Detection requete DNS vers TLD suspect
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|xyz"; nocase; sid:1000003; rev:1; classtype:bad-unknown; )
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|04|info"; nocase; sid:1000004; rev:1; classtype:bad-unknown; )
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|top"; nocase; sid:1000005; rev:1; classtype:bad-unknown; )
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|biz"; nocase; sid:1000006; rev:1; classtype:bad-unknown; )
+
+# Detection trafic HTTP non chiffre sur port 80 avec credentials
+alert tcp any any -> any 80 ( msg:"NETWATCH - Cleartext credentials over HTTP"; flow:to_server,established; content:"POST"; http_method; content:"password"; http_client_body; nocase; sid:1000007; rev:1; classtype:policy-violation; )
+
+# Detection exfiltration potentielle (gros upload)
+alert tcp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - Possible data exfiltration (large upload)"; flow:to_server,established; dsize:>10000; threshold:type both, track by_src, count 50, seconds 60; sid:1000008; rev:1; classtype:policy-violation; )
+
+# Detection connexion vers port non standard
+alert tcp $HOME_NET any -> $EXTERNAL_NET [!21,!22,!25,!53,!80,!110,!143,!443,!993,!995,!8080,!8443] ( msg:"NETWATCH - Connection to non-standard port"; flow:to_server,established; threshold:type both, track by_src, count 3, seconds 120; sid:1000009; rev:1; classtype:bad-unknown; )
+
+# Detection User-Agent suspect (outils automatises)
+alert tcp any any -> any any ( msg:"NETWATCH - Suspicious User-Agent (curl)"; flow:to_server,established; content:"User-Agent|3a| curl"; nocase; http_header; sid:1000010; rev:1; classtype:bad-unknown; )
