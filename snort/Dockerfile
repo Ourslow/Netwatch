@@ -43,5 +43,5 @@ RUN mkdir -p /usr/local/etc/snort /usr/local/etc/rules /var/log/snort && \
 
 WORKDIR /var/log/snort
 
-ENTRYPOINT ["snort"]
-CMD ["-c", "/usr/local/etc/snort/snort.lua", "-i", "eth0", "-l", "/var/log/snort", "--plugin-path", "/usr/local/lib/snort"]
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["snort -c /usr/local/etc/snort/snort.lua -i ${IFACE:-eth0} -l /var/log/snort --plugin-path /usr/local/lib/snort"]

@@ -1,1 +1,168 @@
-[]
+{
+  "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+  "description": "Analyse du trafic DNS capturé par Zeek — requêtes, domaines, anomalies DGA",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Requêtes DNS dans le temps",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "showPoints": "never"},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: dns",
+          "alias": "Requêtes DNS",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: dns AND rcode_name: NXDOMAIN",
+          "alias": "NXDOMAIN",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Requêtes DNS",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: dns", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Domaines Uniques",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: dns", "metrics": [{"id": "1", "type": "cardinality", "field": "query.keyword"}], "bucketAggs": []}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Erreurs NXDOMAIN",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 200}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: dns AND rcode_name: NXDOMAIN", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Alertes DGA (Haute Entropie)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 10}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: notice AND note: DNSEntropy*", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Top Domaines Interrogés",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "footer": {"show": false, "reducer": ["sum"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: dns",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "query.keyword", "settings": {"size": "15", "order": "desc", "orderBy": "1", "min_doc_count": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top Clients DNS",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "footer": {"show": false, "reducer": ["sum"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: dns",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "id.orig_h.keyword", "settings": {"size": "10", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "Types de Requêtes DNS",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: dns",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "qtype_name.keyword", "settings": {"size": "8", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "Codes de Réponse DNS",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: dns",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "rcode_name.keyword", "settings": {"size": "6", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["netwatch", "zeek", "dns"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NetWatch — Analyse DNS (Zeek)",
+  "uid": "netwatch-dns",
+  "version": 1,
+  "weekStart": ""
+}

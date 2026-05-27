@@ -1,1 +1,154 @@
-[]
+{
+  "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+  "description": "Alertes sécurité Zeek — port scans, DGA, anomalies SSL (scripts port-scan-detect + dns-entropy)",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Notices Zeek dans le temps",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "showPoints": "never"}, "unit": "short"},
+        "overrides": []
+      },
+      "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: notice AND note: PortScan*",
+          "alias": "Port Scans",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: notice AND note: DNSEntropy*",
+          "alias": "DGA / Haute Entropie",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        },
+        {
+          "refId": "C",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: notice AND note: SSL*",
+          "alias": "Alertes SSL",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Notices",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: notice", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Port Scans Détectés",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: notice AND note: PortScan*", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Domaines DGA Détectés",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 10}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: notice AND note: DNSEntropy*", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Alertes Certificats SSL",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "orange", "value": 5}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: notice AND note: SSL*", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Types de Notices",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "footer": {"show": false, "reducer": ["sum"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: notice",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "note.keyword", "settings": {"size": "10", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top IPs Sources d'Alertes",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "footer": {"show": false, "reducer": ["sum"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: notice",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "src.keyword", "settings": {"size": "10", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "Distribution des Types d'Alertes Zeek",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: notice",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "note.keyword", "settings": {"size": "10", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["netwatch", "zeek", "security"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NetWatch — Alertes Sécurité (Zeek)",
+  "uid": "netwatch-security",
+  "version": 1,
+  "weekStart": ""
+}

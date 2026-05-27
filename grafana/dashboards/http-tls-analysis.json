@@ -1,1 +1,164 @@
-[]
+{
+  "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+  "description": "Analyse HTTP et TLS capturés par Zeek — méthodes, codes, versions TLS, certificats",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Trafic HTTP et TLS dans le temps",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1, "showPoints": "never"}, "unit": "short"},
+        "overrides": []
+      },
+      "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: http",
+          "alias": "Requêtes HTTP",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: ssl",
+          "alias": "Sessions TLS",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Requêtes HTTP",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: http", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Sessions TLS",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: ssl", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Hôtes HTTP Uniques",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: http", "metrics": [{"id": "1", "type": "cardinality", "field": "host.keyword"}], "bucketAggs": []}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Erreurs HTTP (4xx/5xx)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "zeek-es"}, "query": "log_source: http AND status_code: [400 TO 599]", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Top Hôtes HTTP",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "footer": {"show": false, "reducer": ["sum"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: http",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "host.keyword", "settings": {"size": "10", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "piechart",
+      "title": "Codes de Statut HTTP",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: http",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "status_code", "settings": {"size": "10", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "Versions TLS",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: ssl",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "version.keyword", "settings": {"size": "6", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "Méthodes HTTP",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "pie", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "elasticsearch", "uid": "zeek-es"},
+          "query": "log_source: http",
+          "metrics": [{"id": "1", "type": "count"}],
+          "bucketAggs": [{"id": "2", "type": "terms", "field": "method.keyword", "settings": {"size": "6", "order": "desc", "orderBy": "1"}}]
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["netwatch", "zeek", "http", "tls"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NetWatch — HTTP / TLS (Zeek)",
+  "uid": "netwatch-http-tls",
+  "version": 1,
+  "weekStart": ""
+}

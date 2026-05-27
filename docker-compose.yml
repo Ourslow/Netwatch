@@ -10,6 +10,8 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    environment:
+      - IFACE=eth0
     volumes:
       - ./zeek/local.zeek:/usr/local/zeek/share/zeek/site/local.zeek:ro
       - ./zeek/scripts:/usr/local/zeek/share/zeek/site/scripts:ro
@@ -27,6 +29,8 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    environment:
+      - IFACE=eth0
     volumes:
       - ./snort/snort.lua:/usr/local/etc/snort/snort.lua:ro
       - ./snort/local.rules:/usr/local/etc/rules/local.rules:ro
@@ -45,6 +49,8 @@ services:
       - NET_ADMIN
       - NET_RAW
       - SYS_NICE
+    environment:
+      - IFACE=eth0
     volumes:
       - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ./suricata/local.rules:/etc/suricata/rules/local.rules:ro

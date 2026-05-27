@@ -92,6 +92,38 @@ NOTICE_TYPES = [
     "SSL::Certificate_Not_Valid_Yet"
 ]
 
+# Signatures Snort 3 (règles custom + community)
+SNORT_SIGS = [
+    ("NETWATCH - ICMP Ping Sweep", "network-scan", 2, "icmp"),
+    ("NETWATCH - SSH Brute Force Attempt", "attempted-admin", 1, "tcp"),
+    ("NETWATCH - DNS Query to suspicious TLD", "bad-unknown", 3, "udp"),
+    ("NETWATCH - Cleartext credentials over HTTP", "policy-violation", 2, "tcp"),
+    ("NETWATCH - Possible data exfiltration (large upload)", "policy-violation", 1, "tcp"),
+    ("NETWATCH - Connection to non-standard port", "bad-unknown", 3, "tcp"),
+    ("NETWATCH - Suspicious User-Agent (curl)", "bad-unknown", 3, "tcp"),
+    ("ET SCAN Nmap Scripting Engine User-Agent", "network-scan", 2, "tcp"),
+    ("GPL ICMP_INFO PING", "misc-activity", 3, "icmp"),
+    ("ET POLICY External IP Lookup", "policy-violation", 3, "tcp"),
+    ("ET SCAN Potential SSH Scan OUTBOUND", "network-scan", 2, "tcp"),
+    ("ET POLICY Cleartext Password Detected", "policy-violation", 2, "tcp"),
+]
+
+# Signatures Suricata (EVE JSON — ET Open + custom)
+SURICATA_SIGS = [
+    (2000001, "NETWATCH - ICMP Ping Sweep detected", "network-scan", 2),
+    (2000002, "NETWATCH - SSH Brute Force Attempt", "attempted-admin", 1),
+    (2000004, "NETWATCH - Obsolete TLS version (TLSv1.0)", "policy-violation", 3),
+    (2000006, "NETWATCH - Cleartext password in HTTP POST", "policy-violation", 2),
+    (2000007, "NETWATCH - Large outbound transfer (possible exfiltration)", "policy-violation", 1),
+    (2013028, "ET POLICY curl User-Agent Outbound", "policy-violation", 3),
+    (2001219, "ET SCAN Potential SSH Scan", "network-scan", 2),
+    (2008578, "ET EXPLOIT Metasploit Framework User-Agent", "web-application-attack", 1),
+    (2019714, "ET DNS Query for .xyz TLD", "bad-unknown", 3),
+    (2021376, "ET POLICY Python-urllib User-Agent", "policy-violation", 3),
+    (2022973, "ET SCAN Possible Nmap User-Agent Observed", "network-scan", 2),
+    (2010935, "ET POLICY Dropbox.com Offsite File Backup in Use", "policy-violation", 3),
+]
+
 # ============================================================
 # Générateurs de logs
 # ============================================================
@@ -261,6 +293,55 @@ def gen_notice_log(ts, notice_type=None):
         "log_source": "notice"
     }
 
+def gen_snort_alert(ts):
+    sig_msg, classtype, priority, proto = random.choice(SNORT_SIGS)
+    src = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
+    dst = random.choice(INTERNAL_IPS)
+    if proto == "icmp":
+        src_port, dst_port, service = 0, 0, "unknown"
+    elif proto == "udp":
+        src_port, dst_port, service = random.randint(1024, 65535), 53, "dns"
+    else:
+        dst_port = random.choice([22, 80, 443, 8080, 3389])
+        src_port = random.randint(1024, 65535)
+        service = {22: "ssh", 80: "http", 443: "ssl", 8080: "http", 3389: "netbios"}.get(dst_port, "unknown")
+    return {
+        "@timestamp": ts, "timestamp": ts,
+        "pkt_num": random.randint(1000, 999999),
+        "proto": proto.upper(), "pkt_gen": "raw",
+        "pkt_len": random.randint(40, 1500), "dir": "C2S",
+        "src_addr": src, "src_port": src_port,
+        "dst_addr": dst, "dst_port": dst_port,
+        "service": service,
+        "rule": f"1:{random.randint(1000001, 1000999)}:1",
+        "action": "alert", "msg": sig_msg,
+        "priority": priority, "class_desc": classtype,
+        "log_type": "snort", "engine": "snort"
+    }
+
+def gen_suricata_alert(ts):
+    sid, sig_msg, category, severity = random.choice(SURICATA_SIGS)
+    src = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
+    dst = random.choice(INTERNAL_IPS)
+    proto = random.choices(["TCP", "UDP", "ICMP"], weights=[60, 30, 10])[0]
+    dst_port = random.choice([22, 53, 80, 443, 8080, 3389]) if proto != "ICMP" else 0
+    src_port = random.randint(1024, 65535) if proto != "ICMP" else 0
+    return {
+        "@timestamp": ts, "timestamp": ts,
+        "flow_id": random.randint(100000000, 999999999),
+        "in_iface": "eth0", "event_type": "alert",
+        "src_ip": src, "src_port": src_port,
+        "dest_ip": dst, "dest_port": dst_port,
+        "proto": proto,
+        "community_id": f"1:{random_uid()[:8]}==",
+        "alert": {
+            "action": "allowed", "gid": 1,
+            "signature_id": sid, "rev": 1,
+            "signature": sig_msg, "category": category, "severity": severity
+        },
+        "log_type": "suricata", "engine": "suricata"
+    }
+
 # ============================================================
 # Profils de trafic par heure
 # ============================================================
@@ -342,6 +423,8 @@ def main():
     # Générer par tranches de 10 minutes
     current_time = start_time
     batch = []
+    snort_batch = []
+    suricata_batch = []
     batch_size = 500
 
     while current_time < now:
@@ -370,13 +453,19 @@ def main():
             ts = random_ts(current_time, 300)
             batch.append(gen_ssl_log(ts))
 
+        # --- IDS alertes baseline (trafic normal) ---
+        ids_count = max(1, int(events_count * 0.03))
+        for _ in range(random.randint(0, ids_count)):
+            snort_batch.append(gen_snort_alert(random_ts(current_time, 300)))
+        for _ in range(random.randint(0, ids_count)):
+            suricata_batch.append(gen_suricata_alert(random_ts(current_time, 300)))
+
         # --- Attaques simulées ---
         if args.attack:
             # Port scan toutes les ~2h
             if random.random() < 0.08:
                 ts = random_ts(current_time, 300)
                 batch.append(gen_notice_log(ts, "PortScan::Port_Scan_Detected"))
-                # Ajouter les connexions du scan
                 scanner_ip = random.choice(INTERNAL_IPS)
                 target_ip = random.choice(EXTERNAL_IPS)
                 for port in random.sample(range(1, 1024), random.randint(50, 200)):
@@ -393,6 +482,10 @@ def main():
                         "orig_ip_bytes": 40, "resp_ip_bytes": 40,
                         "log_type": "zeek", "log_source": "conn"
                     })
+                # Alertes IDS correspondantes au scan
+                for _ in range(random.randint(5, 20)):
+                    snort_batch.append(gen_snort_alert(random_ts(current_time, 60)))
+                    suricata_batch.append(gen_suricata_alert(random_ts(current_time, 60)))
 
             # DGA burst toutes les ~3h
             if random.random() < 0.05:
@@ -400,6 +493,7 @@ def main():
                     ts = random_ts(current_time, 120)
                     batch.append(gen_dns_log(ts, suspicious=True))
                     batch.append(gen_notice_log(ts, "DNSEntropy::High_Entropy_DNS"))
+                    suricata_batch.append(gen_suricata_alert(random_ts(current_time, 120)))
 
             # Pic de trafic (exfiltration) rare
             if random.random() < 0.02:
@@ -410,27 +504,37 @@ def main():
                     doc["id.orig_h"] = exfil_ip
                     doc["orig_bytes"] = random.randint(100000, 5000000)
                     batch.append(doc)
+                snort_batch.append(gen_snort_alert(random_ts(current_time, 60)))
+                suricata_batch.append(gen_suricata_alert(random_ts(current_time, 60)))
 
-        # Envoyer le batch si assez gros
+        # Envoyer les batches si assez gros
         if len(batch) >= batch_size:
             date_str = current_time.strftime("%Y.%m.%d")
-            index_name = f"zeek-zeek-{date_str}"
-            sent = bulk_index(args.es, batch, index_name)
-            total_docs += sent
-            print(f"  [{current_time.strftime('%Y-%m-%d %H:%M')}] {sent} docs indexes (total: {total_docs})")
+            sent_z = bulk_index(args.es, batch, f"zeek-{date_str}")
+            sent_s = bulk_index(args.es, snort_batch, f"snort-{date_str}") if snort_batch else 0
+            sent_u = bulk_index(args.es, suricata_batch, f"suricata-{date_str}") if suricata_batch else 0
+            total_docs += sent_z + sent_s + sent_u
+            print(f"  [{current_time.strftime('%Y-%m-%d %H:%M')}] zeek:{sent_z} snort:{sent_s} suricata:{sent_u} (total: {total_docs})")
             batch = []
+            snort_batch = []
+            suricata_batch = []
 
         current_time += timedelta(minutes=10)
 
     # Envoyer le reste
-    if batch:
+    if batch or snort_batch or suricata_batch:
         date_str = current_time.strftime("%Y.%m.%d")
-        index_name = f"zeek-zeek-{date_str}"
-        sent = bulk_index(args.es, batch, index_name)
-        total_docs += sent
+        if batch:
+            total_docs += bulk_index(args.es, batch, f"zeek-{date_str}")
+        if snort_batch:
+            total_docs += bulk_index(args.es, snort_batch, f"snort-{date_str}")
+        if suricata_batch:
+            total_docs += bulk_index(args.es, suricata_batch, f"suricata-{date_str}")
 
     print(f"\n[+] Simulation terminee ! {total_docs} documents indexes au total.")
-    print(f"[+] Verifiez : curl '{args.es}/zeek-*/_count?pretty'")
+    print(f"[+] Verifiez Zeek      : curl '{args.es}/zeek-*/_count?pretty'")
+    print(f"[+] Verifiez Snort     : curl '{args.es}/snort-*/_count?pretty'")
+    print(f"[+] Verifiez Suricata  : curl '{args.es}/suricata-*/_count?pretty'")
     print(f"[+] Ouvrez Grafana et selectionnez 'Last {args.hours} hours'")
 
 if __name__ == "__main__":
