@@ -16,3 +16,13 @@ contactPoints:
             *Description :* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
             *Valeur :* {{ range .Alerts }}{{ .Annotations.value }}{{ end }}
         disableResolveMessage: false
+
+  - orgId: 1
+    name: AutoBlock
+    receivers:
+      - uid: autoblock-webhook
+        type: webhook
+        settings:
+          url: http://netwatch-autoblock:5001/webhook/alert
+          httpMethod: POST
+        disableResolveMessage: true
