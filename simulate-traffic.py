@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 NetWatch — Simulateur de trafic réseau
-Injecte des logs Zeek simulés dans Elasticsearch pour alimenter les dashboards.
-Usage : python3 simulate-traffic.py [--hours 24] [--es http://localhost:9200]
+Injecte des logs simulés dans Elasticsearch pour alimenter tous les dashboards.
+Usage : python3 simulate-traffic.py [--hours 24] [--es http://localhost:9200] [--attack] [--intensity low|medium|high]
 """
 
 import json
@@ -84,6 +84,77 @@ TLS_ISSUERS = [
     "CN=Cloudflare Inc ECC CA-3,O=Cloudflare Inc,C=US"
 ]
 
+# JA3 fingerprints (MD5 des paramètres TLS client)
+JA3_NORMAL = [
+    "a0e9f5d64349fb13191bc781f81f42e1",  # Firefox
+    "8a59ba96178c6a56a8de86a4fc93e9ee",  # Chrome
+    "c35a0a51fdfc86fa5e3da6cbf7b5a4bd",  # curl
+    "29f97c2e4e15e8edd3f08768fff3fd42",  # Python requests
+    "dadae1b59d788f0c854b5e1a94b8ee6f",  # Safari
+]
+JA3_MALICIOUS = [
+    "e7d705a3286e19ea42f587b6d7f83a35",  # Emotet
+    "6734f37431670b3ab4292b8f60f29984",  # Trickbot
+    "26caf660a5c9fc71f2f88ca1b0d3d2e3",  # CobaltStrike default
+    "b386946a5a44d1ddcc843bc75336dfce",  # Metasploit
+]
+JA3S_VALUES = [
+    "9d93b2d1c78f31563ea0bd51a6e78e93",
+    "f4febc55ea12b31ae17cfb7e614afda8",
+    "15af977ce25de452b96affa2addb1036",
+]
+
+# HASSH fingerprints SSH (MD5 des algorithmes négociés)
+HASSH_NORMAL = [
+    "92674389fa1e47a27ddd8d9b63ecd42b",  # OpenSSH client typique
+    "5c78543a9a0c66c56558ffd38bdf7905",  # PuTTY
+    "b12a2d992d9e63bc0cb1e1e0db57e0d6",  # Paramiko (Python)
+]
+HASSH_MALICIOUS = [
+    "3f0099d323fed57a7c00e89a4e3d8e23",  # Impacket
+    "b8c7b947e4c0b94bb3d3a0e1b00b9e4c",  # Cobalt Strike SSH
+]
+HASSH_SERVER = [
+    "b12a2d992d9e63bc0cb1e1e0db57e0d6",
+    "2dd9e3f4a61a9bb50d0fdb7c39e06e51",
+    "8a4b3e5f6c7d8e9a0b1c2d3e4f5a6b7c",
+]
+
+# Domaines pour DNS tunneling (sous-domaines très longs)
+DNS_TUNNEL_DOMAINS = [
+    "dGhpcyBpcyBleGZpbHRyYXRlZCBkYXRh.evil-c2.net",
+    "aGVsbG93b3JsZHRlc3RkYXRhYmFzZTY0ZW5jb2RlZA.badactor.xyz",
+    "bG9uZ3N1YmRvbWFpbnRlc3RmZm9yZG5zdHVubmVsaW5n.c2tunnel.top",
+    "dGVzdGV4ZmlsdHJhdGlvbmRhdGE.exfil.info",
+    "aGVsbG93b3JsZGZyb21iZWFjb24.beacon-c2.biz",
+]
+
+# Signatures Suricata avec MITRE ATT&CK
+SURICATA_SIGS_MITRE = [
+    (2000001, "NETWATCH - ICMP Ping Sweep detected",         "network-scan",         2, "Reconnaissance",      "T1595"),
+    (2000002, "NETWATCH - SSH Brute Force Attempt",          "attempted-admin",       1, "Credential Access",   "T1110"),
+    (2000004, "NETWATCH - Obsolete TLS version (TLSv1.0)",   "policy-violation",      3, "Defense Evasion",     "T1027"),
+    (2000006, "NETWATCH - Cleartext password in HTTP POST",  "policy-violation",      2, "Credential Access",   "T1552"),
+    (2000007, "NETWATCH - Large outbound transfer",          "policy-violation",      1, "Exfiltration",        "T1048"),
+    (2013028, "ET POLICY curl User-Agent Outbound",          "policy-violation",      3, "Command and Control", "T1071"),
+    (2001219, "ET SCAN Potential SSH Scan",                  "network-scan",          2, "Reconnaissance",      "T1046"),
+    (2008578, "ET EXPLOIT Metasploit Framework User-Agent",  "web-application-attack",1, "Execution",           "T1203"),
+    (2019714, "ET DNS Query for .xyz TLD",                   "bad-unknown",           3, "Command and Control", "T1568"),
+    (2021376, "ET POLICY Python-urllib User-Agent",          "policy-violation",      3, "Command and Control", "T1071"),
+    (2022973, "ET SCAN Possible Nmap User-Agent Observed",   "network-scan",          2, "Reconnaissance",      "T1595"),
+    (2010935, "ET POLICY Dropbox Offsite Backup In Use",     "policy-violation",      3, "Exfiltration",        "T1567"),
+]
+
+# IPs malveillantes (Feodo Tracker simulé) pour Intel hits
+MALICIOUS_IPS = [
+    "185.220.101.45", "194.165.16.11", "91.219.236.166",
+    "45.153.160.2",   "62.233.50.246",  "77.73.133.84",
+]
+MALICIOUS_DOMAINS = [
+    "emotet-c2.xyz", "qakbot-panel.top", "cobalt-strike.info",
+    "dridex-loader.net", "trickbot-c2.biz",
+]
+
 CONN_STATES = ["SF", "SF", "SF", "SF", "S0", "S1", "REJ", "RSTO", "RSTR", "OTH"]
 NOTICE_TYPES = [
     "PortScan::Port_Scan_Detected",
@@ -106,22 +177,6 @@ SNORT_SIGS = [
     ("ET POLICY External IP Lookup", "policy-violation", 3, "tcp"),
     ("ET SCAN Potential SSH Scan OUTBOUND", "network-scan", 2, "tcp"),
     ("ET POLICY Cleartext Password Detected", "policy-violation", 2, "tcp"),
-]
-
-# Signatures Suricata (EVE JSON — ET Open + custom)
-SURICATA_SIGS = [
-    (2000001, "NETWATCH - ICMP Ping Sweep detected", "network-scan", 2),
-    (2000002, "NETWATCH - SSH Brute Force Attempt", "attempted-admin", 1),
-    (2000004, "NETWATCH - Obsolete TLS version (TLSv1.0)", "policy-violation", 3),
-    (2000006, "NETWATCH - Cleartext password in HTTP POST", "policy-violation", 2),
-    (2000007, "NETWATCH - Large outbound transfer (possible exfiltration)", "policy-violation", 1),
-    (2013028, "ET POLICY curl User-Agent Outbound", "policy-violation", 3),
-    (2001219, "ET SCAN Potential SSH Scan", "network-scan", 2),
-    (2008578, "ET EXPLOIT Metasploit Framework User-Agent", "web-application-attack", 1),
-    (2019714, "ET DNS Query for .xyz TLD", "bad-unknown", 3),
-    (2021376, "ET POLICY Python-urllib User-Agent", "policy-violation", 3),
-    (2022973, "ET SCAN Possible Nmap User-Agent Observed", "network-scan", 2),
-    (2010935, "ET POLICY Dropbox.com Offsite File Backup in Use", "policy-violation", 3),
 ]
 
 # ============================================================
@@ -244,11 +299,13 @@ def gen_http_log(ts):
         "log_source": "http"
     }
 
-def gen_ssl_log(ts):
+def gen_ssl_log(ts, malicious=False):
     src = random.choice(INTERNAL_IPS)
     dst = random.choice(EXTERNAL_IPS)
     server = random.choice(NORMAL_DOMAINS)
     version = random.choice(TLS_VERSIONS)
+    ja3 = random.choice(JA3_MALICIOUS if malicious else JA3_NORMAL)
+    ja3s = random.choice(JA3S_VALUES)
 
     return {
         "ts": ts,
@@ -263,8 +320,62 @@ def gen_ssl_log(ts):
         "subject": f"CN={server}",
         "issuer": random.choice(TLS_ISSUERS),
         "established": True,
+        "ja3": ja3,
+        "ja3s": ja3s,
         "log_type": "zeek",
         "log_source": "ssl"
+    }
+
+def gen_ssh_log(ts, malicious=False):
+    src = random.choice(INTERNAL_IPS)
+    dst = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
+    hassh = random.choice(HASSH_MALICIOUS if malicious else HASSH_NORMAL)
+
+    return {
+        "ts": ts,
+        "@timestamp": ts,
+        "uid": random_uid(),
+        "id.orig_h": src,
+        "id.orig_p": random.randint(1024, 65535),
+        "id.resp_h": dst,
+        "id.resp_p": 22,
+        "version": random.choice([1, 2]),
+        "auth_success": not malicious,
+        "auth_attempts": random.randint(1, 3) if not malicious else random.randint(5, 20),
+        "direction": "OUTBOUND",
+        "client": random.choice(["OpenSSH_8.9", "OpenSSH_9.3", "PuTTY_0.79"]),
+        "server": "OpenSSH_8.9",
+        "hassh": hassh,
+        "hassh_server": random.choice(HASSH_SERVER),
+        "log_type": "zeek",
+        "log_source": "ssh"
+    }
+
+def gen_intel_log(ts):
+    src = random.choice(INTERNAL_IPS)
+    hit_type = random.choice(["Intel::ADDR", "Intel::DOMAIN"])
+    if hit_type == "Intel::ADDR":
+        indicator = random.choice(MALICIOUS_IPS)
+        where = random.choice(["Conn::IN_ORIG", "Conn::IN_RESP"])
+    else:
+        indicator = random.choice(MALICIOUS_DOMAINS)
+        where = "DNS::IN_REQUEST"
+
+    return {
+        "ts": ts,
+        "@timestamp": ts,
+        "uid": random_uid(),
+        "id.orig_h": src,
+        "id.orig_p": random.randint(1024, 65535),
+        "id.resp_h": indicator if hit_type == "Intel::ADDR" else random.choice(EXTERNAL_IPS),
+        "id.resp_p": random.choice([80, 443, 53]),
+        "seen.indicator": indicator,
+        "seen.indicator_type": hit_type,
+        "seen.where": where,
+        "seen.node": "netwatch-zeek",
+        "sources": ["Feodo Tracker" if hit_type == "Intel::ADDR" else "URLhaus"],
+        "log_type": "zeek",
+        "log_source": "intel"
     }
 
 def gen_notice_log(ts, notice_type=None):
@@ -320,7 +431,7 @@ def gen_snort_alert(ts):
     }
 
 def gen_suricata_alert(ts):
-    sid, sig_msg, category, severity = random.choice(SURICATA_SIGS)
+    sid, sig_msg, category, severity, mitre_tactic, mitre_technique = random.choice(SURICATA_SIGS_MITRE)
     src = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
     dst = random.choice(INTERNAL_IPS)
     proto = random.choices(["TCP", "UDP", "ICMP"], weights=[60, 30, 10])[0]
@@ -337,9 +448,103 @@ def gen_suricata_alert(ts):
         "alert": {
             "action": "allowed", "gid": 1,
             "signature_id": sid, "rev": 1,
-            "signature": sig_msg, "category": category, "severity": severity
+            "signature": sig_msg, "category": category, "severity": severity,
+            "metadata": {
+                "mitre_tactic_name": [mitre_tactic],
+                "mitre_technique_id": [mitre_technique]
+            }
         },
         "log_type": "suricata", "engine": "suricata"
+    }
+
+def gen_long_connection(ts, src=None, dst=None):
+    """Connexion longue (> 1h) — détectée par beacon-detect comme tunnel potentiel"""
+    src = src or random.choice(INTERNAL_IPS)
+    dst = dst or random.choice(EXTERNAL_IPS)
+    duration_s = random.uniform(3600, 28800)  # 1h à 8h
+    return {
+        "ts": ts,
+        "@timestamp": ts,
+        "uid": random_uid(),
+        "id.orig_h": src,
+        "id.orig_p": random.randint(1024, 65535),
+        "id.resp_h": dst,
+        "id.resp_p": random.choice([443, 80, 22, 8443, 4444]),
+        "proto": "tcp",
+        "duration": round(duration_s, 3),
+        "orig_bytes": random.randint(10000, 5000000),
+        "resp_bytes": random.randint(10000, 2000000),
+        "conn_state": "SF",
+        "missed_bytes": 0,
+        "orig_pkts": random.randint(1000, 50000),
+        "resp_pkts": random.randint(1000, 50000),
+        "orig_ip_bytes": random.randint(10000, 5000000),
+        "resp_ip_bytes": random.randint(10000, 2000000),
+        "log_type": "zeek",
+        "log_source": "conn"
+    }
+
+def gen_beaconing_batch(base_time, interval_s=60, count=30, jitter_pct=0.05):
+    """Génère une série de connexions régulières (beacon C2) — CV < 0.25"""
+    src = random.choice(INTERNAL_IPS)
+    dst = random.choice(EXTERNAL_IPS)
+    port = random.choice([80, 443, 8080, 4444])
+    docs = []
+    ts = base_time
+    for _ in range(count):
+        jitter = random.uniform(-interval_s * jitter_pct, interval_s * jitter_pct)
+        ts = ts + timedelta(seconds=interval_s + jitter)
+        if ts.replace(tzinfo=None) > datetime.utcnow():
+            break
+        ts_str = ts.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        docs.append({
+            "ts": ts_str,
+            "@timestamp": ts_str,
+            "uid": random_uid(),
+            "id.orig_h": src,
+            "id.orig_p": random.randint(1024, 65535),
+            "id.resp_h": dst,
+            "id.resp_p": port,
+            "proto": "tcp",
+            "duration": round(random.uniform(0.1, 2.0), 3),
+            "orig_bytes": random.randint(200, 800),
+            "resp_bytes": random.randint(200, 1200),
+            "conn_state": "SF",
+            "missed_bytes": 0,
+            "orig_pkts": random.randint(3, 8),
+            "resp_pkts": random.randint(3, 8),
+            "orig_ip_bytes": random.randint(200, 900),
+            "resp_ip_bytes": random.randint(200, 1400),
+            "log_type": "zeek",
+            "log_source": "conn"
+        })
+    return docs
+
+def gen_dns_tunnel(ts):
+    """Requête DNS avec sous-domaine très long (> 40 chars) — indicateur de tunneling"""
+    src = random.choice(INTERNAL_IPS)
+    domain = random.choice(DNS_TUNNEL_DOMAINS)
+    return {
+        "ts": ts,
+        "@timestamp": ts,
+        "uid": random_uid(),
+        "id.orig_h": src,
+        "id.orig_p": random.randint(1024, 65535),
+        "id.resp_h": "8.8.8.8",
+        "id.resp_p": 53,
+        "proto": "udp",
+        "query": domain,
+        "qtype": 16,
+        "qtype_name": "TXT",
+        "qclass": 1,
+        "qclass_name": "C_INTERNET",
+        "rcode": 0,
+        "rcode_name": "NOERROR",
+        "AA": False, "TC": False, "RD": True, "RA": True,
+        "answers": [],
+        "rtt": round(random.uniform(0.05, 0.3), 6),
+        "log_type": "zeek",
+        "log_source": "dns"
     }
 
 # ============================================================
@@ -448,10 +653,15 @@ def main():
             ts = random_ts(current_time, 300)
             batch.append(gen_http_log(ts))
 
-        # --- TLS/SSL (15% du trafic) ---
+        # --- TLS/SSL avec JA3/JA3S (15% du trafic) ---
         for _ in range(int(events_count * 0.15)):
             ts = random_ts(current_time, 300)
             batch.append(gen_ssl_log(ts))
+
+        # --- SSH avec HASSH (5% du trafic) ---
+        for _ in range(max(1, int(events_count * 0.05))):
+            ts = random_ts(current_time, 300)
+            batch.append(gen_ssh_log(ts))
 
         # --- IDS alertes baseline (trafic normal) ---
         ids_count = max(1, int(events_count * 0.03))
@@ -482,7 +692,6 @@ def main():
                         "orig_ip_bytes": 40, "resp_ip_bytes": 40,
                         "log_type": "zeek", "log_source": "conn"
                     })
-                # Alertes IDS correspondantes au scan
                 for _ in range(random.randint(5, 20)):
                     snort_batch.append(gen_snort_alert(random_ts(current_time, 60)))
                     suricata_batch.append(gen_suricata_alert(random_ts(current_time, 60)))
@@ -494,6 +703,38 @@ def main():
                     batch.append(gen_dns_log(ts, suspicious=True))
                     batch.append(gen_notice_log(ts, "DNSEntropy::High_Entropy_DNS"))
                     suricata_batch.append(gen_suricata_alert(random_ts(current_time, 120)))
+
+            # DNS tunneling (sous-domaines > 40 chars)
+            if random.random() < 0.04:
+                for _ in range(random.randint(20, 80)):
+                    ts = random_ts(current_time, 120)
+                    batch.append(gen_dns_tunnel(ts))
+
+            # Beaconing C2 (connexions régulières à intervalle fixe)
+            if random.random() < 0.03:
+                beacon_docs = gen_beaconing_batch(
+                    current_time,
+                    interval_s=random.choice([60, 120, 300]),
+                    count=random.randint(10, 40),
+                    jitter_pct=random.uniform(0.02, 0.08)
+                )
+                batch.extend(beacon_docs)
+
+            # Longue connexion (tunnel potentiel)
+            if random.random() < 0.02:
+                ts = random_ts(current_time, 60)
+                batch.append(gen_long_connection(ts))
+
+            # Intel hit (IP/domaine malveillant connu)
+            if random.random() < 0.04:
+                ts = random_ts(current_time, 120)
+                batch.append(gen_intel_log(ts))
+
+            # JA3 malveillant (fingerprint C2 connu)
+            if random.random() < 0.04:
+                ts = random_ts(current_time, 120)
+                batch.append(gen_ssl_log(ts, malicious=True))
+                batch.append(gen_ssh_log(ts, malicious=True))
 
             # Pic de trafic (exfiltration) rare
             if random.random() < 0.02:
