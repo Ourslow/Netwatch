@@ -1,8 +1,12 @@
+import hmac
 import json
 import os
 from functools import wraps
 
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask_login import (LoginManager, UserMixin,
+                         login_user, logout_user,
+                         login_required, current_user)
 from proxmoxer.core import ResourceException
 
 import config
@@ -138,6 +142,39 @@ app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
 # ============================================================
+# Authentification (Flask-Login)
+# ============================================================
+
+login_manager = LoginManager(app)
+login_manager.login_view        = "login"
+login_manager.login_message     = "Connexion requise pour accéder au portail."
+login_manager.login_message_category = "warning"
+
+
+class _User(UserMixin):
+    """Utilisateur unique — identité portée par la session."""
+    def __init__(self):
+        self.id = "admin"
+
+
+_SINGLE_USER = _User()
+
+
+@login_manager.user_loader
+def _load_user(user_id):
+    return _SINGLE_USER if user_id == "admin" else None
+
+
+def _check_credentials(username: str, password: str) -> bool:
+    """Comparaison constant-time pour éviter les timing attacks."""
+    if not config.PORTAL_PASSWORD:
+        return False
+    ok_u = hmac.compare_digest(username.encode(), config.PORTAL_USERNAME.encode())
+    ok_p = hmac.compare_digest(password.encode(), config.PORTAL_PASSWORD.encode())
+    return ok_u and ok_p
+
+
+# ============================================================
 # Helpers
 # ============================================================
 
@@ -192,10 +229,38 @@ def fmt_uptime(seconds):
 app.jinja_env.filters["fmt_uptime"] = fmt_uptime
 
 # ============================================================
+# Routes — Auth
+# ============================================================
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if _check_credentials(username, password):
+            login_user(_SINGLE_USER, remember=bool(request.form.get("remember")))
+            next_page = request.args.get("next") or url_for("dashboard")
+            return redirect(next_page)
+        flash("Identifiants incorrects.", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("Déconnecté.", "info")
+    return redirect(url_for("login"))
+
+
+# ============================================================
 # Routes
 # ============================================================
 
 @app.route("/")
+@login_required
 def dashboard():
     px = get_proxmox()
     node_status = None
@@ -227,6 +292,7 @@ def dashboard():
 
 
 @app.route("/vms")
+@login_required
 @proxmox_required
 def vms(px):
     try:
@@ -238,6 +304,7 @@ def vms(px):
 
 
 @app.route("/vms/<int:vmid>/<action>", methods=["POST"])
+@login_required
 @proxmox_required
 def vm_action(px, vmid, action):
     try:
@@ -249,6 +316,7 @@ def vm_action(px, vmid, action):
 
 
 @app.route("/vms/<int:vmid>/delete", methods=["POST"])
+@login_required
 @proxmox_required
 def vm_delete(px, vmid):
     try:
@@ -260,6 +328,7 @@ def vm_delete(px, vmid):
 
 
 @app.route("/catalog")
+@login_required
 def catalog():
     tools = load_catalog()
     type_filter = request.args.get("type", "all")
@@ -269,6 +338,7 @@ def catalog():
 
 
 @app.route("/catalog/<tool_id>")
+@login_required
 def tool_detail(tool_id):
     tools = load_catalog()
     tool = next((t for t in tools if t["id"] == tool_id), None)
@@ -289,6 +359,7 @@ def tool_detail(tool_id):
 
 
 @app.route("/deploy/<tool_id>", methods=["GET", "POST"])
+@login_required
 @proxmox_required
 def deploy(px, tool_id):
     tools = load_catalog()
@@ -332,6 +403,7 @@ def deploy(px, tool_id):
 
 
 @app.route("/status")
+@login_required
 def status():
     services, global_status = nw_health.check_all(
         es_url         = config.NETWATCH_ES_URL,
@@ -364,6 +436,7 @@ def status():
 
 
 @app.route("/api/status")
+@login_required
 def api_status():
     services, global_status = nw_health.check_all(
         es_url         = config.NETWATCH_ES_URL,
@@ -375,6 +448,7 @@ def api_status():
 
 
 @app.route("/compare")
+@login_required
 def compare():
     return render_template(
         "compare.html",
@@ -388,6 +462,7 @@ def compare():
 # ============================================================
 
 @app.route("/api/vms")
+@login_required
 def api_vms():
     px = get_proxmox()
     if not px:
@@ -399,6 +474,7 @@ def api_vms():
 
 
 @app.route("/api/catalog")
+@login_required
 def api_catalog():
     return jsonify(load_catalog())
 

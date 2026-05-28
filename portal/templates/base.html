@@ -66,6 +66,11 @@
           <i class="bi bi-box"></i> Proxmox {{ proxmox_node if proxmox_node is defined else '' }}
         </span>
         {% block topbar_actions %}{% endblock %}
+        <a href="{{ url_for('logout') }}"
+           class="btn btn-sm btn-outline-secondary"
+           title="Déconnexion">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
       </div>
     </div>
 

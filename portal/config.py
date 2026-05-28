@@ -13,6 +13,10 @@ FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
 FLASK_DEBUG      = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 PORT             = int(os.getenv("PORT", 5050))
 
+# Credentials du portail (authentification)
+PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")
+PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")   # vide = portail désactivé si pas défini
+
 # URLs des services NetWatch (pour la page /status)
 NETWATCH_ES_URL         = os.getenv("NETWATCH_ES_URL",         "http://localhost:9200")
 NETWATCH_GRAFANA_URL    = os.getenv("NETWATCH_GRAFANA_URL",    "http://localhost:3000")
