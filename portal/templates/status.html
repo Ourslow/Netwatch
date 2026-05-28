@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Statut services — NetWatch Portal{% endblock %}
+{% block page_title %}Statut des services{% endblock %}
+
+{% block topbar_actions %}
+<span id="last-refresh" class="text-muted small">
+  <i class="bi bi-arrow-repeat me-1"></i>live 20s
+</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Statut global -->
+<div class="global-status-bar mb-4
+     {% if global_status == 'up' %}status-up
+     {% elif global_status == 'degraded' %}status-degraded
+     {% else %}status-down{% endif %}">
+  <div class="d-flex align-items-center gap-3">
+    {% if global_status == 'up' %}
+      <i class="bi bi-check-circle-fill fs-3 text-success"></i>
+      <div>
+        <div class="fw-bold">Tous les services opérationnels</div>
+        <small class="text-muted">Stack NetWatch fonctionnelle</small>
+      </div>
+    {% elif global_status == 'degraded' %}
+      <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
+      <div>
+        <div class="fw-bold text-warning">Services dégradés</div>
+        <small class="text-muted">Un ou plusieurs services en anomalie</small>
+      </div>
+    {% else %}
+      <i class="bi bi-x-circle-fill fs-3 text-danger"></i>
+      <div>
+        <div class="fw-bold text-danger">Services indisponibles</div>
+        <small class="text-muted">Vérifier que la stack Docker est lancée : <code>make start</code></small>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Cartes services -->
+<div class="row g-3 mb-4" id="service-cards">
+  {% set icons = {
+    'Elasticsearch': 'bi-database-fill',
+    'Grafana':       'bi-bar-chart-fill',
+    'Prometheus':    'bi-graph-up-arrow',
+    'AutoBlock':     'bi-shield-fill-check',
+  } %}
+  {% for svc in services %}
+  <div class="col-md-6 col-xl-3">
+    <div class="card service-card service-{{ svc.status }}" id="card-{{ svc.name | lower }}">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between mb-3">
+          <div class="svc-icon svc-icon-{{ svc.status }}">
+            <i class="bi {{ icons.get(svc.name, 'bi-gear') }}"></i>
+          </div>
+          {% if svc.status == 'up' %}
+            <span class="badge bg-success">UP</span>
+          {% elif svc.status == 'degraded' %}
+            <span class="badge bg-warning text-dark">DÉGRADÉ</span>
+          {% else %}
+            <span class="badge bg-danger">DOWN</span>
+          {% endif %}
+        </div>
+
+        <h6 class="fw-bold mb-1">{{ svc.name }}</h6>
+        <small class="text-muted d-block mb-2" style="word-break:break-all">{{ svc.url }}</small>
+
+        {% if svc.detail %}
+          <p class="small mb-2 svc-detail">{{ svc.detail }}</p>
+        {% endif %}
+
+        <div class="d-flex align-items-center gap-2 mt-auto">
+          {% if svc.latency is not none %}
+            <span class="svc-latency
+                 {% if svc.latency < 50 %}text-success
+                 {% elif svc.latency < 200 %}text-warning
+                 {% else %}text-danger{% endif %}">
+              <i class="bi bi-stopwatch me-1"></i>{{ svc.latency }} ms
+            </span>
+          {% else %}
+            <span class="text-muted small"><i class="bi bi-stopwatch me-1"></i>—</span>
+          {% endif %}
+          <a href="{{ svc.url | replace('/_cluster/health','') | replace('/api/health','') | replace('/-/healthy','') | replace('/health','') }}"
+             target="_blank"
+             class="btn btn-sm btn-outline-secondary ms-auto"
+             title="Ouvrir {{ svc.name }}">
+            <i class="bi bi-box-arrow-up-right"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Ressources Proxmox -->
+{% if proxmox_ok and node_status %}
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="bi bi-server me-2"></i>Nœud Proxmox — <code>{{ proxmox_node }}</code>
+    <span class="badge bg-success ms-2">Connecté</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-cpu text-info fs-4"></i>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between">
+              <small class="text-muted">CPU</small>
+              <small class="fw-bold">{{ node_status.cpu_pct }}%</small>
+            </div>
+            <div class="progress mt-1" style="height:5px">
+              <div class="progress-bar
+                   {% if node_status.cpu_pct > 80 %}bg-danger
+                   {% elif node_status.cpu_pct > 60 %}bg-warning
+                   {% else %}bg-info{% endif %}"
+                   style="width:{{ node_status.cpu_pct }}%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-memory text-warning fs-4"></i>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between">
+              <small class="text-muted">RAM</small>
+              <small class="fw-bold">{{ node_status.ram_pct }}%</small>
+            </div>
+            <div class="progress mt-1" style="height:5px">
+              <div class="progress-bar
+                   {% if node_status.ram_pct > 80 %}bg-danger
+                   {% elif node_status.ram_pct > 60 %}bg-warning
+                   {% else %}bg-warning{% endif %}"
+                   style="width:{{ node_status.ram_pct }}%"></div>
+            </div>
+            <small class="text-muted">{{ node_status.ram_used | fmt_bytes }} / {{ node_status.ram_total | fmt_bytes }}</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-hdd text-success fs-4"></i>
+          <div>
+            <small class="text-muted d-block">Disque root</small>
+            <span class="fw-bold">{{ node_status.disk_used | fmt_bytes }}</span>
+            <span class="text-muted"> / {{ node_status.disk_total | fmt_bytes }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif not proxmox_ok %}
+<div class="alert alert-secondary d-flex align-items-center gap-2">
+  <i class="bi bi-server"></i>
+  <span>Proxmox non connecté — configurer <code>PROXMOX_HOST</code> dans <code>.env</code> pour afficher les ressources du nœud.</span>
+</div>
+{% endif %}
+
+<!-- Liens rapides vers les services -->
+<div class="card">
+  <div class="card-header"><i class="bi bi-link-45deg me-2"></i>Accès rapide</div>
+  <div class="card-body d-flex flex-wrap gap-2">
+    <a href="{{ config_es_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-database me-1"></i>Elasticsearch
+    </a>
+    <a href="{{ config_grafana_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-bar-chart me-1"></i>Grafana
+    </a>
+    <a href="{{ config_prometheus_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-graph-up me-1"></i>Prometheus
+    </a>
+    <a href="{{ config_autoblock_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-shield-check me-1"></i>AutoBlock
+    </a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ---- Auto-refresh /api/status toutes les 20s ---- */
+const STATUS_LABELS = {
+  up:       '<span class="badge bg-success">UP</span>',
+  degraded: '<span class="badge bg-warning text-dark">DÉGRADÉ</span>',
+  down:     '<span class="badge bg-danger">DOWN</span>',
+};
+
+const SVC_ICONS = {
+  'Elasticsearch': 'bi-database-fill',
+  'Grafana':       'bi-bar-chart-fill',
+  'Prometheus':    'bi-graph-up-arrow',
+  'AutoBlock':     'bi-shield-fill-check',
+};
+
+function latencyHtml(ms) {
+  if (ms === null) return '<span class="text-muted small"><i class="bi bi-stopwatch me-1"></i>—</span>';
+  const cls = ms < 50 ? 'text-success' : ms < 200 ? 'text-warning' : 'text-danger';
+  return `<span class="svc-latency ${cls}"><i class="bi bi-stopwatch me-1"></i>${ms} ms</span>`;
+}
+
+function refreshStatus() {
+  fetch('/api/status')
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data) return;
+      data.services.forEach(svc => {
+        const card = document.getElementById('card-' + svc.name.toLowerCase());
+        if (!card) return;
+        // Badge statut
+        card.querySelector('.badge').outerHTML = STATUS_LABELS[svc.status] || STATUS_LABELS.down;
+        // Classe de la carte
+        card.className = card.className.replace(/service-(up|degraded|down)/, 'service-' + svc.status);
+        // Icone
+        const icon = card.querySelector('.svc-icon');
+        if (icon) {
+          icon.className = `svc-icon svc-icon-${svc.status}`;
+        }
+        // Latence
+        const lat = card.querySelector('.svc-latency, .text-muted.small');
+        if (lat && lat.closest('.d-flex')) {
+          lat.outerHTML = latencyHtml(svc.latency);
+        }
+        // Détail
+        const det = card.querySelector('.svc-detail');
+        if (det && svc.detail) det.textContent = svc.detail;
+      });
+      // Horodatage
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      const ss = String(now.getSeconds()).padStart(2,'0');
+      document.getElementById('last-refresh').innerHTML =
+        `<i class="bi bi-arrow-repeat me-1"></i>Rafraîchi à ${hh}:${mm}:${ss}`;
+    })
+    .catch(() => {});
+}
+
+setInterval(refreshStatus, 20000);
+</script>
+{% endblock %}

@@ -37,6 +37,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('status') }}"
+           class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
+          <i class="bi bi-activity"></i> Statut services
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('compare') }}"
            class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
           <i class="bi bi-bar-chart-steps"></i> Comparaison

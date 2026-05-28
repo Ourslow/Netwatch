@@ -7,6 +7,7 @@ from proxmoxer.core import ResourceException
 
 import config
 from proxmox import client as px_client
+from netwatch import health as nw_health
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -328,6 +329,49 @@ def deploy(px, tool_id):
         templates = []
 
     return render_template("deploy.html", tool=tool, templates=templates)
+
+
+@app.route("/status")
+def status():
+    services, global_status = nw_health.check_all(
+        es_url         = config.NETWATCH_ES_URL,
+        grafana_url    = config.NETWATCH_GRAFANA_URL,
+        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
+        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+    )
+    # Infos Proxmox si dispo
+    px = get_proxmox()
+    node_status = None
+    if px:
+        try:
+            node_status = px_client.get_node_status(px)
+        except Exception:
+            pass
+
+    return render_template(
+        "status.html",
+        services=services,
+        global_status=global_status,
+        node_status=node_status,
+        proxmox_ok=(px is not None),
+        proxmox_host=config.PROXMOX_HOST,
+        proxmox_node=config.PROXMOX_NODE,
+        config_es_url=config.NETWATCH_ES_URL,
+        config_grafana_url=config.NETWATCH_GRAFANA_URL,
+        config_prometheus_url=config.NETWATCH_PROMETHEUS_URL,
+        config_autoblock_url=config.NETWATCH_AUTOBLOCK_URL,
+    )
+
+
+@app.route("/api/status")
+def api_status():
+    services, global_status = nw_health.check_all(
+        es_url         = config.NETWATCH_ES_URL,
+        grafana_url    = config.NETWATCH_GRAFANA_URL,
+        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
+        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+    )
+    return jsonify({"global": global_status, "services": services})
 
 
 @app.route("/compare")
