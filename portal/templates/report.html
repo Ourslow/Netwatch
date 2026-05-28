@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rapport NetWatch — {{ generated_at }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    /* ── Écran ── */
+    body {
+      background: #f6f8fa;
+      color: #24292f;
+      font-size: .875rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .report-wrapper {
+      max-width: 900px;
+      margin: 2rem auto;
+      background: #fff;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* Barre d'actions (masquée à l'impression) */
+    .print-bar {
+      background: #0d1117;
+      color: #e6edf3;
+      padding: .75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .print-bar .brand { font-weight: 700; font-size: 1rem; color: #58a6ff; }
+
+    /* Corps du rapport */
+    .report-body { padding: 2rem 2.5rem; }
+
+    /* En-tête */
+    .report-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      border-bottom: 2px solid #0969da;
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .report-title { font-size: 1.4rem; font-weight: 700; color: #0969da; }
+    .report-meta  { font-size: .78rem; color: #57606a; line-height: 1.6; text-align: right; }
+
+    /* Sections */
+    .section { margin-bottom: 2rem; }
+    .section-title {
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #57606a;
+      border-bottom: 1px solid #d0d7de;
+      padding-bottom: .4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Stat pills */
+    .stat-pill {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: .6rem 1.2rem;
+      min-width: 100px;
+    }
+    .stat-pill .num  { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+    .stat-pill .lbl  { font-size: .7rem; color: #57606a; text-transform: uppercase; letter-spacing: .3px; }
+
+    /* Status service */
+    .svc-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .45rem 0;
+      border-bottom: 1px solid #f6f8fa;
+    }
+    .svc-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-up       { background: #1a7f37; }
+    .dot-degraded { background: #9a6700; }
+    .dot-down     { background: #cf222e; }
+
+    /* Tables */
+    .report-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .report-table th {
+      background: #f6f8fa;
+      color: #57606a;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: .4rem .75rem;
+      border-bottom: 1px solid #d0d7de;
+      text-align: left;
+    }
+    .report-table td {
+      padding: .45rem .75rem;
+      border-bottom: 1px solid #f6f8fa;
+      vertical-align: middle;
+    }
+    .report-table tr:last-child td { border-bottom: none; }
+
+    /* Badges */
+    .b-crit    { background:#cf222e; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-med     { background:#9a6700; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-low     { background:#6e7781; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-suri    { background:#0969da; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-snort   { background:#cf222e; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-mitre   { background:#6639ba; color:#fff; padding:.15rem .5rem; border-radius:4px; font-size:.7rem; }
+    .b-run     { background:#1a7f37; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-stop    { background:#6e7781; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+
+    .mono { font-family: ui-monospace, monospace; font-size: .8rem; }
+
+    /* Score comparaison */
+    .score-bar-wrap {
+      background: #f6f8fa;
+      border-radius: 4px;
+      height: 8px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .score-bar-fill { height: 100%; border-radius: 4px; }
+
+    /* Pied de page rapport */
+    .report-footer {
+      border-top: 1px solid #d0d7de;
+      padding: 1rem 2.5rem;
+      font-size: .72rem;
+      color: #57606a;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Impression ── */
+    @media print {
+      body { background: #fff; }
+      .print-bar { display: none !important; }
+      .report-wrapper { border: none; border-radius: 0; margin: 0; max-width: 100%; }
+      .report-body { padding: 1.5rem; }
+      .section { page-break-inside: avoid; }
+      .page-break { page-break-before: always; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Barre actions (écran seulement) -->
+<div class="print-bar no-print">
+  <span class="brand"><i class="bi bi-radar me-2"></i>NetWatch Portal</span>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-light">
+      <i class="bi bi-arrow-left me-1"></i>Retour
+    </a>
+    <button onclick="window.print()" class="btn btn-sm btn-primary">
+      <i class="bi bi-file-earmark-pdf me-1"></i>Exporter PDF
+    </button>
+  </div>
+</div>
+
+<div class="report-wrapper">
+  <div class="report-body">
+
+    <!-- En-tête -->
+    <div class="report-header">
+      <div>
+        <div class="report-title">🔭 Rapport d'état NetWatch</div>
+        <div style="color:#57606a;font-size:.85rem;margin-top:.25rem">
+          Stack d'observabilité réseau multi-moteurs — Zeek · Snort 3 · Suricata 7
+        </div>
+      </div>
+      <div class="report-meta">
+        Généré le {{ generated_at }}<br>
+        Nœud : <strong>{{ proxmox_node }}</strong><br>
+        {% if proxmox_ok %}
+          <span style="color:#1a7f37">● Proxmox connecté</span>
+        {% else %}
+          <span style="color:#cf222e">● Proxmox hors ligne</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 1. Statut des services -->
+    <div class="section">
+      <div class="section-title">
+        <i class="bi bi-activity me-1"></i>1 — Statut des services
+      </div>
+
+      <div class="d-flex gap-3 mb-3 flex-wrap">
+        {% set up_count = services | selectattr('status','eq','up') | list | length %}
+        {% set down_count = services | selectattr('status','eq','down') | list | length %}
+        {% set deg_count = services | selectattr('status','eq','degraded') | list | length %}
+        <div class="stat-pill">
+          <span class="num" style="color:{% if global_status=='up' %}#1a7f37{% elif global_status=='degraded' %}#9a6700{% else %}#cf222e{% endif %}">
+            {% if global_status == 'up' %}✅{% elif global_status == 'degraded' %}⚠️{% else %}❌{% endif %}
+          </span>
+          <span class="lbl">Statut global</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#1a7f37">{{ up_count }}</span>
+          <span class="lbl">En ligne</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#9a6700">{{ deg_count }}</span>
+          <span class="lbl">Dégradés</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#cf222e">{{ down_count }}</span>
+          <span class="lbl">Hors ligne</span>
+        </div>
+      </div>
+
+      {% for svc in services %}
+      <div class="svc-row">
+        <div class="svc-dot dot-{{ svc.status }}"></div>
+        <div style="min-width:130px;font-weight:600">{{ svc.name }}</div>
+        <div class="mono" style="color:#57606a;font-size:.75rem;flex:1">{{ svc.url }}</div>
+        {% if svc.latency is not none %}
+          <div class="mono" style="font-size:.75rem;color:#57606a">{{ svc.latency }} ms</div>
+        {% endif %}
+        {% if svc.detail %}
+          <div style="font-size:.75rem;color:#57606a">{{ svc.detail }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- 2. Ressources Proxmox -->
+    {% if node_status %}
+    <div class="section">
+      <div class="section-title">
+        <i class="bi bi-server me-1"></i>2 — Ressources nœud Proxmox ({{ proxmox_node }})
+      </div>
+      <div class="d-flex gap-3 flex-wrap">
+        <div class="stat-pill">
+          <span class="num" style="color:{% if node_status.cpu_pct > 80 %}#cf222e{% elif node_status.cpu_pct > 60 %}#9a6700{% else %}#0969da{% endif %}">
+            {{ node_status.cpu_pct }}%
+          </span>
+          <span class="lbl">CPU</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:{% if node_status.ram_pct > 80 %}#cf222e{% elif node_status.ram_pct > 60 %}#9a6700{% else %}#0969da{% endif %}">
+            {{ node_status.ram_pct }}%
+          </span>
+          <span class="lbl">RAM</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#24292f">{{ node_status.ram_used | fmt_bytes }}</span>
+          <span class="lbl">RAM utilisée</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#24292f">{{ node_status.disk_used | fmt_bytes }}</span>
+          <span class="lbl">Disque root</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#24292f">{{ node_status.uptime | fmt_uptime }}</span>
+          <span class="lbl">Uptime</span>
+        </div>
+      </div>
+
+      {% if vms %}
+      <table class="report-table mt-3">
+        <thead><tr>
+          <th>VMID</th><th>Nom</th><th>Statut</th><th>RAM</th><th>CPU</th><th>Uptime</th>
+        </tr></thead>
+        <tbody>
+          {% for vm in vms %}
+          <tr>
+            <td class="mono">{{ vm.vmid }}</td>
+            <td><strong>{{ vm.name }}</strong></td>
+            <td>
+              {% if vm.status == 'running' %}
+                <span class="b-run">running</span>
+              {% else %}
+                <span class="b-stop">{{ vm.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ vm.mem | fmt_bytes }}</td>
+            <td>{% if vm.status == 'running' %}{{ "%.0f"|format(vm.cpu * 100) }}%{% else %}—{% endif %}</td>
+            <td>{{ vm.uptime | fmt_uptime }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 3. Alertes IDS -->
+    <div class="section page-break">
+      <div class="section-title">
+        <i class="bi bi-shield-exclamation me-1"></i>3 — Bilan alertes IDS
+      </div>
+
+      {% if alert_stats %}
+      <div class="d-flex gap-3 mb-3 flex-wrap">
+        <div class="stat-pill">
+          <span class="num" style="color:#0969da">{{ alert_stats.total }}</span>
+          <span class="lbl">Total</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#0969da">{{ alert_stats.last_24h }}</span>
+          <span class="lbl">Dernières 24h</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#cf222e">{{ alert_stats.critical }}</span>
+          <span class="lbl">Critiques (sev 1)</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#9a6700">{{ alert_stats.medium }}</span>
+          <span class="lbl">Moyennes (sev 2)</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#6e7781">{{ alert_stats.low }}</span>
+          <span class="lbl">Faibles (sev 3)</span>
+        </div>
+      </div>
+
+      {% if alert_stats.mitre %}
+      <div class="mb-3">
+        <div style="font-size:.75rem;color:#57606a;margin-bottom:.4rem;font-weight:600">Top MITRE ATT&CK tactics</div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for tactic, count in alert_stats.mitre %}
+          <span class="b-mitre">{{ tactic }} ({{ count }})</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endif %}
+
+      {% if critical_alerts %}
+      <div style="font-size:.75rem;color:#57606a;margin-bottom:.4rem;font-weight:600">
+        Alertes critiques récentes (sévérité 1)
+      </div>
+      <table class="report-table">
+        <thead><tr>
+          <th>Horodatage</th><th>Moteur</th><th>Signature</th><th>Source</th><th>Dest.</th><th>MITRE</th>
+        </tr></thead>
+        <tbody>
+          {% for a in critical_alerts %}
+          <tr>
+            <td class="mono" style="white-space:nowrap">{{ a.timestamp[:19] | replace('T',' ') if a.timestamp else '—' }}</td>
+            <td>
+              {% if a.engine == 'suricata' %}<span class="b-suri">Suricata</span>
+              {% else %}<span class="b-snort">Snort</span>{% endif %}
+            </td>
+            <td>{{ a.signature | truncate(50) }}</td>
+            <td class="mono">{{ a.src_ip }}</td>
+            <td class="mono">{{ a.dest_ip }}</td>
+            <td>{% if a.mitre_tactic %}<span class="b-mitre">{{ a.mitre_tactic }}</span>{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% elif alert_stats %}
+      <div style="color:#57606a;font-size:.82rem;padding:.5rem 0">
+        ✅ Aucune alerte critique sur la période.
+      </div>
+      {% else %}
+      <div style="color:#cf222e;font-size:.82rem;padding:.5rem 0">
+        ⚠️ Elasticsearch non joignable — données d'alertes indisponibles.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 4. Comparaison open-source vs commercial (scores) -->
+    <div class="section">
+      <div class="section-title">
+        <i class="bi bi-bar-chart-steps me-1"></i>4 — Scores comparaison outils
+      </div>
+      <table class="report-table">
+        <thead><tr>
+          <th>Outil</th><th>Type</th><th style="width:200px">Score couverture</th><th style="width:60px">Score</th>
+        </tr></thead>
+        <tbody>
+          {% for tool in tool_cols %}
+          {% set full_count = namespace(val=0) %}
+          {% set partial_count = namespace(val=0) %}
+          {% set none_count = namespace(val=0) %}
+          {% for section in compare_matrix %}
+            {% for row in section.rows %}
+              {% set v = row[tool.id] %}
+              {% if v == 'full' %}{% set full_count.val = full_count.val + 1 %}
+              {% elif v == 'partial' %}{% set partial_count.val = partial_count.val + 1 %}
+              {% elif v == 'none' %}{% set none_count.val = none_count.val + 1 %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          {% set total = full_count.val + partial_count.val + none_count.val %}
+          {% set score = ((full_count.val + partial_count.val * 0.5) / total * 100) | round | int %}
+          <tr {% if tool.id == 'netwatch' %}style="background:#ddf4ff"{% endif %}>
+            <td>
+              <span style="font-size:1.1rem;margin-right:.4rem">{{ tool.logo }}</span>
+              <strong>{{ tool.name }}</strong>
+              {% if tool.id == 'netwatch' %} ← ce projet{% endif %}
+            </td>
+            <td>
+              {% if tool.type == 'open-source' %}
+                <span style="background:#ddf4ff;color:#0969da;padding:.1rem .4rem;border-radius:4px;font-size:.72rem">open-source</span>
+              {% else %}
+                <span style="background:#fff8c5;color:#9a6700;padding:.1rem .4rem;border-radius:4px;font-size:.72rem">commercial</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="score-bar-wrap">
+                <div class="score-bar-fill"
+                     style="width:{{ score }}%;background:{% if score >= 75 %}#1a7f37{% elif score >= 50 %}#9a6700{% else %}#cf222e{% endif %}">
+                </div>
+              </div>
+            </td>
+            <td style="font-weight:700;color:{% if score >= 75 %}#1a7f37{% elif score >= 50 %}#9a6700{% else %}#cf222e{% endif %}">
+              {{ score }}%
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="font-size:.72rem;color:#57606a;margin-top:.5rem">
+        Score = (fonctionnalités supportées + 0,5 × partielles) / total — 24 critères évalués.
+      </div>
+    </div>
+
+  </div><!-- /.report-body -->
+
+  <!-- Pied de page -->
+  <div class="report-footer">
+    <span>NetWatch v2.0 — Licence AGPL v3 — github.com/Ourslow/Netwatch</span>
+    <span>Nicolas Malok · Analyste Observabilité NPM · Axians / Vinci Energies · France</span>
+  </div>
+</div><!-- /.report-wrapper -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

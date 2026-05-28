@@ -49,6 +49,13 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('report') }}"
+           class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"
+           target="_blank">
+          <i class="bi bi-file-earmark-pdf"></i> Rapport PDF
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('compare') }}"
            class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
           <i class="bi bi-bar-chart-steps"></i> Comparaison

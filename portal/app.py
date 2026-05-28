@@ -454,6 +454,53 @@ def api_status():
     return jsonify({"global": global_status, "services": services})
 
 
+@app.route("/report")
+@login_required
+def report():
+    from datetime import datetime
+
+    # Proxmox
+    px = get_proxmox()
+    node_status = None
+    vms = []
+    if px:
+        try:
+            node_status = px_client.get_node_status(px)
+            vms = px_client.list_vms(px)
+        except Exception:
+            pass
+
+    # Health services
+    services, global_status = nw_health.check_all(
+        es_url         = config.NETWATCH_ES_URL,
+        grafana_url    = config.NETWATCH_GRAFANA_URL,
+        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
+        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+    )
+
+    # Alertes IDS
+    critical_alerts, _ = es_client.get_recent_alerts(size=20, severity=1)
+    all_alerts,      _ = es_client.get_recent_alerts(size=5)
+    alert_stats,     _ = es_client.get_alert_stats()
+
+    return render_template(
+        "report.html",
+        node_status    = node_status,
+        vms            = vms,
+        proxmox_ok     = (px is not None),
+        proxmox_host   = config.PROXMOX_HOST,
+        proxmox_node   = config.PROXMOX_NODE,
+        services       = services,
+        global_status  = global_status,
+        critical_alerts= critical_alerts,
+        recent_alerts  = all_alerts,
+        alert_stats    = alert_stats,
+        tool_cols      = TOOL_COLS,
+        compare_matrix = COMPARE_MATRIX,
+        generated_at   = datetime.now().strftime("%d/%m/%Y à %H:%M"),
+    )
+
+
 @app.route("/alerts")
 @login_required
 def alerts():
