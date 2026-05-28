@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — NetWatch Portal{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Statut Proxmox -->
+{% if not proxmox_ok %}
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>
+    Proxmox non joignable (<code>{{ proxmox_host }}</code>).
+    Vérifiez <code>.env</code> et que le serveur est accessible.
+  </div>
+</div>
+{% endif %}
+
+<!-- Cartes ressources nœud -->
+{% if node_status %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="stat-label">CPU</p>
+            <h3 class="stat-value">{{ node_status.cpu_pct }}%</h3>
+          </div>
+          <span class="stat-icon text-info"><i class="bi bi-cpu"></i></span>
+        </div>
+        <div class="progress mt-2" style="height:5px">
+          <div class="progress-bar bg-info" style="width:{{ node_status.cpu_pct }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="stat-label">RAM</p>
+            <h3 class="stat-value">{{ node_status.ram_pct }}%</h3>
+            <small class="text-muted">{{ node_status.ram_used | fmt_bytes }} / {{ node_status.ram_total | fmt_bytes }}</small>
+          </div>
+          <span class="stat-icon text-warning"><i class="bi bi-memory"></i></span>
+        </div>
+        <div class="progress mt-2" style="height:5px">
+          <div class="progress-bar bg-warning" style="width:{{ node_status.ram_pct }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="stat-label">Disque</p>
+            <h3 class="stat-value">{{ node_status.disk_used | fmt_bytes }}</h3>
+            <small class="text-muted">/ {{ node_status.disk_total | fmt_bytes }}</small>
+          </div>
+          <span class="stat-icon text-success"><i class="bi bi-hdd"></i></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Résumé -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label">VMs actives</p>
+        <h2 class="stat-value text-success">
+          {{ vms | selectattr('status','eq','running') | list | length }}
+          <small class="text-muted fs-6">/ {{ vms | length }}</small>
+        </h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label">VMs arrêtées</p>
+        <h2 class="stat-value text-secondary">
+          {{ vms | selectattr('status','ne','running') | list | length }}
+        </h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label">Outils open-source</p>
+        <h2 class="stat-value text-info">{{ open_source_count }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label">Outils commerciaux</p>
+        <h2 class="stat-value text-warning">{{ commercial_count }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Liste VMs + accès rapide catalogue -->
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-server me-2"></i>Machines virtuelles</span>
+        <a href="{{ url_for('vms') }}" class="btn btn-sm btn-outline-secondary">Voir tout</a>
+      </div>
+      <div class="card-body p-0">
+        {% if vms %}
+        <table class="table table-hover mb-0">
+          <thead><tr>
+            <th>VMID</th><th>Nom</th><th>Statut</th><th>RAM</th><th>Uptime</th>
+          </tr></thead>
+          <tbody>
+            {% for vm in vms[:8] %}
+            <tr>
+              <td class="text-muted">{{ vm.vmid }}</td>
+              <td class="fw-medium">{{ vm.name }}</td>
+              <td>
+                {% if vm.status == 'running' %}
+                  <span class="badge bg-success">running</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ vm.status }}</span>
+                {% endif %}
+              </td>
+              <td>{{ vm.mem | fmt_bytes }}</td>
+              <td class="text-muted">{{ vm.uptime | fmt_uptime }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-server fs-2 d-block mb-2"></i>
+          Aucune VM — Proxmox non connecté ou nœud vide
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-grid-3x3-gap me-2"></i>Accès rapide</span>
+        <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">Catalogue</a>
+      </div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="{{ url_for('catalog') }}?type=open-source" class="quick-link">
+          <i class="bi bi-code-slash text-info"></i>
+          <span>Outils open-source</span>
+          <span class="badge bg-info ms-auto">{{ open_source_count }}</span>
+        </a>
+        <a href="{{ url_for('catalog') }}?type=commercial" class="quick-link">
+          <i class="bi bi-building text-warning"></i>
+          <span>Outils commerciaux Axians</span>
+          <span class="badge bg-warning text-dark ms-auto">{{ commercial_count }}</span>
+        </a>
+        <hr class="my-1">
+        <a href="{{ url_for('deploy', tool_id='netwatch') }}" class="quick-link">
+          <i class="bi bi-rocket-takeoff text-success"></i>
+          <span>Déployer NetWatch v2</span>
+          <i class="bi bi-arrow-right ms-auto"></i>
+        </a>
+        <a href="{{ url_for('deploy', tool_id='security-onion') }}" class="quick-link">
+          <i class="bi bi-rocket-takeoff text-success"></i>
+          <span>Déployer Security Onion</span>
+          <i class="bi bi-arrow-right ms-auto"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

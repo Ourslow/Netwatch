@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Déployer {{ tool.name }} — NetWatch Portal{% endblock %}
+{% block page_title %}Déployer {{ tool.logo }} {{ tool.name }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('tool_detail', tool_id=tool.id) }}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-arrow-left me-1"></i>Retour
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-rocket-takeoff me-2"></i>Configuration de la VM
+      </div>
+      <div class="card-body">
+
+        {% if not templates %}
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>Aucun template Proxmox disponible.</strong><br>
+          Créez d'abord une VM template sur Proxmox et ajoutez-lui le tag <code>template</code>.
+        </div>
+        {% endif %}
+
+        <form method="post">
+          <!-- Nom de la VM -->
+          <div class="mb-3">
+            <label class="form-label">Nom de la VM</label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ tool.id }}-01" required
+                   placeholder="ex: netwatch-prod">
+            <div class="form-text">Identifiant unique sur Proxmox.</div>
+          </div>
+
+          <!-- Template source -->
+          <div class="mb-3">
+            <label class="form-label">Template source</label>
+            {% if templates %}
+            <select name="template_vmid" class="form-select" required>
+              <option value="">— Choisir un template —</option>
+              {% for t in templates %}
+              <option value="{{ t.vmid }}">{{ t.name }} (VMID {{ t.vmid }})</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <input type="text" name="template_vmid" class="form-control"
+                   placeholder="VMID du template (ex: 100)">
+            {% endif %}
+            <div class="form-text">La VM sera clonée depuis ce template.</div>
+          </div>
+
+          <hr>
+
+          <!-- Ressources -->
+          <p class="text-muted small mb-3">
+            Valeurs recommandées pré-remplies — ajuster selon les ressources disponibles.
+          </p>
+          <div class="row g-3 mb-3">
+            <div class="col-4">
+              <label class="form-label">vCPU</label>
+              <input type="number" name="cpu" class="form-control"
+                     value="{{ tool.cpu }}" min="1" max="32" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label">RAM (Go)</label>
+              <input type="number" name="ram_gb" class="form-control"
+                     value="{{ tool.ram_gb }}" min="1" max="128" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Disque (Go)</label>
+              <input type="number" name="disk_gb" class="form-control"
+                     value="{{ tool.disk_gb }}" min="10" max="2000" required>
+            </div>
+          </div>
+
+          <!-- Résumé -->
+          <div class="alert alert-dark border mb-4">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="tool-logo-sm">{{ tool.logo }}</span>
+              <strong>{{ tool.name }}</strong>
+            </div>
+            <div class="row text-center mt-2">
+              <div class="col text-muted small">
+                <i class="bi bi-cpu me-1"></i>vCPU recommandé : <strong>{{ tool.cpu }}</strong>
+              </div>
+              <div class="col text-muted small">
+                <i class="bi bi-memory me-1"></i>RAM recommandée : <strong>{{ tool.ram_gb }} Go</strong>
+              </div>
+              <div class="col text-muted small">
+                <i class="bi bi-hdd me-1"></i>Disque recommandé : <strong>{{ tool.disk_gb }} Go</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a href="{{ url_for('catalog') }}" class="btn btn-outline-secondary">Annuler</a>
+            <button type="submit" class="btn btn-primary flex-grow-1" {% if not templates %}disabled{% endif %}>
+              <i class="bi bi-rocket-takeoff me-2"></i>Créer la VM
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }} — NetWatch Portal{% endblock %}
+{% block page_title %}{{ tool.logo }} {{ tool.name }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-arrow-left me-1"></i>Catalogue
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Infos principales -->
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          {% if tool.type == 'open-source' %}
+            <span class="badge bg-info fs-6">open-source</span>
+          {% else %}
+            <span class="badge bg-warning text-dark fs-6">commercial</span>
+          {% endif %}
+          <span class="badge bg-secondary">{{ tool.category }}</span>
+          <span class="badge bg-dark border">v{{ tool.version }}</span>
+          <span class="badge bg-dark border"><i class="bi bi-shield me-1"></i>{{ tool.license }}</span>
+        </div>
+        <p class="lead">{{ tool.description }}</p>
+
+        <h6 class="text-muted text-uppercase small mt-4 mb-2">Fonctionnalités</h6>
+        <ul class="list-unstyled">
+          {% for feat in tool.features %}
+          <li class="mb-1">
+            <i class="bi bi-check2-circle text-success me-2"></i>{{ feat }}
+          </li>
+          {% endfor %}
+        </ul>
+
+        {% if tool.repo %}
+        <a href="{{ tool.repo }}" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">
+          <i class="bi bi-github me-1"></i>Voir le dépôt
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if tool.deployable %}
+    <!-- Spécifications -->
+    <div class="card">
+      <div class="card-header"><i class="bi bi-cpu me-2"></i>Spécifications recommandées</div>
+      <div class="card-body">
+        <div class="row text-center g-3">
+          <div class="col-4">
+            <div class="spec-box">
+              <i class="bi bi-cpu fs-3 text-info d-block mb-1"></i>
+              <h4 class="mb-0">{{ tool.cpu }}</h4>
+              <small class="text-muted">vCPU</small>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="spec-box">
+              <i class="bi bi-memory fs-3 text-warning d-block mb-1"></i>
+              <h4 class="mb-0">{{ tool.ram_gb }} Go</h4>
+              <small class="text-muted">RAM</small>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="spec-box">
+              <i class="bi bi-hdd fs-3 text-success d-block mb-1"></i>
+              <h4 class="mb-0">{{ tool.disk_gb }} Go</h4>
+              <small class="text-muted">Disque</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Actions -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-rocket-takeoff me-2"></i>Déploiement</div>
+      <div class="card-body d-flex flex-column gap-3">
+        {% if tool.deployable %}
+          <p class="text-muted small mb-0">
+            Crée une VM Proxmox depuis un template et configure les ressources automatiquement.
+          </p>
+          <a href="{{ url_for('deploy', tool_id=tool.id) }}" class="btn btn-primary">
+            <i class="bi bi-rocket-takeoff me-2"></i>Déployer {{ tool.name }}
+          </a>
+          {% if templates %}
+          <div>
+            <small class="text-muted d-block mb-1">Templates disponibles :</small>
+            {% for t in templates %}
+              <span class="badge bg-dark border me-1">{{ t.name }} ({{ t.vmid }})</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="alert alert-warning small mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Aucun template Proxmox avec le tag <code>template</code> trouvé.
+            Créez d'abord une VM template sur Proxmox.
+          </div>
+          {% endif %}
+        {% else %}
+          <p class="text-muted small mb-0">
+            Outil commercial — déploiement via l'équipe Axians uniquement.
+          </p>
+          {% if tool.contact %}
+          <div class="alert alert-warning small mb-0">
+            <i class="bi bi-envelope me-1"></i>{{ tool.contact }}
+          </div>
+          {% endif %}
+          <button class="btn btn-outline-warning" disabled>
+            <i class="bi bi-building me-2"></i>Contacter Axians
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

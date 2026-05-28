@@ -1,0 +1,273 @@
+:root {
+  --sidebar-width: 220px;
+  --bg-dark:   #0d1117;
+  --bg-card:   #161b22;
+  --bg-hover:  #1c2128;
+  --border:    #30363d;
+  --text-muted: #8b949e;
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+
+body {
+  background: var(--bg-dark);
+  min-height: 100vh;
+  font-size: .9rem;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  min-height: 100vh;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.main-content {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   Sidebar
+   ============================================================ */
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #e6edf3;
+  text-decoration: none;
+  letter-spacing: -.3px;
+}
+
+.sidebar-brand i {
+  font-size: 1.3rem;
+  color: #58a6ff;
+}
+
+.sidebar .nav-link {
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: .45rem .75rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: .875rem;
+  transition: background .15s, color .15s;
+}
+
+.sidebar .nav-link:hover {
+  background: var(--bg-hover);
+  color: #e6edf3;
+}
+
+.sidebar .nav-link.active {
+  background: #1f6feb33;
+  color: #58a6ff;
+  font-weight: 500;
+}
+
+.sidebar-footer {
+  font-size: .75rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ============================================================
+   Topbar
+   ============================================================ */
+
+.topbar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  min-height: 56px;
+}
+
+/* ============================================================
+   Cards
+   ============================================================ */
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.card-header {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  font-weight: 500;
+  font-size: .875rem;
+  padding: .75rem 1rem;
+}
+
+/* Stat cards */
+.stat-card {
+  transition: border-color .15s;
+}
+
+.stat-card:hover {
+  border-color: #58a6ff55;
+}
+
+.stat-label {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+  margin-bottom: .2rem;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: .2rem;
+}
+
+.stat-icon {
+  font-size: 1.6rem;
+  opacity: .7;
+}
+
+/* Tool cards */
+.tool-card {
+  transition: border-color .15s, transform .15s;
+}
+
+.tool-card:hover {
+  border-color: #58a6ff55;
+  transform: translateY(-1px);
+}
+
+.tool-logo {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tool-logo-sm {
+  font-size: 1.1rem;
+}
+
+/* Spec boxes */
+.spec-box {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem .5rem;
+}
+
+/* ============================================================
+   Table
+   ============================================================ */
+
+.table {
+  color: #e6edf3;
+  border-color: var(--border);
+  font-size: .875rem;
+}
+
+.table thead th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid var(--border);
+  padding: .6rem 1rem;
+}
+
+.table tbody td {
+  border-color: var(--border);
+  padding: .65rem 1rem;
+  vertical-align: middle;
+}
+
+.table-hover tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+.fw-mono {
+  font-family: ui-monospace, monospace;
+  font-size: .8rem;
+}
+
+/* ============================================================
+   Quick links
+   ============================================================ */
+
+.quick-link {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem .75rem;
+  border-radius: 6px;
+  color: #e6edf3;
+  text-decoration: none;
+  transition: background .15s;
+  font-size: .875rem;
+}
+
+.quick-link:hover {
+  background: var(--bg-hover);
+  color: #e6edf3;
+}
+
+/* ============================================================
+   Forms
+   ============================================================ */
+
+.form-control,
+.form-select {
+  background: var(--bg-dark);
+  border-color: var(--border);
+  color: #e6edf3;
+  font-size: .875rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background: var(--bg-dark);
+  border-color: #58a6ff;
+  color: #e6edf3;
+  box-shadow: 0 0 0 3px #1f6feb33;
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+}
+
+.form-text {
+  color: var(--text-muted);
+  font-size: .78rem;
+}
+
+/* ============================================================
+   Misc
+   ============================================================ */
+
+.progress {
+  background: var(--bg-dark);
+}
+
+.alert {
+  font-size: .875rem;
+}
+
+code {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  padding: .1rem .35rem;
+  border-radius: 4px;
+  font-size: .82rem;
+  color: #f0883e;
+}
