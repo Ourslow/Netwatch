@@ -28,7 +28,7 @@ La v2 passe de 4 à **10 services** et étend les capacités de détection :
 | **autoblock** | Réponse automatique iptables via webhook Grafana (DRY_RUN=true par défaut) | netwatch-autoblock-* |
 | **Prometheus + node-exporter** | Métriques système VM (CPU, RAM, disque, réseau) | — |
 
-> **Nicolas Malok** — Alternant Cybersécurité @ Axians / Vinci Energies — École 2600
+> **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — France — École 2600
 > SideQuest MVP (S2 2025-2026)
 
 ---
@@ -573,7 +573,7 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5"
 
 ## Auteur
 
-**Nicolas Malok** — Alternant Cybersécurité @ Axians / Vinci Energies — École 2600
+**Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — France — École 2600
 
 Projet réalisé dans le cadre de la SideQuest MVP (S2 2025-2026).
 

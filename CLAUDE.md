@@ -2,7 +2,7 @@
 
 ## IDENTITE
 - Projet : NetWatch v2 — Stack d'observabilité réseau multi-moteurs open-source
-- Auteur : Nicolas Malok, alternant cybersécurité @ Axians / Vinci Energies
+- Auteur : Nicolas Malok, analyste observabilité NPM @ Axians / Vinci Energies — France
 - École : École 2600 (cyber), promotion 2024-2027
 - Catégorie : SideQuest MVP (S2 2025-2026)
 - Repo : https://github.com/Ourslow/netwatch
