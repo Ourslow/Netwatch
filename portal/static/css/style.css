@@ -252,6 +252,113 @@ body {
 }
 
 /* ============================================================
+   Comparison table
+   ============================================================ */
+
+.compare-table {
+  font-size: .82rem;
+  table-layout: fixed;
+}
+
+.compare-table .feature-col {
+  width: 220px;
+  min-width: 160px;
+  font-weight: 500;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: .5rem 1rem;
+}
+
+.compare-table .tool-col {
+  min-width: 110px;
+  padding: .5rem .4rem;
+}
+
+.tool-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .25rem;
+  padding: .4rem 0;
+}
+
+.tool-name {
+  font-size: .72rem;
+  font-weight: 600;
+  color: #e6edf3;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 90px;
+  word-break: break-word;
+}
+
+.tool-badge {
+  font-size: .65rem;
+  padding: .1rem .35rem;
+}
+
+.tool-highlight {
+  background: #1f6feb11 !important;
+  border-left: 2px solid #58a6ff44;
+  border-right: 2px solid #58a6ff44;
+}
+
+thead .tool-highlight {
+  border-top: 2px solid #58a6ff88;
+}
+
+.section-row td {
+  background: var(--bg-dark) !important;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+  padding: .5rem 1rem;
+  border-bottom: none;
+}
+
+.feature-name {
+  color: #e6edf3;
+  padding: .55rem 1rem !important;
+}
+
+/* Score cards */
+.score-card {
+  transition: border-color .15s, transform .15s;
+}
+
+.score-card:hover {
+  border-color: #58a6ff55;
+  transform: translateY(-1px);
+}
+
+.score-highlight {
+  border-color: #58a6ff88 !important;
+  background: #1f6feb11 !important;
+}
+
+.score-logo {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.score-name {
+  color: var(--text-muted);
+  font-size: .75rem;
+}
+
+.score-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score-bar {
+  background: var(--bg-dark);
+}
+
+/* ============================================================
    Misc
    ============================================================ */
 

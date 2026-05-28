@@ -8,6 +8,131 @@ from proxmoxer.core import ResourceException
 import config
 from proxmox import client as px_client
 
+# ============================================================
+# Données de comparaison (matrice feature × outil)
+# Valeurs : "full" | "partial" | "none" | str littéral
+# ============================================================
+
+TOOL_COLS = [
+    {"id": "netwatch",        "name": "NetWatch v2",          "type": "open-source", "logo": "🔭"},
+    {"id": "security-onion",  "name": "Security Onion",       "type": "open-source", "logo": "🧅"},
+    {"id": "wazuh",           "name": "Wazuh",                "type": "open-source", "logo": "🛡️"},
+    {"id": "netscout",        "name": "Netscout nGeniusONE",  "type": "commercial",  "logo": "📡"},
+    {"id": "gigamon",         "name": "Gigamon",              "type": "commercial",  "logo": "🔬"},
+    {"id": "riverbed",        "name": "Riverbed NetProfiler", "type": "commercial",  "logo": "🌊"},
+]
+
+COMPARE_MATRIX = [
+    {
+        "category": "Capture & Analyse réseau",
+        "icon": "bi-reception-4",
+        "rows": [
+            {"feature": "Capture PCAP (SPAN/TAP)",
+             "netwatch": "full", "security-onion": "full", "wazuh": "none",
+             "netscout": "full", "gigamon": "full", "riverbed": "partial"},
+            {"feature": "Analyse protocolaire DPI",
+             "netwatch": "full", "security-onion": "full", "wazuh": "none",
+             "netscout": "full", "gigamon": "partial", "riverbed": "partial"},
+            {"feature": "Fingerprinting JA3 / HASSH",
+             "netwatch": "full", "security-onion": "full", "wazuh": "none",
+             "netscout": "partial", "gigamon": "none", "riverbed": "none"},
+            {"feature": "Analyse NetFlow / IPFIX / sFlow",
+             "netwatch": "none", "security-onion": "partial", "wazuh": "none",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+        ],
+    },
+    {
+        "category": "Détection des menaces",
+        "icon": "bi-shield-exclamation",
+        "rows": [
+            {"feature": "IDS signatures (Snort 3 / Suricata 7)",
+             "netwatch": "full", "security-onion": "full", "wazuh": "partial",
+             "netscout": "partial", "gigamon": "partial", "riverbed": "none"},
+            {"feature": "Mapping MITRE ATT&CK",
+             "netwatch": "full", "security-onion": "full", "wazuh": "full",
+             "netscout": "partial", "gigamon": "none", "riverbed": "none"},
+            {"feature": "Détection beaconing C2 (RITA-lite)",
+             "netwatch": "full", "security-onion": "full", "wazuh": "none",
+             "netscout": "partial", "gigamon": "partial", "riverbed": "none"},
+            {"feature": "Threat Intel (IoC watchlist)",
+             "netwatch": "full", "security-onion": "full", "wazuh": "full",
+             "netscout": "full", "gigamon": "full", "riverbed": "partial"},
+            {"feature": "Détection HIDS (endpoints)",
+             "netwatch": "none", "security-onion": "partial", "wazuh": "full",
+             "netscout": "none", "gigamon": "none", "riverbed": "none"},
+        ],
+    },
+    {
+        "category": "Réponse & Alerting",
+        "icon": "bi-bell-fill",
+        "rows": [
+            {"feature": "Alertes temps réel",
+             "netwatch": "full", "security-onion": "full", "wazuh": "full",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+            {"feature": "Blocage automatique (iptables/firewall)",
+             "netwatch": "full", "security-onion": "partial", "wazuh": "full",
+             "netscout": "none", "gigamon": "none", "riverbed": "none"},
+            {"feature": "Webhook Slack / Teams",
+             "netwatch": "full", "security-onion": "partial", "wazuh": "full",
+             "netscout": "full", "gigamon": "partial", "riverbed": "partial"},
+            {"feature": "Gestion d'incidents (ticketing)",
+             "netwatch": "none", "security-onion": "full", "wazuh": "partial",
+             "netscout": "full", "gigamon": "partial", "riverbed": "full"},
+        ],
+    },
+    {
+        "category": "Dashboards & Reporting",
+        "icon": "bi-bar-chart-line",
+        "rows": [
+            {"feature": "Dashboards temps réel",
+             "netwatch": "full", "security-onion": "full", "wazuh": "full",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+            {"feature": "Corrélation multi-moteurs",
+             "netwatch": "full", "security-onion": "partial", "wazuh": "partial",
+             "netscout": "full", "gigamon": "partial", "riverbed": "partial"},
+            {"feature": "Reporting exécutif PDF",
+             "netwatch": "none", "security-onion": "partial", "wazuh": "partial",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+            {"feature": "GeoIP & Top Talkers",
+             "netwatch": "full", "security-onion": "full", "wazuh": "partial",
+             "netscout": "full", "gigamon": "partial", "riverbed": "partial"},
+        ],
+    },
+    {
+        "category": "Déploiement & Intégration",
+        "icon": "bi-gear-wide-connected",
+        "rows": [
+            {"feature": "Déploiement Docker Compose",
+             "netwatch": "full", "security-onion": "none", "wazuh": "full",
+             "netscout": "none", "gigamon": "none", "riverbed": "none"},
+            {"feature": "API REST native",
+             "netwatch": "full", "security-onion": "full", "wazuh": "full",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+            {"feature": "Multi-tenant",
+             "netwatch": "none", "security-onion": "partial", "wazuh": "full",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+            {"feature": "Support commercial garanti (SLA)",
+             "netwatch": "none", "security-onion": "none", "wazuh": "partial",
+             "netscout": "full", "gigamon": "full", "riverbed": "full"},
+        ],
+    },
+    {
+        "category": "Coût & Licence",
+        "icon": "bi-currency-euro",
+        "rows": [
+            {"feature": "Licence",
+             "netwatch": "AGPL v3", "security-onion": "GPL v2", "wazuh": "GPL v2",
+             "netscout": "Commercial", "gigamon": "Commercial", "riverbed": "Commercial"},
+            {"feature": "Coût estimé (annuel)",
+             "netwatch": "0 €", "security-onion": "0 €", "wazuh": "0 € / 50 k€+",
+             "netscout": "100 k€+", "gigamon": "150 k€+", "riverbed": "80 k€+"},
+            {"feature": "Complexité déploiement",
+             "netwatch": "Faible", "security-onion": "Moyenne", "wazuh": "Moyenne",
+             "netscout": "Élevée", "gigamon": "Élevée", "riverbed": "Élevée"},
+        ],
+    },
+]
+
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
@@ -203,6 +328,15 @@ def deploy(px, tool_id):
         templates = []
 
     return render_template("deploy.html", tool=tool, templates=templates)
+
+
+@app.route("/compare")
+def compare():
+    return render_template(
+        "compare.html",
+        tool_cols=TOOL_COLS,
+        compare_matrix=COMPARE_MATRIX,
+    )
 
 
 # ============================================================

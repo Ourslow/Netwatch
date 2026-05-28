@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Comparaison outils — NetWatch Portal{% endblock %}
+{% block page_title %}Comparaison open-source vs commercial{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small">
+  <i class="bi bi-info-circle me-1"></i>
+  {{ tool_cols | length }} outils · {{ compare_matrix | length }} catégories
+</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Légende -->
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <span class="text-muted small fw-medium">LÉGENDE :</span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-check-circle-fill text-success"></i>
+    <span class="small text-muted">Supporté</span>
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-dash-circle-fill text-warning"></i>
+    <span class="small text-muted">Partiel / limité</span>
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-x-circle-fill text-danger" style="opacity:.5"></i>
+    <span class="small text-muted">Non disponible</span>
+  </span>
+  <div class="ms-auto">
+    <span class="badge bg-info me-1">open-source</span>
+    <span class="badge bg-warning text-dark">commercial</span>
+  </div>
+</div>
+
+<!-- Tableau de comparaison -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 compare-table align-middle">
+      <thead>
+        <tr>
+          <th class="feature-col text-muted">Fonctionnalité</th>
+          {% for tool in tool_cols %}
+          <th class="tool-col text-center
+               {% if tool.id == 'netwatch' %}tool-highlight{% endif %}">
+            <div class="tool-header">
+              <span class="tool-logo-sm">{{ tool.logo }}</span>
+              <span class="tool-name">{{ tool.name }}</span>
+              {% if tool.type == 'open-source' %}
+                <span class="badge bg-info tool-badge">OS</span>
+              {% else %}
+                <span class="badge bg-warning text-dark tool-badge">€€€</span>
+              {% endif %}
+            </div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for section in compare_matrix %}
+        <!-- Ligne catégorie -->
+        <tr class="section-row">
+          <td colspan="{{ tool_cols | length + 1 }}">
+            <i class="bi {{ section.icon }} me-2 text-info"></i>
+            <strong>{{ section.category }}</strong>
+          </td>
+        </tr>
+        <!-- Lignes features -->
+        {% for row in section.rows %}
+        <tr>
+          <td class="feature-name">{{ row.feature }}</td>
+          {% for tool in tool_cols %}
+            {% set val = row[tool.id] %}
+            <td class="text-center {% if tool.id == 'netwatch' %}tool-highlight{% endif %}">
+              {% if val == 'full' %}
+                <i class="bi bi-check-circle-fill text-success fs-5"
+                   title="Supporté"></i>
+              {% elif val == 'partial' %}
+                <i class="bi bi-dash-circle-fill text-warning fs-5"
+                   title="Partiel"></i>
+              {% elif val == 'none' %}
+                <i class="bi bi-x-circle-fill fs-5"
+                   style="color:#30363d" title="Non disponible"></i>
+              {% else %}
+                <span class="small text-muted">{{ val }}</span>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Score cards -->
+<div class="row g-3 mt-2">
+  {% for tool in tool_cols %}
+  {% set full_count = namespace(val=0) %}
+  {% set partial_count = namespace(val=0) %}
+  {% set none_count = namespace(val=0) %}
+  {% for section in compare_matrix %}
+    {% for row in section.rows %}
+      {% set v = row[tool.id] %}
+      {% if v == 'full' %}{% set full_count.val = full_count.val + 1 %}
+      {% elif v == 'partial' %}{% set partial_count.val = partial_count.val + 1 %}
+      {% elif v == 'none' %}{% set none_count.val = none_count.val + 1 %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+  {% set total = full_count.val + partial_count.val + none_count.val %}
+  {% set score = ((full_count.val + partial_count.val * 0.5) / total * 100) | round | int %}
+  <div class="col-md-4 col-lg-2">
+    <div class="card score-card text-center
+         {% if tool.id == 'netwatch' %}score-highlight{% endif %}">
+      <div class="card-body py-3">
+        <div class="score-logo mb-1">{{ tool.logo }}</div>
+        <div class="score-name small fw-medium mb-2">{{ tool.name }}</div>
+        <div class="score-value
+             {% if score >= 75 %}text-success
+             {% elif score >= 50 %}text-warning
+             {% else %}text-danger{% endif %}">
+          {{ score }}%
+        </div>
+        <div class="progress score-bar mt-2" style="height:4px">
+          <div class="progress-bar
+               {% if score >= 75 %}bg-success
+               {% elif score >= 50 %}bg-warning
+               {% else %}bg-danger{% endif %}"
+               style="width:{{ score }}%"></div>
+        </div>
+        <small class="text-muted d-block mt-1">
+          {{ full_count.val }}✓ · {{ partial_count.val }}~ · {{ none_count.val }}✗
+        </small>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Note bas de page -->
+<p class="text-muted small mt-3">
+  <i class="bi bi-info-circle me-1"></i>
+  Comparaison indicative — NetWatch v2 est un projet open-source en développement actif.
+  Les outils commerciaux incluent support, SLA et intégrations enterprise non représentées ici.
+</p>
+
+{% endblock %}

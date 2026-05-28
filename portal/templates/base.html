@@ -36,6 +36,12 @@
           <i class="bi bi-grid-3x3-gap"></i> Catalogue outils
         </a>
       </li>
+      <li class="nav-item">
+        <a href="{{ url_for('compare') }}"
+           class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
+          <i class="bi bi-bar-chart-steps"></i> Comparaison
+        </a>
+      </li>
     </ul>
     <div class="mt-auto sidebar-footer">
       <small class="text-muted">

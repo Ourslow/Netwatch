@@ -4,6 +4,9 @@
 
 {% block topbar_actions %}
 <span class="text-muted small">{{ vms | length }} VMs · {{ vms | selectattr('status','eq','running') | list | length }} actives</span>
+<span class="badge bg-dark border text-muted" title="Statuts rafraîchis toutes les 30 secondes">
+  <i class="bi bi-arrow-repeat me-1"></i>live 30s
+</span>
 {% endblock %}
 
 {% block content %}
@@ -25,10 +28,10 @@
       </thead>
       <tbody>
         {% for vm in vms %}
-        <tr>
+        <tr data-vmid="{{ vm.vmid }}">
           <td class="text-muted fw-mono">{{ vm.vmid }}</td>
           <td class="fw-medium">{{ vm.name }}</td>
-          <td>
+          <td class="cell-status">
             {% if vm.status == 'running' %}
               <span class="badge bg-success"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>running</span>
             {% elif vm.status == 'stopped' %}
@@ -37,7 +40,7 @@
               <span class="badge bg-warning text-dark">{{ vm.status }}</span>
             {% endif %}
           </td>
-          <td>
+          <td class="cell-cpu">
             {% if vm.status == 'running' %}
               {{ "%.0f"|format(vm.cpu * 100) }}%
             {% else %}
@@ -48,7 +51,7 @@
             {% if vm.mem %}{{ vm.mem | fmt_bytes }}{% else %}<span class="text-muted">—</span>{% endif %}
             {% if vm.maxmem %}<small class="text-muted"> / {{ vm.maxmem | fmt_bytes }}</small>{% endif %}
           </td>
-          <td class="text-muted">{{ vm.uptime | fmt_uptime }}</td>
+          <td class="text-muted cell-uptime">{{ vm.uptime | fmt_uptime }}</td>
           <td>
             {% for tag in vm.tags.split(',') if tag %}
               <span class="badge bg-dark border">{{ tag.strip() }}</span>
@@ -131,5 +134,41 @@ function confirmDelete(vmid, name) {
   document.getElementById('deleteForm').action = '/vms/' + vmid + '/delete';
   new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+/* ---- Auto-refresh statuts toutes les 30 s ---- */
+function statusBadge(status) {
+  if (status === 'running')
+    return '<span class="badge bg-success"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>running</span>';
+  if (status === 'stopped')
+    return '<span class="badge bg-secondary">stopped</span>';
+  return `<span class="badge bg-warning text-dark">${status}</span>`;
+}
+
+function refreshVmStatus() {
+  fetch('/api/vms')
+    .then(r => r.ok ? r.json() : null)
+    .then(vms => {
+      if (!vms) return;
+      vms.forEach(vm => {
+        const row = document.querySelector(`tr[data-vmid="${vm.vmid}"]`);
+        if (!row) return;
+        row.querySelector('.cell-status').innerHTML = statusBadge(vm.status);
+        row.querySelector('.cell-cpu').textContent =
+          vm.status === 'running' ? Math.round(vm.cpu * 100) + '%' : '—';
+        row.querySelector('.cell-uptime').textContent =
+          vm.status === 'running' ? fmtUptime(vm.uptime) : '—';
+      });
+    })
+    .catch(() => {});
+}
+
+function fmtUptime(s) {
+  if (!s) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h >= 24 ? `${Math.floor(h/24)}j ${h%24}h` : `${h}h ${m}m`;
+}
+
+setInterval(refreshVmStatus, 30000);
 </script>
 {% endblock %}
