@@ -252,6 +252,41 @@ body {
 }
 
 /* ============================================================
+   Alerts page
+   ============================================================ */
+
+.engine-suricata {
+  background: #1f6feb;
+  color: #fff;
+  font-size: .72rem;
+}
+
+.engine-snort {
+  background: #b91c1c;
+  color: #fff;
+  font-size: .72rem;
+}
+
+.mitre-badge {
+  background: #6e40c9;
+  color: #e6edf3;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .2px;
+}
+
+.mitre-tech {
+  font-family: ui-monospace, monospace;
+  font-size: .9em;
+  opacity: .85;
+}
+
+/* Alert widget sur le dashboard */
+.alert-row-critical { border-left: 3px solid #f85149; }
+.alert-row-medium   { border-left: 3px solid #d29922; }
+.alert-row-low      { border-left: 3px solid #8b949e; }
+
+/* ============================================================
    Status page
    ============================================================ */
 

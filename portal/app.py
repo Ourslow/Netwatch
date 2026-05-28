@@ -12,6 +12,7 @@ from proxmoxer.core import ResourceException
 import config
 from proxmox import client as px_client
 from netwatch import health as nw_health
+from netwatch import es_client
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -279,6 +280,10 @@ def dashboard():
     open_source = [t for t in catalog if t["type"] == "open-source"]
     commercial  = [t for t in catalog if t["type"] == "commercial"]
 
+    # Widget alertes IDS — dernières 5 alertes + stats
+    recent_alerts, _ = es_client.get_recent_alerts(size=5)
+    alert_stats, _   = es_client.get_alert_stats()
+
     return render_template(
         "dashboard.html",
         node_status=node_status,
@@ -288,6 +293,8 @@ def dashboard():
         commercial_count=len(commercial),
         proxmox_host=config.PROXMOX_HOST,
         proxmox_node=config.PROXMOX_NODE,
+        recent_alerts=recent_alerts,
+        alert_stats=alert_stats,
     )
 
 
@@ -445,6 +452,47 @@ def api_status():
         autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
     )
     return jsonify({"global": global_status, "services": services})
+
+
+@app.route("/alerts")
+@login_required
+def alerts():
+    engine   = request.args.get("engine",   "")
+    severity = request.args.get("severity", "")
+    search   = request.args.get("q",        "").strip()
+
+    alerts_list, error = es_client.get_recent_alerts(
+        size=100,
+        engine=engine   or None,
+        severity=int(severity) if severity else None,
+        search=search   or None,
+    )
+    stats, _ = es_client.get_alert_stats()
+
+    return render_template(
+        "alerts.html",
+        alerts=alerts_list,
+        error=error,
+        stats=stats,
+        engine=engine,
+        severity=severity,
+        search=search,
+    )
+
+
+@app.route("/api/alerts")
+@login_required
+def api_alerts():
+    engine   = request.args.get("engine",   "")
+    severity = request.args.get("severity", "")
+    alerts_list, error = es_client.get_recent_alerts(
+        size=50,
+        engine=engine or None,
+        severity=int(severity) if severity else None,
+    )
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify(alerts_list)
 
 
 @app.route("/compare")

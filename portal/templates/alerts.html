@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Alertes IDS — NetWatch Portal{% endblock %}
+{% block page_title %}Alertes IDS{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small" id="alert-count-label">
+  {% if alerts %}{{ alerts | length }} alertes{% endif %}
+</span>
+<span class="badge bg-dark border text-muted" title="Rafraîchi toutes les 30s">
+  <i class="bi bi-arrow-repeat me-1"></i>live 30s
+</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats header -->
+{% if stats %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Total alertes</p>
+        <h2 class="stat-value">{{ stats.total }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Dernières 24h</p>
+        <h2 class="stat-value text-info">{{ stats.last_24h }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Critiques (sev 1)</p>
+        <h2 class="stat-value text-danger">{{ stats.critical }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Moyennes (sev 2)</p>
+        <h2 class="stat-value text-warning">{{ stats.medium }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Filtres -->
+<form method="GET" action="{{ url_for('alerts') }}" class="mb-3">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <!-- Recherche libre -->
+    <div class="flex-grow-1" style="min-width:200px; max-width:340px">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text" style="background:var(--bg-card);border-color:var(--border);color:#8b949e">
+          <i class="bi bi-search"></i>
+        </span>
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Signature, IP, catégorie…" value="{{ search }}">
+      </div>
+    </div>
+
+    <!-- Filtre moteur -->
+    <div class="btn-group btn-group-sm">
+      <a href="{{ url_for('alerts', severity=severity, q=search) }}"
+         class="btn {% if not engine %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        Tous
+      </a>
+      <a href="{{ url_for('alerts', engine='suricata', severity=severity, q=search) }}"
+         class="btn {% if engine == 'suricata' %}btn-info{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-shield-fill me-1"></i>Suricata
+      </a>
+      <a href="{{ url_for('alerts', engine='snort', severity=severity, q=search) }}"
+         class="btn {% if engine == 'snort' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>Snort
+      </a>
+    </div>
+
+    <!-- Filtre sévérité -->
+    <div class="btn-group btn-group-sm">
+      <a href="{{ url_for('alerts', engine=engine, q=search) }}"
+         class="btn {% if not severity %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+        Toutes sév.
+      </a>
+      <a href="{{ url_for('alerts', engine=engine, severity=1, q=search) }}"
+         class="btn {% if severity == '1' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
+        🔴 Critique
+      </a>
+      <a href="{{ url_for('alerts', engine=engine, severity=2, q=search) }}"
+         class="btn {% if severity == '2' %}btn-warning{% else %}btn-outline-secondary{% endif %}">
+        🟡 Moyen
+      </a>
+      <a href="{{ url_for('alerts', engine=engine, severity=3, q=search) }}"
+         class="btn {% if severity == '3' %}btn-outline-secondary active{% else %}btn-outline-secondary{% endif %}">
+        🔵 Faible
+      </a>
+    </div>
+
+    <button type="submit" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-funnel me-1"></i>Filtrer
+    </button>
+    {% if engine or severity or search %}
+    <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-x me-1"></i>Reset
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Erreur ES -->
+{% if error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>{{ error }}</div>
+</div>
+{% endif %}
+
+<!-- Tableau alertes -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle" id="alerts-table">
+      <thead>
+        <tr>
+          <th style="width:130px">Horodatage</th>
+          <th style="width:90px">Moteur</th>
+          <th style="width:80px">Sév.</th>
+          <th>Signature</th>
+          <th style="width:130px">Source</th>
+          <th style="width:130px">Destination</th>
+          <th>MITRE</th>
+        </tr>
+      </thead>
+      <tbody id="alerts-tbody">
+        {% if alerts %}
+          {% for a in alerts %}
+          <tr>
+            <td class="text-muted fw-mono small">
+              {{ a.timestamp[:19] | replace('T', ' ') if a.timestamp else '—' }}
+            </td>
+            <td>
+              {% if a.engine == 'suricata' %}
+                <span class="badge engine-suricata">Suricata</span>
+              {% else %}
+                <span class="badge engine-snort">Snort</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if a.severity == 1 %}
+                <span class="badge bg-danger">Critique</span>
+              {% elif a.severity == 2 %}
+                <span class="badge bg-warning text-dark">Moyen</span>
+              {% else %}
+                <span class="badge bg-secondary">Faible</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              <span class="fw-medium">{{ a.signature }}</span>
+              {% if a.category and a.category != '—' %}
+                <br><small class="text-muted">{{ a.category }}</small>
+              {% endif %}
+            </td>
+            <td class="fw-mono small">{{ a.src_ip }}</td>
+            <td class="fw-mono small">{{ a.dest_ip }}</td>
+            <td>
+              {% if a.mitre_tactic %}
+                <span class="badge mitre-badge" title="{{ a.mitre_tech or '' }}">
+                  {{ a.mitre_tactic }}
+                  {% if a.mitre_tech %}<span class="mitre-tech"> · {{ a.mitre_tech }}</span>{% endif %}
+                </span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-5">
+              {% if error %}
+                <i class="bi bi-database-x fs-2 d-block mb-2"></i>
+                Elasticsearch non joignable — lancez le stack NetWatch (<code>make start</code>)
+              {% elif engine or severity or search %}
+                <i class="bi bi-funnel fs-2 d-block mb-2"></i>
+                Aucune alerte pour ces filtres
+              {% else %}
+                <i class="bi bi-shield-check fs-2 d-block mb-2"></i>
+                Aucune alerte — stack silencieuse ou Elasticsearch vide
+                (<code>make sim</code> pour générer du trafic)
+              {% endif %}
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Top MITRE tactics -->
+{% if stats and stats.mitre %}
+<div class="card mt-3">
+  <div class="card-header">
+    <i class="bi bi-diagram-3 me-2"></i>Top MITRE ATT&CK tactics
+  </div>
+  <div class="card-body d-flex flex-wrap gap-2">
+    {% for tactic, count in stats.mitre %}
+    <a href="{{ url_for('alerts', q=tactic) }}"
+       class="badge mitre-badge text-decoration-none"
+       style="font-size:.8rem;padding:.4rem .7rem">
+      {{ tactic }}
+      <span class="ms-1 opacity-75">({{ count }})</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ---- Auto-refresh alertes toutes les 30s ---- */
+const engine   = "{{ engine }}";
+const severity = "{{ severity }}";
+
+function severityBadge(s) {
+  if (s === 1) return '<span class="badge bg-danger">Critique</span>';
+  if (s === 2) return '<span class="badge bg-warning text-dark">Moyen</span>';
+  return '<span class="badge bg-secondary">Faible</span>';
+}
+
+function engineBadge(e) {
+  return e === 'suricata'
+    ? '<span class="badge engine-suricata">Suricata</span>'
+    : '<span class="badge engine-snort">Snort</span>';
+}
+
+function fmtTs(ts) {
+  return ts ? ts.slice(0,19).replace('T',' ') : '—';
+}
+
+function mitreBadge(a) {
+  if (!a.mitre_tactic) return '<span class="text-muted small">—</span>';
+  const tech = a.mitre_tech ? ` · <span class="mitre-tech">${a.mitre_tech}</span>` : '';
+  return `<span class="badge mitre-badge" title="${a.mitre_tech||''}">${a.mitre_tactic}${tech}</span>`;
+}
+
+function refreshAlerts() {
+  let url = '/api/alerts';
+  const params = [];
+  if (engine)   params.push('engine='   + engine);
+  if (severity) params.push('severity=' + severity);
+  if (params.length) url += '?' + params.join('&');
+
+  fetch(url)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const tbody = document.getElementById('alerts-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = data.map(a => `
+        <tr>
+          <td class="text-muted fw-mono small">${fmtTs(a.timestamp)}</td>
+          <td>${engineBadge(a.engine)}</td>
+          <td>${severityBadge(a.severity)}</td>
+          <td class="small">
+            <span class="fw-medium">${a.signature}</span>
+            ${a.category && a.category !== '—' ? `<br><small class="text-muted">${a.category}</small>` : ''}
+          </td>
+          <td class="fw-mono small">${a.src_ip}</td>
+          <td class="fw-mono small">${a.dest_ip}</td>
+          <td>${mitreBadge(a)}</td>
+        </tr>
+      `).join('');
+      const label = document.getElementById('alert-count-label');
+      if (label) label.textContent = data.length + ' alertes';
+    })
+    .catch(() => {});
+}
+
+setInterval(refreshAlerts, 30000);
+</script>
+{% endblock %}

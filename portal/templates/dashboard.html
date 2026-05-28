@@ -109,6 +109,61 @@
   </div>
 </div>
 
+<!-- Widget dernières alertes IDS -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-shield-exclamation me-2 text-danger"></i>Dernières alertes IDS</span>
+    <div class="d-flex align-items-center gap-2">
+      {% if alert_stats %}
+        <span class="badge bg-danger">{{ alert_stats.critical }} critiques</span>
+        <span class="badge bg-warning text-dark">{{ alert_stats.medium }} moyennes</span>
+        <span class="text-muted small">24h : {{ alert_stats.last_24h }}</span>
+      {% endif %}
+      <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary">Voir tout</a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if recent_alerts %}
+    <table class="table table-hover mb-0 align-middle">
+      <thead><tr>
+        <th>Horodatage</th><th>Moteur</th><th>Sév.</th><th>Signature</th><th>Source</th><th>MITRE</th>
+      </tr></thead>
+      <tbody>
+        {% for a in recent_alerts %}
+        <tr class="alert-row-{% if a.severity == 1 %}critical{% elif a.severity == 2 %}medium{% else %}low{% endif %}">
+          <td class="text-muted fw-mono small">{{ a.timestamp[:19] | replace('T', ' ') if a.timestamp else '—' }}</td>
+          <td>
+            {% if a.engine == 'suricata' %}
+              <span class="badge engine-suricata">Suricata</span>
+            {% else %}
+              <span class="badge engine-snort">Snort</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.severity == 1 %}<span class="badge bg-danger">Critique</span>
+            {% elif a.severity == 2 %}<span class="badge bg-warning text-dark">Moyen</span>
+            {% else %}<span class="badge bg-secondary">Faible</span>{% endif %}
+          </td>
+          <td class="small fw-medium">{{ a.signature | truncate(55) }}</td>
+          <td class="fw-mono small">{{ a.src_ip }}</td>
+          <td>
+            {% if a.mitre_tactic %}
+              <span class="badge mitre-badge">{{ a.mitre_tactic }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-muted py-4 small">
+      <i class="bi bi-shield-check fs-3 d-block mb-2"></i>
+      Aucune alerte — Elasticsearch vide ou non joignable
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Liste VMs + accès rapide catalogue -->
 <div class="row g-3">
   <div class="col-lg-7">

@@ -25,6 +25,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('alerts') }}"
+           class="nav-link {% if request.endpoint in ['alerts'] %}active{% endif %}">
+          <i class="bi bi-shield-exclamation"></i> Alertes IDS
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('vms') }}"
            class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
           <i class="bi bi-server"></i> Machines virtuelles
