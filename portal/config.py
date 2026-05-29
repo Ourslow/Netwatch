@@ -13,6 +13,9 @@ FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
 FLASK_DEBUG      = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 PORT             = int(os.getenv("PORT", 5050))
 
+# Cookie de session en HTTPS uniquement (mettre true derrière un reverse-proxy TLS)
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+
 # Credentials du portail (authentification)
 PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")
 PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")   # vide = portail désactivé si pas défini

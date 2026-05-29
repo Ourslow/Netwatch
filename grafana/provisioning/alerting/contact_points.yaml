@@ -23,6 +23,9 @@ contactPoints:
       - uid: autoblock-webhook
         type: webhook
         settings:
-          url: http://netwatch-autoblock:5001/webhook/alert
+          # AutoBlock tourne en network_mode:host : injoignable par son nom de conteneur
+          # depuis Grafana (réseau bridge). On passe par la gateway hôte (extra_hosts).
+          # Le token authentifie l'appel (voir AUTOBLOCK_WEBHOOK_SECRET dans .env).
+          url: http://host.docker.internal:5001/webhook/alert?token=${AUTOBLOCK_WEBHOOK_SECRET}
           httpMethod: POST
         disableResolveMessage: true

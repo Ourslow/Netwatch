@@ -13,10 +13,12 @@ Securites :
 
 import os
 import re
+import hmac
 import json
 import logging
 import subprocess
 import threading
+from functools import wraps
 from datetime import datetime, timezone, timedelta
 from collections import deque
 
@@ -57,6 +59,34 @@ logging.basicConfig(
 log = logging.getLogger("autoblock")
 
 app = Flask(__name__)
+
+
+# ─── Authentification ───────────────────────────────────────────────────────────
+def require_token(f):
+    """
+    Protège les endpoints qui modifient l'état (block/unblock).
+    - Si WEBHOOK_SECRET est défini : exige un token valide
+      (header 'X-Webhook-Token' ou query param '?token=').
+    - Si WEBHOOK_SECRET est vide :
+        * mode DRY_RUN  -> autorisé (démo/dev)
+        * mode LIVE     -> refusé (fail-safe : pas de blocage iptables sans secret)
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if WEBHOOK_SECRET:
+            token = (request.headers.get("X-Webhook-Token", "")
+                     or request.args.get("token", ""))
+            if not hmac.compare_digest(token, WEBHOOK_SECRET):
+                log.warning("Requête rejetée (token invalide) depuis %s",
+                            request.remote_addr)
+                return jsonify({"status": "error",
+                                "message": "Token invalide ou manquant"}), 401
+        elif not DRY_RUN:
+            log.error("WEBHOOK_SECRET non défini en mode LIVE — requête refusée (fail-safe)")
+            return jsonify({"status": "error",
+                            "message": "WEBHOOK_SECRET requis en mode LIVE"}), 503
+        return f(*args, **kwargs)
+    return wrapper
 
 
 # ─── iptables ─────────────────────────────────────────────────────────────────
@@ -174,7 +204,7 @@ def log_event(event: dict):
         try:
             es = Elasticsearch(ES_URL, request_timeout=5)
             today = datetime.now(timezone.utc).strftime("%Y.%m.%d")
-            es.index(index=f"netwatch-autoblock-{today}", body=event)
+            es.index(index=f"netwatch-autoblock-{today}", document=event)
         except Exception as e:
             log.error("Impossible d'indexer dans ES : %s", e)
 
@@ -249,6 +279,7 @@ def health():
 
 
 @app.route("/webhook/alert", methods=["POST"])
+@require_token
 def webhook_alert():
     """Point d'entree pour les alertes Grafana (contact point Webhook)."""
     payload = request.get_json(silent=True)
@@ -270,6 +301,7 @@ def webhook_alert():
 
 
 @app.route("/block", methods=["POST"])
+@require_token
 def manual_block():
     """Blocage manuel via API REST."""
     data = request.get_json(silent=True) or {}
@@ -285,6 +317,7 @@ def manual_block():
 
 
 @app.route("/unblock", methods=["POST"])
+@require_token
 def manual_unblock():
     """Deblocage manuel."""
     data = request.get_json(silent=True) or {}
@@ -306,6 +339,12 @@ def manual_unblock():
 if __name__ == "__main__":
     mode = "DRY-RUN" if DRY_RUN else "LIVE (iptables actif)"
     log.info("NetWatch AutoBlock demarre — mode=%s port=%d", mode, WEBHOOK_PORT)
+    if WEBHOOK_SECRET:
+        log.info("Authentification : ACTIVE (token requis sur block/unblock/webhook)")
+    elif DRY_RUN:
+        log.warning("Authentification : DESACTIVEE (WEBHOOK_SECRET vide, toleree en DRY-RUN)")
+    else:
+        log.error("WEBHOOK_SECRET vide en mode LIVE — les endpoints de blocage seront refuses (fail-safe)")
     log.info("Allowlist : %s", sorted(ALLOWLIST))
     log.info("Rate limit : %d blocs/heure, expiration : %dmin",
              MAX_BLOCKS_PER_HOUR, BLOCK_DURATION_MIN)

@@ -7,7 +7,6 @@ from flask import Flask, render_template, redirect, url_for, flash, request, jso
 from flask_login import (LoginManager, UserMixin,
                          login_user, logout_user,
                          login_required, current_user)
-from proxmoxer.core import ResourceException
 
 import config
 from proxmox import client as px_client
@@ -141,6 +140,16 @@ COMPARE_MATRIX = [
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
+
+# Durcissement des cookies de session
+#  - HttpOnly : inaccessible au JS (anti-XSS vol de session)
+#  - SameSite=Lax : le cookie n'est pas envoyé sur les POST cross-site (anti-CSRF)
+#  - Secure : cookie envoyé uniquement en HTTPS (activer en prod via SESSION_COOKIE_SECURE)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=config.SESSION_COOKIE_SECURE,
+)
 
 # ============================================================
 # Authentification (Flask-Login)

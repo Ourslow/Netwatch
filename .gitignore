@@ -21,3 +21,10 @@ Thumbs.db
 # Logs locaux
 *.log
 *.err
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/

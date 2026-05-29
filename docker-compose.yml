@@ -98,7 +98,9 @@ services:
       - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - es-data:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
+      # Lié à localhost uniquement : ES n'a pas d'auth (xpack.security off).
+      # Accès externe = via Grafana (datasource interne). Ne pas exposer sur 0.0.0.0.
+      - "127.0.0.1:9200:9200"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 15s
@@ -117,7 +119,8 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=15d'
     ports:
-      - "9090:9090"
+      # Lié à localhost : Prometheus n'a pas d'auth. Grafana l'atteint via le réseau interne.
+      - "127.0.0.1:9090:9090"
     restart: unless-stopped
 
   node-exporter:
@@ -142,6 +145,10 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_UNIFIED_ALERTING_ENABLED=true
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - AUTOBLOCK_WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
+    extra_hosts:
+      # Permet à Grafana (réseau bridge) d'atteindre AutoBlock (network_mode:host)
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -187,6 +194,7 @@ services:
     environment:
       - ES_URL=http://localhost:9200
       - WEBHOOK_PORT=5001
+      - WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
       - BLOCK_DURATION_MIN=${BLOCK_DURATION_MIN:-60}
       - MAX_BLOCKS_PER_HOUR=20
       - DRY_RUN=${AUTOBLOCK_DRY_RUN:-true}
