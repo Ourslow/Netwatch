@@ -2,6 +2,7 @@ import hmac
 import json
 import os
 from functools import wraps
+from urllib.parse import urlsplit, urlunsplit
 
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import (LoginManager, UserMixin,
@@ -243,6 +244,25 @@ def fmt_uptime(seconds):
 
 
 app.jinja_env.filters["fmt_uptime"] = fmt_uptime
+
+
+def browser_url(url):
+    """Réécrit localhost/127.0.0.1 vers l'hôte depuis lequel l'utilisateur navigue.
+    Les URLs de config (health checks) ciblent localhost = la VM côté serveur ;
+    pour qu'un lien soit cliquable depuis un poste distant, on substitue le host
+    de la requête courante (ex. 172.31.20.90). Le port est conservé."""
+    try:
+        parts = urlsplit(url)
+        if parts.hostname not in ("localhost", "127.0.0.1"):
+            return url
+        host = request.host.split(":")[0]
+        netloc = host + (f":{parts.port}" if parts.port else "")
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    except Exception:
+        return url
+
+
+app.jinja_env.filters["browser_url"] = browser_url
 
 # ============================================================
 # Routes — Auth
