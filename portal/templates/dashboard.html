@@ -5,7 +5,14 @@
 {% block content %}
 
 <!-- Statut Proxmox -->
-{% if not proxmox_ok %}
+{% if not proxmox_configured %}
+<div class="alert alert-info d-flex align-items-center gap-2">
+  <i class="bi bi-info-circle-fill"></i>
+  <div>
+    Proxmox non configuré — déploiement ESXi/standalone. La gestion des VMs Proxmox est désactivée.
+  </div>
+</div>
+{% elif not proxmox_ok %}
 <div class="alert alert-warning d-flex align-items-center gap-2">
   <i class="bi bi-exclamation-triangle-fill"></i>
   <div>

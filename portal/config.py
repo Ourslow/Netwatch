@@ -30,3 +30,6 @@ NETWATCH_AUTOBLOCK_URL  = os.getenv("NETWATCH_AUTOBLOCK_URL",  "http://localhost
 # 100% on-prem, aucune donnée envoyée hors du SI
 OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+# Timeout (s) des appels de génération Ollama. L'inférence CPU (sans GPU) est lente :
+# 120 s laisse le temps au modèle de se charger + générer. Réduire si GPU dispo.
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))

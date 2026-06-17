@@ -9,7 +9,7 @@ contactée. Cohérent avec la philosophie souveraine de NetWatch.
 import requests
 import config
 
-_TIMEOUT = 30  # génération LLM plus lente qu'une requête ES classique
+_TIMEOUT = config.OLLAMA_TIMEOUT  # configurable via OLLAMA_TIMEOUT (inférence CPU lente)
 
 _SYSTEM_PROMPT = (
     "Tu es un assistant SOC qui explique des alertes IDS (Snort/Suricata) "

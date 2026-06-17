@@ -196,7 +196,9 @@ def load_catalog():
 
 
 def get_proxmox():
-    """Retourne un client Proxmox ou None si non joignable."""
+    """Retourne un client Proxmox, ou None si non configuré / non joignable."""
+    if not config.PROXMOX_HOST:
+        return None          # déploiement ESXi/standalone : pas de tentative (évite un hang de 5s)
     try:
         return px_client.get_client()
     except Exception:
@@ -208,7 +210,10 @@ def proxmox_required(f):
     def decorated(*args, **kwargs):
         px = get_proxmox()
         if px is None:
-            flash("Proxmox non joignable — vérifier PROXMOX_HOST et les credentials dans .env", "danger")
+            if not config.PROXMOX_HOST:
+                flash("Proxmox non configuré — gestion des VMs réservée au déploiement Proxmox (renseigner PROXMOX_HOST dans .env).", "info")
+            else:
+                flash("Proxmox non joignable — vérifier PROXMOX_HOST et les credentials dans .env", "danger")
             return redirect(url_for("dashboard"))
         return f(px, *args, **kwargs)
     return decorated
@@ -299,6 +304,7 @@ def dashboard():
         node_status=node_status,
         vms=vms,
         proxmox_ok=proxmox_ok,
+        proxmox_configured=bool(config.PROXMOX_HOST),
         open_source_count=len(open_source),
         commercial_count=len(commercial),
         proxmox_host=config.PROXMOX_HOST,
@@ -444,6 +450,7 @@ def status():
         global_status=global_status,
         node_status=node_status,
         proxmox_ok=(px is not None),
+        proxmox_configured=bool(config.PROXMOX_HOST),
         proxmox_host=config.PROXMOX_HOST,
         proxmox_node=config.PROXMOX_NODE,
         config_es_url=config.NETWATCH_ES_URL,
@@ -501,6 +508,7 @@ def report():
         node_status    = node_status,
         vms            = vms,
         proxmox_ok     = (px is not None),
+        proxmox_configured = bool(config.PROXMOX_HOST),
         proxmox_host   = config.PROXMOX_HOST,
         proxmox_node   = config.PROXMOX_NODE,
         services       = services,

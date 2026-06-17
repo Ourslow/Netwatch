@@ -13,7 +13,7 @@ services:
       - NET_ADMIN
       - NET_RAW
     environment:
-      - IFACE=eth0
+      - IFACE=${IFACE:-eth0}
     volumes:
       - ./zeek/local.zeek:/usr/local/zeek/share/zeek/site/local.zeek:ro
       - ./zeek/scripts:/usr/local/zeek/share/zeek/site/scripts:ro
@@ -35,7 +35,7 @@ services:
       - NET_ADMIN
       - NET_RAW
     environment:
-      - IFACE=eth0
+      - IFACE=${IFACE:-eth0}
       - SNORT_MONITORED_SERVER=${SNORT_MONITORED_SERVER:-127.0.0.1}
     volumes:
       - ./snort/snort.lua:/usr/local/etc/snort/snort.lua:ro
@@ -58,7 +58,7 @@ services:
       - NET_RAW
       - SYS_NICE
     environment:
-      - IFACE=eth0
+      - IFACE=${IFACE:-eth0}
     volumes:
       - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ./suricata/local.rules:/etc/suricata/rules/local.rules:ro
@@ -144,7 +144,9 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_UNIFIED_ALERTING_ENABLED=true
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      # URL non vide par défaut : sans webhook réel, Grafana refuse de démarrer
+      # (le contact point Slack exige une URL non vide). Renseigner SLACK_WEBHOOK_URL pour activer.
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-http://localhost/slack-not-configured}
       - AUTOBLOCK_WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
     extra_hosts:
       # Permet à Grafana (réseau bridge) d'atteindre AutoBlock (network_mode:host)
