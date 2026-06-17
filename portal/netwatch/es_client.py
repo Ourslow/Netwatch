@@ -36,6 +36,14 @@ def _es(path, body=None, method="post"):
 # Normalisation                                                        #
 # ------------------------------------------------------------------ #
 
+def _first(v):
+    """Premier élément si liste (vide → None), sinon la valeur telle quelle.
+    Robuste aux alertes réelles (ET/GPL) dont les champs MITRE sont absents/vides."""
+    if isinstance(v, list):
+        return v[0] if v else None
+    return v or None
+
+
 def _normalize(hit):
     src    = hit["_source"]
     index  = hit.get("_index", "")
@@ -44,11 +52,9 @@ def _normalize(hit):
     if engine == "suricata":
         alert = src.get("alert", {})
         meta  = alert.get("metadata", {})
-        # mitre_tactic_name peut être une liste ou une str
-        tactic_raw = meta.get("mitre_tactic_name", [])
-        tech_raw   = meta.get("mitre_technique_id", [])
-        tactic = (tactic_raw[0] if isinstance(tactic_raw, list) else tactic_raw) or None
-        tech   = (tech_raw[0]   if isinstance(tech_raw,   list) else tech_raw)   or None
+        # mitre_tactic_name / technique_id : liste, str, ou absent selon la règle
+        tactic = _first(meta.get("mitre_tactic_name"))
+        tech   = _first(meta.get("mitre_technique_id"))
         return {
             "engine":       "suricata",
             "timestamp":    src.get("@timestamp", ""),
