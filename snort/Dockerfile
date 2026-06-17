@@ -3,12 +3,15 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Dependances Snort 3
+# NB Ubuntu : la libdnet attendue par Snort est packagee 'libdumbnet-dev'
+# (header dumbnet.h) ; on cree un lien dnet.h pour que cmake FindDNET la trouve.
 RUN apt-get update && apt-get install -y \
     build-essential cmake libhwloc-dev libluajit-5.1-dev \
-    libpcap-dev libpcre3-dev libdnet-dev zlib1g-dev \
+    libpcap-dev libpcre3-dev libdumbnet-dev zlib1g-dev \
     libssl-dev libsqlite3-dev liblzma-dev libunwind-dev \
     libmnl-dev autotools-dev libfl-dev pkg-config \
     wget git flex bison uuid-dev \
+    && ln -sf /usr/include/dumbnet.h /usr/include/dnet.h \
     && rm -rf /var/lib/apt/lists/*
 
 # libdaq (Data Acquisition Library)
