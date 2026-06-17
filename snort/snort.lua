@@ -14,6 +14,10 @@ dofile('/usr/local/etc/snort/snort_defaults.lua')
 -- Ne pas mettre d'IP en clair ici : creer snort.local.lua avec MONITORED_SERVER = 'x.x.x.x'
 MONITORED_SERVER = os.getenv('SNORT_MONITORED_SERVER') or '127.0.0.1'
 
+-- Expose MONITORED_SERVER aux regles IPS ($MONITORED_SERVER dans local.rules).
+-- default_variables est defini par snort_defaults.lua (charge ci-dessus).
+default_variables.nets.MONITORED_SERVER = MONITORED_SERVER
+
 -- Decodeurs
 wizard = default_wizard
 
@@ -53,10 +57,12 @@ ips = {
 }
 
 -- Sortie JSON (compatible Filebeat)
+-- Champs valides du plugin alert_json de Snort 3.3.5 (pkt_gen / class_desc n'existent pas).
+-- es_client.py (branche snort) lit : msg, src_addr, dst_addr, priority.
 alert_json = {
     file = true,
     limit = 100,
-    fields = 'timestamp pkt_num proto pkt_gen pkt_len dir src_addr src_port dst_addr dst_port service rule action msg priority class_desc'
+    fields = 'timestamp pkt_num proto pkt_len dir src_addr src_port dst_addr dst_port service rule action msg priority class'
 }
 
 -- Sortie alertes classique (backup)
