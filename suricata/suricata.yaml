@@ -75,8 +75,8 @@ threading:
   set-cpu-affinity: no
   detect-thread-ratio: 2.0
 
-# Performance capture
-max-pending-packets: 65535
+# Performance capture (max autorisé par Suricata = 65534)
+max-pending-packets: 65534
 
 # Regles
 default-rule-path: /var/lib/suricata/rules
@@ -104,9 +104,10 @@ app-layer:
     ftp:
       enabled: yes
 
-# Capture
+# Capture — 'default' s'applique à l'interface passée par -i (entrypoint),
+# rend la config indépendante du nom de carte (eth0/ens160/...)
 af-packet:
-  - interface: eth0
+  - interface: default
     cluster-id: 99
     cluster-type: cluster_flow
     defrag: yes

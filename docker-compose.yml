@@ -77,6 +77,9 @@ services:
     image: docker.elastic.co/beats/filebeat:8.13.0
     container_name: netwatch-filebeat
     user: root
+    # Le filebeat.yml est monté depuis l'hôte (propriétaire ≠ root) : on désactive
+    # le contrôle strict de permissions qui refuse sinon de charger la config.
+    command: ["-e", "--strict.perms=false"]
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - zeek-logs:/zeek/logs:ro

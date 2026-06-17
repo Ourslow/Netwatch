@@ -5,6 +5,11 @@
 HOME_NET = '10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16'
 EXTERNAL_NET = '!$HOME_NET'
 
+-- Variables reseau/ports par defaut de Snort 3 (HTTP_SERVERS, HTTP_PORTS,
+-- SMTP_SERVERS, etc.) requises par les regles community. Definit 'default_variables'
+-- a partir des HOME_NET/EXTERNAL_NET ci-dessus.
+dofile('/usr/local/etc/snort/snort_defaults.lua')
+
 -- Serveur surveille en specifique — definir via variable d'env ou surcharge locale
 -- Ne pas mettre d'IP en clair ici : creer snort.local.lua avec MONITORED_SERVER = 'x.x.x.x'
 MONITORED_SERVER = os.getenv('SNORT_MONITORED_SERVER') or '127.0.0.1'
