@@ -133,6 +133,7 @@
           <th style="width:130px">Source</th>
           <th style="width:130px">Destination</th>
           <th>MITRE</th>
+          <th style="width:50px"></th>
         </tr>
       </thead>
       <tbody id="alerts-tbody">
@@ -176,11 +177,18 @@
                 <span class="text-muted small">—</span>
               {% endif %}
             </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-info explain-btn"
+                      title="Expliquer cette alerte (assistant IA local)"
+                      data-alert='{{ a | tojson | forceescape }}'>
+                <i class="bi bi-stars"></i>
+              </button>
+            </td>
           </tr>
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="7" class="text-center text-muted py-5">
+            <td colspan="8" class="text-center text-muted py-5">
               {% if error %}
                 <i class="bi bi-database-x fs-2 d-block mb-2"></i>
                 Elasticsearch non joignable — lancez le stack NetWatch (<code>make start</code>)
@@ -218,6 +226,28 @@
   </div>
 </div>
 {% endif %}
+
+
+<!-- Modal explication IA -->
+<div class="modal fade" id="explainModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-stars me-2"></i>Assistant IA — explication de l'alerte</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="explain-modal-body">
+        <div class="text-center text-muted py-4">
+          <div class="spinner-border spinner-border-sm me-2"></div>Génération en cours…
+        </div>
+      </div>
+      <div class="modal-footer">
+        <small class="text-muted me-auto">Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur</small>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
@@ -274,6 +304,13 @@ function refreshAlerts() {
           <td class="fw-mono small">${a.src_ip}</td>
           <td class="fw-mono small">${a.dest_ip}</td>
           <td>${mitreBadge(a)}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-info explain-btn"
+                    title="Expliquer cette alerte (assistant IA local)"
+                    data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
+              <i class="bi bi-stars"></i>
+            </button>
+          </td>
         </tr>
       `).join('');
       const label = document.getElementById('alert-count-label');
@@ -283,5 +320,51 @@ function refreshAlerts() {
 }
 
 setInterval(refreshAlerts, 30000);
+
+/* ---- Assistant IA — explication d'alerte (délégation d'événement) ---- */
+const explainModalEl = document.getElementById('explainModal');
+const explainModal    = new bootstrap.Modal(explainModalEl);
+const explainBody     = document.getElementById('explain-modal-body');
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.explain-btn');
+  if (!btn) return;
+
+  let alertData;
+  try {
+    alertData = JSON.parse(btn.dataset.alert);
+  } catch {
+    return;
+  }
+
+  explainBody.innerHTML = `
+    <div class="text-center text-muted py-4">
+      <div class="spinner-border spinner-border-sm me-2"></div>Génération en cours…
+    </div>`;
+  explainModal.show();
+
+  fetch('/api/explain', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(alertData),
+  })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        explainBody.innerHTML = `
+          <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>${data.error || 'Erreur inconnue'}
+          </div>`;
+        return;
+      }
+      explainBody.innerHTML = `<p class="mb-0" style="white-space:pre-wrap">${data.explanation}</p>`;
+    })
+    .catch(() => {
+      explainBody.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-x-circle-fill me-2"></i>Impossible de contacter l'assistant IA
+        </div>`;
+    });
+});
 </script>
 {% endblock %}

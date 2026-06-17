@@ -25,3 +25,8 @@ NETWATCH_ES_URL         = os.getenv("NETWATCH_ES_URL",         "http://localhost
 NETWATCH_GRAFANA_URL    = os.getenv("NETWATCH_GRAFANA_URL",    "http://localhost:3000")
 NETWATCH_PROMETHEUS_URL = os.getenv("NETWATCH_PROMETHEUS_URL", "http://localhost:9090")
 NETWATCH_AUTOBLOCK_URL  = os.getenv("NETWATCH_AUTOBLOCK_URL",  "http://localhost:5001")
+
+# Assistant IA local (Ollama) — explication des alertes, résumé exécutif
+# 100% on-prem, aucune donnée envoyée hors du SI
+OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")

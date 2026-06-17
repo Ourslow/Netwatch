@@ -204,6 +204,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ============================================================
+  # ASSISTANT IA LOCAL (explication d'alertes, résumé exécutif)
+  # ============================================================
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: netwatch-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # Modèle attendu par le portail : OLLAMA_MODEL (défaut "mistral")
+    # Première utilisation : docker exec netwatch-ollama ollama pull mistral
+    restart: unless-stopped
+
 volumes:
   zeek-logs:
   snort-logs:
@@ -211,3 +226,4 @@ volumes:
   es-data:
   grafana-data:
   prometheus-data:
+  ollama-data:

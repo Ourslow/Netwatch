@@ -90,13 +90,25 @@ def _parse_autoblock(r):
         return "up", None
 
 
-def check_all(es_url, grafana_url, prometheus_url, autoblock_url):
+def _parse_ollama(r):
+    """Ollama /api/tags : liste des modèles chargés."""
+    try:
+        models = [m.get("name", "?") for m in r.json().get("models", [])]
+        detail = f"modèles: {', '.join(models)}" if models else "aucun modèle installé"
+        return ("up" if models else "degraded"), detail
+    except Exception:
+        return "degraded", "Réponse non parseable"
+
+
+def check_all(es_url, grafana_url, prometheus_url, autoblock_url, ollama_url=None):
     services = [
         _check("Elasticsearch",   f"{es_url}/_cluster/health",  _parse_es),
         _check("Grafana",         f"{grafana_url}/api/health",  _parse_grafana),
         _check("Prometheus",      f"{prometheus_url}/-/healthy", _parse_prometheus),
         _check("AutoBlock",       f"{autoblock_url}/health",    _parse_autoblock),
     ]
+    if ollama_url:
+        services.append(_check("Assistant IA (Ollama)", f"{ollama_url}/api/tags", _parse_ollama))
     # Résumé global
     statuses = [s["status"] for s in services]
     if all(s == "up" for s in statuses):

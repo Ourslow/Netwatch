@@ -12,6 +12,7 @@ import config
 from proxmox import client as px_client
 from netwatch import health as nw_health
 from netwatch import es_client
+from netwatch import llm_client
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -426,6 +427,7 @@ def status():
         grafana_url    = config.NETWATCH_GRAFANA_URL,
         prometheus_url = config.NETWATCH_PROMETHEUS_URL,
         autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+        ollama_url     = config.OLLAMA_URL,
     )
     # Infos Proxmox si dispo
     px = get_proxmox()
@@ -459,6 +461,7 @@ def api_status():
         grafana_url    = config.NETWATCH_GRAFANA_URL,
         prometheus_url = config.NETWATCH_PROMETHEUS_URL,
         autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+        ollama_url     = config.OLLAMA_URL,
     )
     return jsonify({"global": global_status, "services": services})
 
@@ -485,6 +488,7 @@ def report():
         grafana_url    = config.NETWATCH_GRAFANA_URL,
         prometheus_url = config.NETWATCH_PROMETHEUS_URL,
         autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+        ollama_url     = config.OLLAMA_URL,
     )
 
     # Alertes IDS
@@ -549,6 +553,34 @@ def api_alerts():
     if error:
         return jsonify({"error": error}), 503
     return jsonify(alerts_list)
+
+
+@app.route("/api/explain", methods=["POST"])
+@login_required
+def api_explain():
+    """Explique une alerte IDS en langage naturel via l'assistant LLM local (Ollama)."""
+    alert = request.get_json(silent=True) or {}
+    if not alert.get("signature"):
+        return jsonify({"error": "Alerte invalide"}), 400
+
+    explanation, error = llm_client.explain_alert(alert)
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify({"explanation": explanation})
+
+
+@app.route("/api/summary")
+@login_required
+def api_summary():
+    """Résumé exécutif IA des alertes récentes (utilisé sur /report)."""
+    alerts_list, es_error = es_client.get_recent_alerts(size=30)
+    if es_error:
+        return jsonify({"error": es_error}), 503
+
+    summary, llm_error = llm_client.summarize_alerts(alerts_list)
+    if llm_error:
+        return jsonify({"error": llm_error}), 503
+    return jsonify({"summary": summary})
 
 
 @app.route("/compare")

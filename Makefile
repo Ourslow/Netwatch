@@ -1,7 +1,9 @@
-.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip help
+.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip llm-pull help
 
-ES  ?= http://localhost:9200
-SVC ?=
+ES     ?= http://localhost:9200
+OLLAMA ?= http://localhost:11434
+MODEL  ?= mistral
+SVC    ?=
 
 # ============================================================
 # Stack
@@ -13,6 +15,7 @@ start:
 	@echo "Grafana      → http://localhost:3000"
 	@echo "Elasticsearch→ http://localhost:9200"
 	@echo "Prometheus   → http://localhost:9090"
+	@echo "Ollama       → http://localhost:11434 (lancer 'make llm-pull' si premier démarrage)"
 
 stop:
 	docker compose down
@@ -73,6 +76,10 @@ update-intel:
 setup-geoip:
 	bash setup-geoip.sh
 
+llm-pull:
+	docker exec netwatch-ollama ollama pull $(MODEL)
+	@echo "Modèle '$(MODEL)' prêt — assistant IA disponible dans le portail (/alerts, /report)"
+
 clean:
 	docker compose down -v --remove-orphans
 	@echo "Volumes supprimés (données ES, Grafana, Prometheus effacées)"
@@ -96,7 +103,7 @@ help:
 	@echo ""
 	@echo "NetWatch v2 — Commandes disponibles"
 	@echo "────────────────────────────────────────────────────"
-	@echo "  make start           Démarrer les 10 services"
+	@echo "  make start           Démarrer les 11 services"
 	@echo "  make stop            Arrêter le stack"
 	@echo "  make restart         Redémarrer tous les services"
 	@echo "  make restart SVC=snort  Redémarrer un service"
@@ -114,6 +121,7 @@ help:
 	@echo ""
 	@echo "  make update-intel    Mettre à jour les listes threat intel Zeek"
 	@echo "  make setup-geoip     Initialiser le pipeline GeoIP Elasticsearch"
+	@echo "  make llm-pull        Télécharger le modèle IA local (Ollama, défaut: mistral)"
 	@echo "  make health          Vérifier l'état du stack (ES + index + autoblock)"
 	@echo "  make clean           Supprimer le stack ET les données (irréversible)"
 	@echo ""
