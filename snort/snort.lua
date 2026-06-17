@@ -10,9 +10,13 @@ EXTERNAL_NET = '!$HOME_NET'
 -- a partir des HOME_NET/EXTERNAL_NET ci-dessus.
 dofile('/usr/local/etc/snort/snort_defaults.lua')
 
--- Serveur surveille en specifique — definir via variable d'env ou surcharge locale
--- Ne pas mettre d'IP en clair ici : creer snort.local.lua avec MONITORED_SERVER = 'x.x.x.x'
-MONITORED_SERVER = os.getenv('SNORT_MONITORED_SERVER') or '127.0.0.1'
+-- Serveur surveille en specifique — definir via SNORT_MONITORED_SERVER dans .env
+-- Le placeholder 'x.x.x.x' (du .env.example) ou une valeur vide retombe sur
+-- 127.0.0.1 : sinon Snort echoue a parser l'IP et casse toute la table IPS.
+MONITORED_SERVER = os.getenv('SNORT_MONITORED_SERVER')
+if not MONITORED_SERVER or MONITORED_SERVER == '' or MONITORED_SERVER == 'x.x.x.x' then
+    MONITORED_SERVER = '127.0.0.1'
+end
 
 -- Expose MONITORED_SERVER aux regles IPS ($MONITORED_SERVER dans local.rules).
 -- default_variables est defini par snort_defaults.lua (charge ci-dessus).
