@@ -4,8 +4,9 @@ FROM jasonish/suricata:7.0
 RUN suricata-update enable-source et/open && \
     suricata-update
 
-# Repertoire de logs
-RUN mkdir -p /var/log/suricata
+# Repertoire de logs — 0777 pour rester ecrivable malgre cap_drop: ALL
+# (le process perd DAC_OVERRIDE et le volume herite des perms de ce dossier)
+RUN mkdir -p /var/log/suricata && chmod 0777 /var/log/suricata
 
 WORKDIR /var/log/suricata
 
