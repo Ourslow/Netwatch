@@ -1,0 +1,107 @@
+{
+  "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+  "description": "Vue de démonstration NetWatch — synthèse exécutive multi-moteurs (Suricata + Snort) pour présentation rapide",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total alertes (Suricata)",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 200}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Critiques (sévérité 1)",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 10}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert AND alert.severity: 1", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Alertes Snort",
+      "description": "Démontre l'analyse multi-moteurs : Snort en parallèle de Suricata sur le même trafic",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "snort-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "snort-es"}, "query": "*", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": []}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "IPs sources uniques",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}, "unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert", "metrics": [{"id": "1", "type": "cardinality", "field": "src_ip.keyword"}], "bucketAggs": []}]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Alertes IDS dans le temps",
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 4},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "showPoints": "never"}, "unit": "short"}, "overrides": []},
+      "options": {"tooltip": {"mode": "multi", "sort": "none"}, "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert", "alias": "Toutes alertes", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]},
+        {"refId": "B", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert AND alert.severity: 1", "alias": "Critiques", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": [{"id": "2", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto", "min_doc_count": "1"}}]}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "Répartition par sévérité",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "donut", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "single"}},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": [{"id": "2", "type": "terms", "field": "alert.severity", "settings": {"size": "3", "order": "desc", "orderBy": "1"}}]}]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top 10 signatures",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "footer": {"show": false, "reducer": ["sum"]}},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": [{"id": "2", "type": "terms", "field": "alert.signature.keyword", "settings": {"size": "10", "order": "desc", "orderBy": "1", "min_doc_count": "1"}}]}]
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "MITRE ATT&CK — Tactiques",
+      "description": "Tactiques MITRE ATT&CK extraites des métadonnées des règles (disponible pour les règles qui les portent)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "elasticsearch", "uid": "suricata-es"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"pieType": "donut", "legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "datasource": {"type": "elasticsearch", "uid": "suricata-es"}, "query": "event_type: alert AND alert.metadata.mitre_tactic_name:*", "metrics": [{"id": "1", "type": "count"}], "bucketAggs": [{"id": "2", "type": "terms", "field": "alert.metadata.mitre_tactic_name", "settings": {"size": "15", "order": "desc", "orderBy": "1"}}]}]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["netwatch", "demo", "overview"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NetWatch — Vue démo",
+  "uid": "netwatch-demo",
+  "version": 1,
+  "weekStart": ""
+}
