@@ -361,7 +361,7 @@
         <tbody>
           {% for m in nis2_measures %}
           <tr>
-            <td style="text-align:center;font-size:1rem">{% if m.coverage=='full' %}<span style="color:var(--ok)">●</span>{% elif m.coverage=='partial' %}<span style="color:var(--med)">●</span>{% else %}<span style="color:var(--crit);opacity:.45">●</span>{% endif %}</td>
+            <td class="text-center">{% if m.coverage=='full' %}<i class="bi bi-check-circle-fill" style="color:var(--ok)"></i>{% elif m.coverage=='partial' %}<i class="bi bi-dash-circle-fill" style="color:var(--med)"></i>{% else %}<i class="bi bi-x-circle-fill" style="color:var(--crit);opacity:.45"></i>{% endif %}</td>
             <td class="mono" style="color:var(--muted);font-size:.72rem;white-space:nowrap">{{ m.ref }}</td>
             <td><strong>{{ m.title }}</strong><br><span style="font-size:.76rem;color:var(--muted)">{{ m.netwatch }}</span></td>
           </tr>
@@ -384,7 +384,7 @@
           {% endfor %}{% endfor %}
           {% set total = fc.v+pc.v+nc.v %}{% set score = ((fc.v + pc.v*0.5)/total*100)|round|int %}
           <tr {% if tool.id=='netwatch' %}style="background:#e8f6fb"{% endif %}>
-            <td><span style="font-size:1.1rem;margin-right:.4rem">{{ tool.logo }}</span><strong>{{ tool.name }}</strong>{% if tool.id=='netwatch' %} <span style="color:var(--accent);font-size:.72rem">← ce projet</span>{% endif %}</td>
+            <td><strong>{{ tool.name }}</strong>{% if tool.id=='netwatch' %} <span style="background:var(--accent);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.4px;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">NOTRE SOLUTION</span>{% endif %}</td>
             <td>{% if tool.type=='open-source' %}<span style="background:#e8f6fb;color:var(--accent);padding:.1rem .4rem;border-radius:4px;font-size:.72rem">open-source</span>{% else %}<span style="background:#fdf3e0;color:var(--med);padding:.1rem .4rem;border-radius:4px;font-size:.72rem">commercial</span>{% endif %}</td>
             <td><div class="score-bar-wrap"><div class="score-bar-fill" style="width:{{ score }}%;background:{% if score>=75 %}var(--ok){% elif score>=50 %}var(--med){% else %}var(--crit){% endif %}"></div></div></td>
             <td style="font-weight:700;color:{% if score>=75 %}var(--ok){% elif score>=50 %}var(--med){% else %}var(--crit){% endif %}">{{ score }}%</td>
@@ -416,10 +416,10 @@ if (aiBtn) {
     fetch('/api/summary')
       .then(r => r.json().then(data => ({ ok: r.ok, data })))
       .then(({ ok, data }) => {
-        if (!ok) { aiContent.textContent = '⚠️ ' + (data.error || 'Assistant IA indisponible.'); aiBtn.style.display='none'; return; }
+        if (!ok) { aiContent.textContent = data.error || 'Assistant IA indisponible.'; aiBtn.style.display='none'; return; }
         aiContent.textContent = data.summary; aiBtn.style.display = 'none';
       })
-      .catch(() => { aiContent.textContent = '⚠️ Impossible de contacter l\'assistant IA local.'; aiBtn.style.display='none'; });
+      .catch(() => { aiContent.textContent = 'Impossible de contacter l\'assistant IA local.'; aiBtn.style.display='none'; });
   });
 }
 </script>
