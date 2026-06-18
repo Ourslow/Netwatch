@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Conformité & référentiels — NetWatch Portal{% endblock %}
+{% block page_title %}Conformité & référentiels{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small">
+  <i class="bi bi-info-circle me-1"></i>{{ referentials | length }} référentiels
+</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Intro -->
+<div class="card mb-4">
+  <div class="card-body">
+    <p class="mb-2">
+      NetWatch est une solution d'<strong>observabilité et de détection/réponse réseau (NDR)</strong>.
+      Voici comment ses capacités techniques se positionnent face aux principaux référentiels de
+      cybersécurité — lecture honnête : NetWatch couvre pleinement la détection et la réponse aux
+      incidents, contribue à de nombreuses autres mesures, et se combine avec d'autres briques
+      (sauvegarde, IAM, formation) pour une couverture complète.
+    </p>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      {% for r in referentials %}
+      <a href="#ref-{{ r.id }}" class="badge mitre-badge text-decoration-none" style="font-size:.8rem;padding:.4rem .7rem">
+        {{ r.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Légende -->
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <span class="text-muted small fw-medium">LÉGENDE :</span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-check-circle-fill text-success"></i><span class="small text-muted">Couvert</span>
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-dash-circle-fill text-warning"></i><span class="small text-muted">Contribution partielle</span>
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-x-circle-fill text-danger" style="opacity:.5"></i><span class="small text-muted">Hors périmètre</span>
+  </span>
+</div>
+
+{% for r in referentials %}
+<div class="card mb-4" id="ref-{{ r.id }}">
+  <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>
+      <i class="bi bi-clipboard2-check me-2"></i><strong>{{ r.name }}</strong>
+      <span class="text-muted small ms-2">{{ r.label }}</span>
+    </span>
+    <span class="d-flex gap-2">
+      <span class="badge bg-success">{{ r.summary.full }} couvert</span>
+      <span class="badge bg-warning text-dark">{{ r.summary.partial }} partiel</span>
+      <span class="badge bg-secondary">{{ r.summary.none }} hors périmètre</span>
+    </span>
+  </div>
+  <div class="card-body pb-2">
+    <p class="small text-muted">{{ r.intro }}</p>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:56px" class="text-center">Couv.</th>
+          <th style="width:170px">Référence</th>
+          <th>Mesure & apport NetWatch</th>
+          <th style="width:240px">Composants</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in r.measures %}
+        <tr>
+          <td class="text-center">
+            {% if m.coverage == 'full' %}
+              <i class="bi bi-check-circle-fill text-success fs-5" title="Couvert"></i>
+            {% elif m.coverage == 'partial' %}
+              <i class="bi bi-dash-circle-fill text-warning fs-5" title="Contribution partielle"></i>
+            {% else %}
+              <i class="bi bi-x-circle-fill text-danger fs-5" style="opacity:.5" title="Hors périmètre"></i>
+            {% endif %}
+          </td>
+          <td class="fw-mono small text-muted">{{ m.ref }}</td>
+          <td>
+            <div class="fw-medium mb-1">{{ m.title }}</div>
+            <div class="small text-muted">{{ m.netwatch }}</div>
+          </td>
+          <td>
+            {% for c in m.components %}
+              {% if c != '—' %}
+                <span class="badge mitre-badge mb-1" style="font-weight:500">{{ c }}</span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<p class="text-muted small mt-1 mb-0">
+  <i class="bi bi-shield-lock me-1"></i>
+  NetWatch est open-source (AGPL v3) et 100 % on-prem — réponse aux exigences de détection/réponse
+  de NIS2, NIST CSF, l'ANSSI et l'ISO 27001 à coût zéro, pour les PME/ETI.
+</p>
+
+{% endblock %}
