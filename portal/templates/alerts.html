@@ -74,6 +74,10 @@
 
 <!-- Filtres -->
 <form method="GET" action="{{ url_for('alerts') }}" class="mb-3">
+  <!-- Préserve le moteur/sévérité actifs (qui sont des liens, pas des champs) au submit
+       de la recherche — sinon "Filtrer" réinitialise les filtres -->
+  <input type="hidden" name="engine" value="{{ engine }}">
+  <input type="hidden" name="severity" value="{{ severity }}">
   <div class="d-flex flex-wrap gap-2 align-items-center">
     <!-- Recherche libre -->
     <div class="flex-grow-1" style="min-width:200px; max-width:340px">
