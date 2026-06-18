@@ -587,6 +587,12 @@ def report():
         alert_stats    = alert_stats,
         tool_cols      = TOOL_COLS,
         compare_matrix = COMPARE_MATRIX,
+        nis2_measures  = NIS2_MATRIX,
+        nis2_summary   = {
+            "full":    sum(1 for m in NIS2_MATRIX if m["coverage"] == "full"),
+            "partial": sum(1 for m in NIS2_MATRIX if m["coverage"] == "partial"),
+            "none":    sum(1 for m in NIS2_MATRIX if m["coverage"] == "none"),
+        },
         generated_at   = datetime.now().strftime("%d/%m/%Y à %H:%M"),
     )
 

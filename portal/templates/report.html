@@ -233,11 +233,15 @@
       </div>
       <div class="report-meta">
         Généré le {{ generated_at }}<br>
-        Nœud : <strong>{{ proxmox_node }}</strong><br>
-        {% if proxmox_ok %}
-          <span style="color:#1a7f37">● Proxmox connecté</span>
+        {% if proxmox_configured %}
+          Nœud : <strong>{{ proxmox_node }}</strong><br>
+          {% if proxmox_ok %}
+            <span style="color:#1a7f37">● Proxmox connecté</span>
+          {% else %}
+            <span style="color:#cf222e">● Proxmox hors ligne</span>
+          {% endif %}
         {% else %}
-          <span style="color:#cf222e">● Proxmox hors ligne</span>
+          <span style="color:#57606a">Déploiement ESXi / standalone</span>
         {% endif %}
       </div>
     </div>
@@ -440,10 +444,58 @@
       {% endif %}
     </div>
 
-    <!-- 4. Comparaison open-source vs commercial (scores) -->
+    <!-- 4. Conformité NIS2 -->
+    <div class="section page-break">
+      <div class="section-title">
+        <i class="bi bi-clipboard2-check me-1"></i>4 — Couverture NIS2 (article 21.2)
+      </div>
+
+      <div class="d-flex gap-3 mb-3 flex-wrap">
+        <div class="stat-pill">
+          <span class="num" style="color:#1a7f37">{{ nis2_summary.full }}</span>
+          <span class="lbl">Couvert</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#9a6700">{{ nis2_summary.partial }}</span>
+          <span class="lbl">Contribution</span>
+        </div>
+        <div class="stat-pill">
+          <span class="num" style="color:#6e7781">{{ nis2_summary.none }}</span>
+          <span class="lbl">Hors périmètre</span>
+        </div>
+      </div>
+
+      <table class="report-table">
+        <thead><tr>
+          <th style="width:34px"></th><th style="width:110px">Réf.</th><th>Mesure & apport NetWatch</th>
+        </tr></thead>
+        <tbody>
+          {% for m in nis2_measures %}
+          <tr>
+            <td style="text-align:center;font-size:1rem">
+              {% if m.coverage == 'full' %}<span style="color:#1a7f37">●</span>
+              {% elif m.coverage == 'partial' %}<span style="color:#9a6700">●</span>
+              {% else %}<span style="color:#cf222e;opacity:.5">●</span>{% endif %}
+            </td>
+            <td class="mono" style="color:#57606a;font-size:.72rem;white-space:nowrap">{{ m.ref }}</td>
+            <td>
+              <strong>{{ m.title }}</strong><br>
+              <span style="font-size:.76rem;color:#57606a">{{ m.netwatch }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="font-size:.72rem;color:#57606a;margin-top:.5rem">
+        NetWatch couvre le volet <strong>détection/réponse d'incidents</strong> (art. 21.2.b) et contribue à
+        {{ nis2_summary.partial }} autres mesures. Solution open-source on-prem (AGPL v3) — réponse NIS2 à coût zéro pour PME/ETI.
+      </div>
+    </div>
+
+    <!-- 5. Comparaison open-source vs commercial (scores) -->
     <div class="section">
       <div class="section-title">
-        <i class="bi bi-bar-chart-steps me-1"></i>4 — Scores comparaison outils
+        <i class="bi bi-bar-chart-steps me-1"></i>5 — Scores comparaison outils
       </div>
       <table class="report-table">
         <thead><tr>
