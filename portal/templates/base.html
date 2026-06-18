@@ -45,6 +45,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('audit') }}"
+           class="nav-link {% if request.endpoint == 'audit' %}active{% endif %}">
+          <i class="bi bi-clipboard2-data"></i> <span>Audit réseau</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('status') }}"
            class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
           <i class="bi bi-activity"></i> <span>Statut services</span>

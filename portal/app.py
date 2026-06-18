@@ -14,6 +14,7 @@ from proxmox import client as px_client
 from netwatch import health as nw_health
 from netwatch import es_client
 from netwatch import llm_client
+from netwatch import audit as nw_audit
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -802,6 +803,12 @@ def compare():
         tool_cols=TOOL_COLS,
         compare_matrix=COMPARE_MATRIX,
     )
+
+
+@app.route("/audit")
+@login_required
+def audit():
+    return render_template("audit.html", result=nw_audit.run_audit())
 
 
 @app.route("/compliance")
