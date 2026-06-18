@@ -89,8 +89,8 @@
       </tbody>
     </table>
     {% else %}
-    <div class="text-center text-muted py-5">
-      <i class="bi bi-server fs-1 d-block mb-3"></i>
+    <div class="empty-state">
+      <i class="bi bi-hdd-stack empty-icon"></i>
       <p>Aucune VM sur ce nœud Proxmox.</p>
       <a href="{{ url_for('catalog') }}" class="btn btn-primary">
         <i class="bi bi-rocket-takeoff me-2"></i>Déployer un outil
