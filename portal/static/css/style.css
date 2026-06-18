@@ -751,7 +751,89 @@ code {
 .text-danger  { color: var(--crit) !important; }
 
 /* ============================================================
-   14. Responsive
+   14. Animations & live
+   ============================================================ */
+
+/* Balayage radar animé sur la marque (login + sidebar) */
+.brand-mark, .login-mark { position: relative; overflow: hidden; }
+.brand-mark > i, .login-mark > i { position: relative; z-index: 1; }
+.brand-mark::after, .login-mark::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg, var(--accent-glow) 42deg, transparent 84deg);
+  animation: radar-sweep 3.6s linear infinite;
+  pointer-events: none;
+}
+@keyframes radar-sweep { to { transform: rotate(360deg); } }
+
+/* Sparkline */
+.spark-wrap { position: relative; height: 48px; }
+.spark-wrap canvas { position: absolute; inset: 0; }
+
+/* Surlignage des nouvelles lignes (auto-refresh) */
+@keyframes row-enter {
+  0%   { background: var(--accent-soft); }
+  100% { background: transparent; }
+}
+.row-enter > td { animation: row-enter 1.5s ease-out; }
+
+/* Valeur qui pulse au changement */
+@keyframes val-pulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.14); color: var(--accent-bright); }
+  100% { transform: scale(1); }
+}
+.val-pulse { display: inline-block; animation: val-pulse .7s ease-out; }
+
+/* Squelettes de chargement (shimmer) */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-elev-3);
+  border-radius: var(--r-sm);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.3s infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+.skeleton-line { height: .72rem; margin-bottom: .55rem; }
+
+/* Toasts */
+.nw-toast {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r);
+  color: var(--text);
+  box-shadow: 0 8px 28px -10px rgba(0, 0, 0, .6);
+}
+.nw-toast .toast-body { font-size: .85rem; }
+.nw-toast .btn-close { filter: invert(1) grayscale(1) brightness(1.6); opacity: .5; }
+.nw-toast .btn-close:hover { opacity: 1; }
+.nw-toast-success { border-left-color: var(--ok); }
+.nw-toast-success .bi { color: var(--ok); }
+.nw-toast-danger  { border-left-color: var(--crit); }
+.nw-toast-danger .bi { color: var(--crit); }
+.nw-toast-warning { border-left-color: var(--med); }
+.nw-toast-warning .bi { color: var(--med); }
+.nw-toast-info    { border-left-color: var(--accent); }
+.nw-toast-info .bi { color: var(--accent); }
+
+/* Respect de prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark::after, .login-mark::after { animation: none; opacity: 0; }
+  .row-enter > td, .val-pulse, .skeleton::after, .live-pill .dot { animation: none; }
+}
+
+/* ============================================================
+   15. Responsive
    ============================================================ */
 
 @media (max-width: 992px) {
