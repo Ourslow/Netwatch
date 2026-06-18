@@ -81,8 +81,9 @@
     <div class="card stat-card text-center">
       <div class="card-body">
         <p class="stat-label">VMs actives</p>
+        {% set running = vms | selectattr('status','eq','running') | list | length %}
         <h2 class="stat-value text-success">
-          {{ vms | selectattr('status','eq','running') | list | length }}
+          <span data-countup="{{ running }}">{{ running }}</span>
           <small class="text-muted fs-6">/ {{ vms | length }}</small>
         </h2>
       </div>
@@ -92,9 +93,8 @@
     <div class="card stat-card text-center">
       <div class="card-body">
         <p class="stat-label">VMs arrêtées</p>
-        <h2 class="stat-value text-secondary">
-          {{ vms | selectattr('status','ne','running') | list | length }}
-        </h2>
+        {% set stopped = vms | selectattr('status','ne','running') | list | length %}
+        <h2 class="stat-value text-secondary" data-countup="{{ stopped }}">{{ stopped }}</h2>
       </div>
     </div>
   </div>
@@ -102,7 +102,7 @@
     <div class="card stat-card text-center">
       <div class="card-body">
         <p class="stat-label">Outils open-source</p>
-        <h2 class="stat-value text-info">{{ open_source_count }}</h2>
+        <h2 class="stat-value text-info" data-countup="{{ open_source_count }}">{{ open_source_count }}</h2>
       </div>
     </div>
   </div>
@@ -110,7 +110,7 @@
     <div class="card stat-card text-center">
       <div class="card-body">
         <p class="stat-label">Outils commerciaux</p>
-        <h2 class="stat-value text-warning">{{ commercial_count }}</h2>
+        <h2 class="stat-value text-warning" data-countup="{{ commercial_count }}">{{ commercial_count }}</h2>
       </div>
     </div>
   </div>
@@ -128,6 +128,9 @@
       {% endif %}
       <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary">Voir tout</a>
     </div>
+  </div>
+  <div class="px-3 pt-3" data-spark-wrap>
+    <div class="spark-wrap" style="height:40px"><canvas data-sparkline="total"></canvas></div>
   </div>
   <div class="card-body p-0">
     {% if recent_alerts %}

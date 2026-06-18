@@ -6,8 +6,8 @@
 <span class="text-muted small" id="alert-count-label">
   {% if alerts %}{{ alerts | length }} alertes{% endif %}
 </span>
-<span class="live-pill" title="Rafraîchi toutes les 30s">
-  <span class="dot"></span>live · 30s
+<span class="live-pill" id="alerts-live" title="Rafraîchi toutes les 30s">
+  <span class="dot"></span><span class="rel-time">à l'instant</span>
 </span>
 {% endblock %}
 
@@ -20,7 +20,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Total alertes</p>
-        <h2 class="stat-value">{{ stats.total }}</h2>
+        <h2 class="stat-value" data-countup="{{ stats.total }}">{{ stats.total }}</h2>
       </div>
     </div>
   </div>
@@ -28,7 +28,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Dernières 24h</p>
-        <h2 class="stat-value text-info">{{ stats.last_24h }}</h2>
+        <h2 class="stat-value text-info" data-countup="{{ stats.last_24h }}">{{ stats.last_24h }}</h2>
       </div>
     </div>
   </div>
@@ -36,7 +36,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Critiques (sev 1)</p>
-        <h2 class="stat-value text-danger">{{ stats.critical }}</h2>
+        <h2 class="stat-value text-danger" data-countup="{{ stats.critical }}">{{ stats.critical }}</h2>
       </div>
     </div>
   </div>
@@ -44,12 +44,33 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Moyennes (sev 2)</p>
-        <h2 class="stat-value text-warning">{{ stats.medium }}</h2>
+        <h2 class="stat-value text-warning" data-countup="{{ stats.medium }}">{{ stats.medium }}</h2>
       </div>
     </div>
   </div>
 </div>
 {% endif %}
+
+<!-- Activité 24h (sparklines) -->
+<div class="card mb-4" data-spark-wrap>
+  <div class="card-body py-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="stat-label mb-0">Activité des alertes · 24 h</span>
+      <span class="d-flex gap-3 small text-muted">
+        <span class="d-inline-flex align-items-center gap-1">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>Volume
+        </span>
+        <span class="d-inline-flex align-items-center gap-1">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block"></span>Critiques
+        </span>
+      </span>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6"><div class="spark-wrap"><canvas data-sparkline="total"></canvas></div></div>
+      <div class="col-md-6"><div class="spark-wrap"><canvas data-sparkline="critical"></canvas></div></div>
+    </div>
+  </div>
+</div>
 
 <!-- Filtres -->
 <form method="GET" action="{{ url_for('alerts') }}" class="mb-3">
@@ -239,11 +260,7 @@
         <h5 class="modal-title"><i class="bi bi-stars me-2"></i>Assistant IA — explication de l'alerte</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="explain-modal-body">
-        <div class="text-center text-muted py-4">
-          <div class="spinner-border spinner-border-sm me-2"></div>Génération en cours…
-        </div>
-      </div>
+      <div class="modal-body" id="explain-modal-body"></div>
       <div class="modal-footer">
         <span class="ai-privacy me-auto">
           <i class="bi bi-shield-lock"></i>Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur
@@ -261,6 +278,20 @@
 /* ---- Auto-refresh alertes toutes les 30s ---- */
 const engine   = "{{ engine }}";
 const severity = "{{ severity }}";
+
+/* Horloge relative « il y a Xs » de la puce live */
+const liveClock = NW.registerClock(document.getElementById('alerts-live'));
+
+/* Squelette de chargement de l'assistant IA */
+const AI_SKELETON = `
+  <div class="py-1">
+    <div class="skeleton skeleton-line" style="width:92%"></div>
+    <div class="skeleton skeleton-line" style="width:100%"></div>
+    <div class="skeleton skeleton-line" style="width:78%"></div>
+    <div class="ai-privacy mt-3">
+      <span class="spinner-border spinner-border-sm me-1"></span>L'assistant IA analyse l'alerte…
+    </div>
+  </div>`;
 
 function severityBadge(s) {
   if (s === 1) return '<span class="sev sev-crit">Critique</span>';
@@ -297,8 +328,10 @@ function refreshAlerts() {
       if (!Array.isArray(data) || data.length === 0) return;
       const tbody = document.getElementById('alerts-tbody');
       if (!tbody) return;
+      const prevKeys = new Set(
+        [...tbody.querySelectorAll('tr[data-key]')].map(tr => tr.dataset.key));
       tbody.innerHTML = data.map(a => `
-        <tr>
+        <tr data-key="${a.timestamp}|${a.signature}">
           <td class="text-muted fw-mono small">${fmtTs(a.timestamp)}</td>
           <td>${engineBadge(a.engine)}</td>
           <td>${severityBadge(a.severity)}</td>
@@ -319,8 +352,31 @@ function refreshAlerts() {
           </td>
         </tr>
       `).join('');
+
+      /* Surligne les alertes nouvellement arrivées */
+      if (prevKeys.size) {
+        tbody.querySelectorAll('tr[data-key]').forEach(tr => {
+          if (!prevKeys.has(tr.dataset.key)) tr.classList.add('row-enter');
+        });
+      }
+
+      /* Compteur + pulse si la valeur a changé */
       const label = document.getElementById('alert-count-label');
-      if (label) label.textContent = data.length + ' alertes';
+      if (label) {
+        const prev = label.dataset.count;
+        const next = String(data.length);
+        label.textContent = data.length + ' alertes';
+        if (prev !== undefined && prev !== next) {
+          label.classList.remove('val-pulse');
+          void label.offsetWidth;
+          label.classList.add('val-pulse');
+        }
+        label.dataset.count = next;
+      }
+
+      /* Réinitialise l'horloge relative + rafraîchit les sparklines */
+      liveClock.ts = Date.now();
+      NW.loadAlertSparklines();
     })
     .catch(() => {});
 }
@@ -343,10 +399,7 @@ document.addEventListener('click', (e) => {
     return;
   }
 
-  explainBody.innerHTML = `
-    <div class="text-center text-muted py-4">
-      <div class="spinner-border spinner-border-sm me-2"></div>Génération en cours…
-    </div>`;
+  explainBody.innerHTML = AI_SKELETON;
   explainModal.show();
 
   fetch('/api/explain', {
