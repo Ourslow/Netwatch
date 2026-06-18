@@ -221,8 +221,14 @@ function refreshStatus() {
       data.services.forEach(svc => {
         const card = document.getElementById('card-' + svc.name.toLowerCase());
         if (!card) return;
-        // Badge statut
+        // Badge statut (pulse si l'état a changé)
+        const changed = card.dataset.status && card.dataset.status !== svc.status;
         card.querySelector('.badge').outerHTML = STATUS_LABELS[svc.status] || STATUS_LABELS.down;
+        if (changed) {
+          const b = card.querySelector('.badge');
+          if (b) b.classList.add('val-pulse');
+        }
+        card.dataset.status = svc.status;
         // Classe de la carte
         card.className = card.className.replace(/service-(up|degraded|down)/, 'service-' + svc.status);
         // Icone
