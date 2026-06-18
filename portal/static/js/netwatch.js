@@ -127,21 +127,6 @@
   }
   setInterval(tickClocks, 1000);
 
-  /* ---- Surlignage des nouvelles lignes --------------------- */
-  /* Compare des clés avant/après refresh ; anime les entrantes. */
-  NW.flashNewRows = function (tbody, keyAttr) {
-    if (prefersReduced || !tbody) return;
-    tbody.querySelectorAll("tr[" + keyAttr + "]").forEach(function (tr) {
-      if (!tr.dataset.seen) {
-        tr.classList.add("row-enter");
-        tr.addEventListener("animationend", function () {
-          tr.classList.remove("row-enter");
-        }, { once: true });
-      }
-      tr.dataset.seen = "1";
-    });
-  };
-
   /* ---- Toasts --------------------------------------------- */
   NW.toast = function (message, category) {
     const host = document.getElementById("toast-host");
@@ -151,12 +136,15 @@
     const el = document.createElement("div");
     el.className = "toast nw-toast nw-toast-" + (category || "info");
     el.setAttribute("role", "alert");
+    // Structure statique en innerHTML ; le message (potentiellement issu de
+    // données utilisateur) est inséré via textContent → pas d'injection HTML.
     el.innerHTML =
       '<div class="toast-body d-flex align-items-center gap-2">' +
       '<i class="bi ' + (map[category] || map.info) + '"></i>' +
-      '<span class="flex-grow-1">' + message + '</span>' +
+      '<span class="flex-grow-1"></span>' +
       '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="toast"></button>' +
       '</div>';
+    el.querySelector(".flex-grow-1").textContent = message;
     host.appendChild(el);
     const t = new bootstrap.Toast(el, { delay: 5000 });
     t.show();

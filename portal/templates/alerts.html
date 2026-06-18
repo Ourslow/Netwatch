@@ -331,7 +331,7 @@ function refreshAlerts() {
       const prevKeys = new Set(
         [...tbody.querySelectorAll('tr[data-key]')].map(tr => tr.dataset.key));
       tbody.innerHTML = data.map(a => `
-        <tr data-key="${a.timestamp}|${a.signature}">
+        <tr data-key="${encodeURIComponent(a.timestamp)}|${encodeURIComponent(a.signature)}">
           <td class="text-muted fw-mono small">${fmtTs(a.timestamp)}</td>
           <td>${engineBadge(a.engine)}</td>
           <td>${severityBadge(a.severity)}</td>
