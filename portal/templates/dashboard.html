@@ -33,7 +33,7 @@
             <p class="stat-label">CPU</p>
             <h3 class="stat-value">{{ node_status.cpu_pct }}%</h3>
           </div>
-          <span class="stat-icon text-info"><i class="bi bi-cpu"></i></span>
+          <span class="stat-icon tone-info"><i class="bi bi-cpu"></i></span>
         </div>
         <div class="progress mt-2" style="height:5px">
           <div class="progress-bar bg-info" style="width:{{ node_status.cpu_pct }}%"></div>
@@ -50,7 +50,7 @@
             <h3 class="stat-value">{{ node_status.ram_pct }}%</h3>
             <small class="text-muted">{{ node_status.ram_used | fmt_bytes }} / {{ node_status.ram_total | fmt_bytes }}</small>
           </div>
-          <span class="stat-icon text-warning"><i class="bi bi-memory"></i></span>
+          <span class="stat-icon tone-warning"><i class="bi bi-memory"></i></span>
         </div>
         <div class="progress mt-2" style="height:5px">
           <div class="progress-bar bg-warning" style="width:{{ node_status.ram_pct }}%"></div>
@@ -67,7 +67,7 @@
             <h3 class="stat-value">{{ node_status.disk_used | fmt_bytes }}</h3>
             <small class="text-muted">/ {{ node_status.disk_total | fmt_bytes }}</small>
           </div>
-          <span class="stat-icon text-success"><i class="bi bi-hdd"></i></span>
+          <span class="stat-icon tone-success"><i class="bi bi-hdd"></i></span>
         </div>
       </div>
     </div>
@@ -147,9 +147,9 @@
             {% endif %}
           </td>
           <td>
-            {% if a.severity == 1 %}<span class="badge bg-danger">Critique</span>
-            {% elif a.severity == 2 %}<span class="badge bg-warning text-dark">Moyen</span>
-            {% else %}<span class="badge bg-secondary">Faible</span>{% endif %}
+            {% if a.severity == 1 %}<span class="sev sev-crit">Critique</span>
+            {% elif a.severity == 2 %}<span class="sev sev-med">Moyen</span>
+            {% else %}<span class="sev sev-low">Faible</span>{% endif %}
           </td>
           <td class="small fw-medium">{{ a.signature | truncate(55) }}</td>
           <td class="fw-mono small">{{ a.src_ip }}</td>
@@ -163,9 +163,9 @@
       </tbody>
     </table>
     {% else %}
-    <div class="text-center text-muted py-4 small">
-      <i class="bi bi-shield-check fs-3 d-block mb-2"></i>
-      Aucune alerte — Elasticsearch vide ou non joignable
+    <div class="empty-state py-4">
+      <i class="bi bi-shield-check empty-icon"></i>
+      <div class="small">Aucune alerte — Elasticsearch vide ou non joignable</div>
     </div>
     {% endif %}
   </div>
@@ -204,9 +204,9 @@
           </tbody>
         </table>
         {% else %}
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-server fs-2 d-block mb-2"></i>
-          Aucune VM — Proxmox non connecté ou nœud vide
+        <div class="empty-state py-4">
+          <i class="bi bi-server empty-icon"></i>
+          <div>Aucune VM — Proxmox non connecté ou nœud vide</div>
         </div>
         {% endif %}
       </div>

@@ -6,8 +6,8 @@
 <span class="text-muted small" id="alert-count-label">
   {% if alerts %}{{ alerts | length }} alertes{% endif %}
 </span>
-<span class="badge bg-dark border text-muted" title="Rafraîchi toutes les 30s">
-  <i class="bi bi-arrow-repeat me-1"></i>live 30s
+<span class="live-pill" title="Rafraîchi toutes les 30s">
+  <span class="dot"></span>live · 30s
 </span>
 {% endblock %}
 
@@ -133,7 +133,9 @@
           <th style="width:130px">Source</th>
           <th style="width:130px">Destination</th>
           <th>MITRE</th>
-          <th style="width:50px"></th>
+          <th style="width:54px" class="text-center" title="Explication par l'assistant IA local">
+            <i class="bi bi-stars" style="color:var(--accent)"></i>
+          </th>
         </tr>
       </thead>
       <tbody id="alerts-tbody">
@@ -152,11 +154,11 @@
             </td>
             <td>
               {% if a.severity == 1 %}
-                <span class="badge bg-danger">Critique</span>
+                <span class="sev sev-crit">Critique</span>
               {% elif a.severity == 2 %}
-                <span class="badge bg-warning text-dark">Moyen</span>
+                <span class="sev sev-med">Moyen</span>
               {% else %}
-                <span class="badge bg-secondary">Faible</span>
+                <span class="sev sev-low">Faible</span>
               {% endif %}
             </td>
             <td class="small">
@@ -177,8 +179,9 @@
                 <span class="text-muted small">—</span>
               {% endif %}
             </td>
-            <td>
-              <button type="button" class="btn btn-sm btn-outline-info explain-btn"
+            <td class="text-center">
+              <button type="button" class="btn-ai-icon explain-btn"
+                      aria-label="Expliquer cette alerte par l'IA"
                       title="Expliquer cette alerte (assistant IA local)"
                       data-alert='{{ a | tojson | forceescape }}'>
                 <i class="bi bi-stars"></i>
@@ -188,15 +191,15 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="8" class="text-center text-muted py-5">
+            <td colspan="8" class="empty-state">
               {% if error %}
-                <i class="bi bi-database-x fs-2 d-block mb-2"></i>
+                <i class="bi bi-database-x empty-icon"></i>
                 Elasticsearch non joignable — lancez le stack NetWatch (<code>make start</code>)
               {% elif engine or severity or search %}
-                <i class="bi bi-funnel fs-2 d-block mb-2"></i>
+                <i class="bi bi-funnel empty-icon"></i>
                 Aucune alerte pour ces filtres
               {% else %}
-                <i class="bi bi-shield-check fs-2 d-block mb-2"></i>
+                <i class="bi bi-shield-check empty-icon"></i>
                 Aucune alerte — stack silencieuse ou Elasticsearch vide
                 (<code>make sim</code> pour générer du trafic)
               {% endif %}
@@ -242,8 +245,10 @@
         </div>
       </div>
       <div class="modal-footer">
-        <small class="text-muted me-auto">Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur</small>
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        <span class="ai-privacy me-auto">
+          <i class="bi bi-shield-lock"></i>Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
       </div>
     </div>
   </div>
@@ -258,9 +263,9 @@ const engine   = "{{ engine }}";
 const severity = "{{ severity }}";
 
 function severityBadge(s) {
-  if (s === 1) return '<span class="badge bg-danger">Critique</span>';
-  if (s === 2) return '<span class="badge bg-warning text-dark">Moyen</span>';
-  return '<span class="badge bg-secondary">Faible</span>';
+  if (s === 1) return '<span class="sev sev-crit">Critique</span>';
+  if (s === 2) return '<span class="sev sev-med">Moyen</span>';
+  return '<span class="sev sev-low">Faible</span>';
 }
 
 function engineBadge(e) {
@@ -304,8 +309,9 @@ function refreshAlerts() {
           <td class="fw-mono small">${a.src_ip}</td>
           <td class="fw-mono small">${a.dest_ip}</td>
           <td>${mitreBadge(a)}</td>
-          <td>
-            <button type="button" class="btn btn-sm btn-outline-info explain-btn"
+          <td class="text-center">
+            <button type="button" class="btn-ai-icon explain-btn"
+                    aria-label="Expliquer cette alerte par l'IA"
                     title="Expliquer cette alerte (assistant IA local)"
                     data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
               <i class="bi bi-stars"></i>
@@ -357,7 +363,7 @@ document.addEventListener('click', (e) => {
           </div>`;
         return;
       }
-      explainBody.innerHTML = `<p class="mb-0" style="white-space:pre-wrap">${data.explanation}</p>`;
+      explainBody.innerHTML = `<div class="ai-output">${data.explanation}</div>`;
     })
     .catch(() => {
       explainBody.innerHTML = `
