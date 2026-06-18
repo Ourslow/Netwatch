@@ -583,6 +583,16 @@ def api_alerts():
     return jsonify(alerts_list)
 
 
+@app.route("/api/alerts/series")
+@login_required
+def api_alerts_series():
+    """Série horaire des alertes (24h) pour les sparklines."""
+    series, error = es_client.get_alert_timeseries(hours=24)
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify(series)
+
+
 @app.route("/api/explain", methods=["POST"])
 @login_required
 def api_explain():
