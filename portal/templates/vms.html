@@ -152,7 +152,13 @@ function refreshVmStatus() {
       vms.forEach(vm => {
         const row = document.querySelector(`tr[data-vmid="${vm.vmid}"]`);
         if (!row) return;
+        const changed = row.dataset.status && row.dataset.status !== vm.status;
         row.querySelector('.cell-status').innerHTML = statusBadge(vm.status);
+        if (changed) {
+          const b = row.querySelector('.cell-status .badge');
+          if (b) b.classList.add('val-pulse');
+        }
+        row.dataset.status = vm.status;
         row.querySelector('.cell-cpu').textContent =
           vm.status === 'running' ? Math.round(vm.cpu * 100) + '%' : '—';
         row.querySelector('.cell-uptime').textContent =

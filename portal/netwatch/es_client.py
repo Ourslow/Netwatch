@@ -100,13 +100,14 @@ def get_recent_alerts(size=100, engine=None, severity=None, search=None):
 
     # Filtres obligatoires : garder uniquement les alertes
     # Suricata → event_type = alert
-    # Snort    → champ sid présent
+    # Snort    → champ rule présent (gid:sid:rev ; ni le simulateur ni Snort 3
+    #            n'écrivent un champ "sid" isolé)
     filter_must = [
         {
             "bool": {
                 "should": [
                     {"term":   {"event_type": "alert"}},
-                    {"exists": {"field": "sid"}},
+                    {"exists": {"field": "rule"}},
                 ],
                 "minimum_should_match": 1,
             }
@@ -165,6 +166,70 @@ def get_recent_alerts(size=100, engine=None, severity=None, search=None):
         return [], str(e)[:120]
 
 
+def get_alert_timeseries(hours=24, interval="1h"):
+    """
+    Série temporelle des alertes pour les sparklines (volume horaire sur 24h).
+    Retourne (series: list[{"t", "total", "critical"}], error: str|None).
+    """
+    body = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [{"range": {"@timestamp": {"gte": f"now-{hours}h"}}}],
+                "should": [
+                    {"term":   {"event_type": "alert"}},
+                    {"exists": {"field": "rule"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "aggs": {
+            "per_bucket": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "fixed_interval": interval,
+                    "min_doc_count": 0,
+                    "extended_bounds": {"min": f"now-{hours}h", "max": "now"},
+                },
+                "aggs": {
+                    # Critiques = severity Suricata 1 OU priority Snort 1
+                    "critical": {
+                        "filter": {
+                            "bool": {
+                                "should": [
+                                    {"term": {"alert.severity": 1}},
+                                    {"term": {"priority":       1}},
+                                ],
+                                "minimum_should_match": 1,
+                            }
+                        }
+                    }
+                },
+            }
+        },
+    }
+
+    try:
+        r = _es("/suricata-*,snort-*/_search", body)
+        r.raise_for_status()
+        buckets = (r.json().get("aggregations", {})
+                          .get("per_bucket", {})
+                          .get("buckets", []))
+        series = [
+            {
+                "t":        b.get("key_as_string", ""),
+                "total":    b.get("doc_count", 0),
+                "critical": b.get("critical", {}).get("doc_count", 0),
+            }
+            for b in buckets
+        ]
+        return series, None
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:80]
+
+
 def get_alert_stats():
     """
     Statistiques pour le widget dashboard et le header /alerts.
@@ -176,7 +241,7 @@ def get_alert_stats():
             "bool": {
                 "should": [
                     {"term":   {"event_type": "alert"}},
-                    {"exists": {"field": "sid"}},
+                    {"exists": {"field": "rule"}},
                 ],
                 "minimum_should_match": 1,
             }
@@ -195,7 +260,7 @@ def get_alert_stats():
             },
             "by_mitre": {
                 "terms": {
-                    "field": "alert.metadata.mitre_tactic_name",
+                    "field": "alert.metadata.mitre_tactic_name.keyword",
                     "size": 5,
                 }
             },
