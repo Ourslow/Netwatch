@@ -22,6 +22,9 @@ Thumbs.db
 *.log
 *.err
 
+# Configuration locale Claude Code (preview, creds de dev)
+.claude/
+
 # Python
 __pycache__/
 *.pyc
