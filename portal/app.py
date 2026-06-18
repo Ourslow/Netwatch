@@ -573,10 +573,12 @@ def alerts():
 def api_alerts():
     engine   = request.args.get("engine",   "")
     severity = request.args.get("severity", "")
+    search   = request.args.get("q",        "").strip()
     alerts_list, error = es_client.get_recent_alerts(
         size=50,
         engine=engine or None,
         severity=int(severity) if severity else None,
+        search=search or None,
     )
     if error:
         return jsonify({"error": error}), 503

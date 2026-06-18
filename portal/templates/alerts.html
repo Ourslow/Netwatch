@@ -127,7 +127,7 @@
     </div>
 
     <button type="submit" class="btn btn-sm btn-outline-primary">
-      <i class="bi bi-funnel me-1"></i>Filtrer
+      <i class="bi bi-search me-1"></i>Rechercher
     </button>
     {% if engine or severity or search %}
     <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary">
@@ -280,8 +280,9 @@
 {% block scripts %}
 <script>
 /* ---- Auto-refresh alertes toutes les 30s ---- */
-const engine   = "{{ engine }}";
-const severity = "{{ severity }}";
+const engine   = {{ engine | tojson }};
+const severity = {{ severity | tojson }};
+const search   = {{ search | tojson }};
 
 /* Horloge relative « il y a Xs » de la puce live */
 const liveClock = NW.registerClock(document.getElementById('alerts-live'));
@@ -322,8 +323,9 @@ function mitreBadge(a) {
 function refreshAlerts() {
   let url = '/api/alerts';
   const params = [];
-  if (engine)   params.push('engine='   + engine);
-  if (severity) params.push('severity=' + severity);
+  if (engine)   params.push('engine='   + encodeURIComponent(engine));
+  if (severity) params.push('severity=' + encodeURIComponent(severity));
+  if (search)   params.push('q='        + encodeURIComponent(search));
   if (params.length) url += '?' + params.join('&');
 
   fetch(url)
