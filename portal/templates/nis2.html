@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Conformité NIS2 — NetWatch Portal{% endblock %}
+{% block page_title %}Couverture NIS2 (article 21.2){% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small">
+  <i class="bi bi-info-circle me-1"></i>{{ summary.total }} mesures · directive NIS2
+</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Intro -->
+<div class="card mb-4">
+  <div class="card-body">
+    <p class="mb-2">
+      L'article 21.2 de la directive <strong>NIS2</strong> impose 10 mesures techniques et
+      organisationnelles minimales. NetWatch est un outil d'<strong>observabilité et de
+      détection/réponse réseau</strong> : il couvre pleinement le volet gestion d'incidents
+      et contribue à plusieurs autres mesures, sans prétendre remplacer une démarche GRC complète.
+    </p>
+    <p class="mb-0 text-muted small">
+      Lecture honnête : NetWatch se combine avec d'autres briques (sauvegarde, IAM, formation)
+      pour une conformité complète. Sa valeur = détecter, tracer et répondre aux incidents à coût zéro.
+    </p>
+  </div>
+</div>
+
+<!-- Synthèse -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label"><i class="bi bi-check-circle-fill text-success me-1"></i>Couvert</p>
+        <h2 class="stat-value text-success" data-countup="{{ summary.full }}">{{ summary.full }}</h2>
+        <small class="text-muted">mesure(s) pleinement adressée(s)</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label"><i class="bi bi-dash-circle-fill text-warning me-1"></i>Contribution</p>
+        <h2 class="stat-value text-warning" data-countup="{{ summary.partial }}">{{ summary.partial }}</h2>
+        <small class="text-muted">mesure(s) partiellement soutenue(s)</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card text-center">
+      <div class="card-body">
+        <p class="stat-label"><i class="bi bi-x-circle-fill text-danger me-1" style="opacity:.6"></i>Hors périmètre</p>
+        <h2 class="stat-value text-secondary" data-countup="{{ summary.none }}">{{ summary.none }}</h2>
+        <small class="text-muted">mesure(s) non couverte(s)</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Légende -->
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+  <span class="text-muted small fw-medium">LÉGENDE :</span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-check-circle-fill text-success"></i><span class="small text-muted">Couvert</span>
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-dash-circle-fill text-warning"></i><span class="small text-muted">Contribution partielle</span>
+  </span>
+  <span class="d-flex align-items-center gap-1">
+    <i class="bi bi-x-circle-fill text-danger" style="opacity:.5"></i><span class="small text-muted">Hors périmètre</span>
+  </span>
+</div>
+
+<!-- Matrice -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:60px" class="text-center">Couv.</th>
+          <th style="width:130px">Référence</th>
+          <th>Mesure NIS2 & apport NetWatch</th>
+          <th style="width:280px">Composants</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in measures %}
+        <tr>
+          <td class="text-center">
+            {% if m.coverage == 'full' %}
+              <i class="bi bi-check-circle-fill text-success fs-5" title="Couvert"></i>
+            {% elif m.coverage == 'partial' %}
+              <i class="bi bi-dash-circle-fill text-warning fs-5" title="Contribution partielle"></i>
+            {% else %}
+              <i class="bi bi-x-circle-fill text-danger fs-5" style="opacity:.5" title="Hors périmètre"></i>
+            {% endif %}
+          </td>
+          <td class="fw-mono small text-muted">{{ m.ref }}</td>
+          <td>
+            <div class="fw-medium mb-1">{{ m.title }}</div>
+            <div class="small text-muted">{{ m.netwatch }}</div>
+          </td>
+          <td>
+            {% for c in m.components %}
+              {% if c != '—' %}
+                <span class="badge mitre-badge mb-1" style="font-weight:500">{{ c }}</span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="text-muted small mt-3 mb-0">
+  <i class="bi bi-shield-lock me-1"></i>
+  NetWatch est open-source (AGPL v3) et 100 % on-prem — réponse au besoin NIS2 des PME/ETI sans budget pour une solution commerciale.
+</p>
+
+{% endblock %}
