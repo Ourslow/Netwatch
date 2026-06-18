@@ -7,342 +7,291 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    /* ── Écran ── */
+    :root {
+      --ink:#1c2733; --muted:#5b6b7b; --line:#e3e8ee; --soft:#f5f8fb;
+      --accent:#0e7490; --cyan:#22d3ee; --navy:#0d1b2a;
+      --crit:#cf222e; --med:#bf8700; --low:#6e7781; --ok:#1a7f37;
+    }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body {
-      background: #f6f8fa;
-      color: #24292f;
-      font-size: .875rem;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:#eef2f6; color:var(--ink); font-size:.875rem;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     }
-
     .report-wrapper {
-      max-width: 900px;
-      margin: 2rem auto;
-      background: #fff;
-      border: 1px solid #d0d7de;
-      border-radius: 8px;
-      overflow: hidden;
+      max-width:920px; margin:1.5rem auto; background:#fff;
+      border-radius:12px; overflow:hidden; box-shadow:0 8px 30px rgba(13,27,42,.12);
     }
 
-    /* Barre d'actions (masquée à l'impression) */
+    /* Barre d'actions (écran) */
     .print-bar {
-      background: #0d1117;
-      color: #e6edf3;
-      padding: .75rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
+      background:var(--navy); color:#e6edf3; padding:.7rem 1.5rem;
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
     }
-    .print-bar .brand { font-weight: 700; font-size: 1rem; color: #22d3ee; }
-    .print-bar .brand b { color: #fff; }
+    .print-bar .brand { font-weight:700; color:var(--cyan); }
+    .print-bar .brand b { color:#fff; }
 
-    /* Résumé exécutif IA — bloc mis en valeur */
+    /* ── Bandeau de couverture ── */
+    .cover {
+      background:linear-gradient(135deg,#0d1b2a 0%,#13324a 55%,#0e7490 140%);
+      color:#eaf2f8; padding:2rem 2.5rem; position:relative;
+    }
+    .cover::after {
+      content:""; position:absolute; right:-40px; top:-40px; width:220px; height:220px;
+      background:radial-gradient(circle,rgba(34,211,238,.18),transparent 70%);
+    }
+    .cover-brand { display:flex; align-items:center; gap:.6rem; font-weight:700; letter-spacing:.3px; }
+    .cover-brand .logo {
+      width:34px; height:34px; border-radius:9px; display:grid; place-items:center;
+      background:rgba(34,211,238,.16); color:var(--cyan); font-size:1.1rem;
+    }
+    .cover-brand b { color:#fff; } .cover-brand span.os { color:var(--cyan); }
+    .cover-title { font-size:1.7rem; font-weight:800; margin:1rem 0 .25rem; color:#fff; }
+    .cover-sub { color:#9fb6c9; font-size:.85rem; }
+    .cover-meta { font-size:.76rem; color:#9fb6c9; line-height:1.7; }
+    .cover-meta b { color:#dbe9f4; }
+
+    /* Pastille posture */
+    .posture {
+      display:inline-flex; align-items:center; gap:.5rem;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+      border-radius:999px; padding:.45rem .9rem; font-weight:700; font-size:.82rem;
+      backdrop-filter:blur(4px);
+    }
+    .posture .bi { font-size:1rem; }
+
+    .report-body { padding:2rem 2.5rem; }
+
+    /* ── KPI cards ── */
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.85rem; }
+    .kpi {
+      background:#fff; border:1px solid var(--line); border-radius:10px;
+      padding:.85rem .95rem; border-top:3px solid var(--accent); position:relative;
+    }
+    .kpi .ic {
+      position:absolute; top:.7rem; right:.8rem; font-size:1.1rem; opacity:.5;
+    }
+    .kpi .num { font-size:1.7rem; font-weight:800; line-height:1; }
+    .kpi .lbl { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-top:.3rem; }
+    .kpi .sub { font-size:.68rem; color:var(--muted); }
+    .kpi.k-crit { border-top-color:var(--crit); } .kpi.k-crit .num,.kpi.k-crit .ic { color:var(--crit); }
+    .kpi.k-ok   { border-top-color:var(--ok);   } .kpi.k-ok .num,.kpi.k-ok .ic     { color:var(--ok); }
+    .kpi.k-acc  { border-top-color:var(--accent);} .kpi.k-acc .num,.kpi.k-acc .ic  { color:var(--accent); }
+    .kpi.k-teal { border-top-color:#0891b2; } .kpi.k-teal .num,.kpi.k-teal .ic { color:#0891b2; }
+
+    /* ── Résumé IA ── */
     .ai-summary {
-      border: 1px solid #c5d9f0;
-      background: #f3f8fe;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      margin-bottom: 1.5rem;
+      border:1px solid #bfe0ea; background:#f2fbfd;
+      border-radius:12px; padding:1.1rem 1.25rem; margin:1.25rem 0 0;
     }
-    .ai-summary-head {
-      display: flex; align-items: center; gap: .55rem;
-      font-weight: 700; color: #0969da; font-size: .92rem;
-      margin-bottom: .15rem;
+    .ai-head { display:flex; align-items:center; gap:.55rem; font-weight:700; color:var(--accent); }
+    .ai-head .badge-ia {
+      font-size:.6rem; font-weight:700; letter-spacing:.5px; background:var(--accent); color:#fff;
+      padding:.12rem .45rem; border-radius:4px; text-transform:uppercase;
     }
-    .ai-summary-head .badge-ia {
-      font-size: .62rem; font-weight: 700; letter-spacing: .4px;
-      background: #0969da; color: #fff; padding: .12rem .45rem; border-radius: 4px;
-      text-transform: uppercase;
-    }
-    .ai-summary-sub { font-size: .74rem; color: #57606a; margin-bottom: .75rem; }
-    .ai-summary-sub .bi { color: #1a7f37; }
+    .ai-sub { font-size:.72rem; color:var(--muted); margin:.15rem 0 .7rem; }
+    .ai-sub .bi { color:var(--ok); }
     .btn-ia {
-      display: inline-flex; align-items: center; gap: .4rem;
-      background: #0969da; color: #fff; border: none;
-      font-weight: 600; font-size: .82rem;
-      padding: .45rem .9rem; border-radius: 7px; cursor: pointer;
+      display:inline-flex; align-items:center; gap:.4rem; background:var(--accent); color:#fff;
+      border:none; font-weight:600; font-size:.8rem; padding:.45rem .9rem; border-radius:8px; cursor:pointer;
     }
-    .btn-ia:hover { background: #0a5fc2; }
-    .ai-summary-content {
-      border-left: 3px solid #0969da;
-      background: #fff;
-      border-radius: 0 6px 6px 0;
-      padding: .8rem 1rem;
-      font-size: .82rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      margin-top: .75rem;
+    .btn-ia:hover { background:#0b5e74; }
+    .ai-content {
+      border-left:3px solid var(--accent); background:#fff; border-radius:0 8px 8px 0;
+      padding:.85rem 1rem; font-size:.82rem; line-height:1.65; white-space:pre-wrap; margin-top:.75rem;
     }
     .ai-skel-line {
-      height: .72rem; border-radius: 4px; margin-bottom: .55rem;
-      background: linear-gradient(90deg, #eef2f7 25%, #e2e8f0 37%, #eef2f7 63%);
-      background-size: 400% 100%;
-      animation: ai-skel 1.3s ease infinite;
+      height:.72rem; border-radius:4px; margin-bottom:.55rem;
+      background:linear-gradient(90deg,#eef2f7 25%,#e2e8f0 37%,#eef2f7 63%);
+      background-size:400% 100%; animation:ai-skel 1.3s ease infinite;
     }
-    @keyframes ai-skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+    @keyframes ai-skel { 0%{background-position:100% 50%} 100%{background-position:0 50%} }
 
-    /* Corps du rapport */
-    .report-body { padding: 2rem 2.5rem; }
+    /* ── Sections ── */
+    .section { margin-top:2rem; }
+    .section-head { display:flex; align-items:center; gap:.6rem; margin-bottom:1rem; }
+    .section-num {
+      width:26px; height:26px; border-radius:7px; background:var(--accent); color:#fff;
+      display:grid; place-items:center; font-weight:700; font-size:.8rem; flex-shrink:0;
+    }
+    .section-name { font-size:.95rem; font-weight:700; color:var(--ink); }
+    .section-head .hr { flex:1; height:1px; background:var(--line); }
 
-    /* En-tête */
-    .report-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      border-bottom: 2px solid #0969da;
-      padding-bottom: 1.25rem;
-      margin-bottom: 2rem;
-    }
-    .report-title { font-size: 1.4rem; font-weight: 700; color: #0969da; }
-    .report-meta  { font-size: .78rem; color: #57606a; line-height: 1.6; text-align: right; }
-
-    /* Sections */
-    .section { margin-bottom: 2rem; }
-    .section-title {
-      font-size: .8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      color: #57606a;
-      border-bottom: 1px solid #d0d7de;
-      padding-bottom: .4rem;
-      margin-bottom: 1rem;
-    }
-
-    /* Stat pills */
-    .stat-pill {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      background: #f6f8fa;
-      border: 1px solid #d0d7de;
-      border-radius: 8px;
-      padding: .6rem 1.2rem;
-      min-width: 100px;
-    }
-    .stat-pill .num  { font-size: 1.5rem; font-weight: 700; line-height: 1; }
-    .stat-pill .lbl  { font-size: .7rem; color: #57606a; text-transform: uppercase; letter-spacing: .3px; }
-
-    /* Status service */
-    .svc-row {
-      display: flex;
-      align-items: center;
-      gap: .75rem;
-      padding: .45rem 0;
-      border-bottom: 1px solid #f6f8fa;
-    }
-    .svc-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .dot-up       { background: #1a7f37; }
-    .dot-degraded { background: #9a6700; }
-    .dot-down     { background: #cf222e; }
+    /* Service rows */
+    .svc-row { display:flex; align-items:center; gap:.75rem; padding:.5rem .25rem; border-bottom:1px solid var(--soft); }
+    .svc-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .dot-up{background:var(--ok)} .dot-degraded{background:var(--med)} .dot-down{background:var(--crit)}
+    .svc-state { font-size:.66rem; font-weight:700; padding:.1rem .45rem; border-radius:4px; text-transform:uppercase; letter-spacing:.3px; }
+    .st-up{background:#e6f4ea;color:var(--ok)} .st-degraded{background:#fdf3e0;color:var(--med)} .st-down{background:#fce8e9;color:var(--crit)}
 
     /* Tables */
-    .report-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .report-table { width:100%; border-collapse:collapse; font-size:.82rem; }
     .report-table th {
-      background: #f6f8fa;
-      color: #57606a;
-      font-size: .72rem;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-      padding: .4rem .75rem;
-      border-bottom: 1px solid #d0d7de;
-      text-align: left;
+      background:var(--soft); color:var(--muted); font-size:.68rem; text-transform:uppercase;
+      letter-spacing:.4px; padding:.45rem .75rem; border-bottom:1px solid var(--line); text-align:left;
     }
-    .report-table td {
-      padding: .45rem .75rem;
-      border-bottom: 1px solid #f6f8fa;
-      vertical-align: middle;
-    }
-    .report-table tr:last-child td { border-bottom: none; }
+    .report-table td { padding:.5rem .75rem; border-bottom:1px solid var(--soft); vertical-align:middle; }
+    .report-table tr:last-child td { border-bottom:none; }
+    .report-table tbody tr:nth-child(even) { background:#fbfdfe; }
 
-    /* Badges */
-    .b-crit    { background:#cf222e; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
-    .b-med     { background:#9a6700; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
-    .b-low     { background:#6e7781; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
-    .b-suri    { background:#0969da; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
-    .b-snort   { background:#cf222e; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
-    .b-mitre   { background:#6639ba; color:#fff; padding:.15rem .5rem; border-radius:4px; font-size:.7rem; }
-    .b-run     { background:#1a7f37; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
-    .b-stop    { background:#6e7781; color:#fff; padding:.15rem .4rem; border-radius:4px; font-size:.72rem; }
+    .b-crit{background:var(--crit);color:#fff} .b-med{background:var(--med);color:#fff}
+    .b-suri{background:#0969da;color:#fff} .b-snort{background:var(--crit);color:#fff}
+    .b-mitre{background:#6639ba;color:#fff;padding:.12rem .5rem;border-radius:4px;font-size:.7rem}
+    .b-run{background:var(--ok);color:#fff} .b-stop{background:var(--low);color:#fff}
+    .b-crit,.b-med,.b-suri,.b-snort,.b-run,.b-stop{padding:.12rem .4rem;border-radius:4px;font-size:.72rem}
+    .mono{font-family:ui-monospace,monospace;font-size:.8rem}
 
-    .mono { font-family: ui-monospace, monospace; font-size: .8rem; }
+    /* Barre de couverture (NIS2) */
+    .cov-bar { display:flex; height:14px; border-radius:7px; overflow:hidden; background:var(--line); }
+    .cov-bar > div { height:100%; }
+    .cov-legend { display:flex; gap:1rem; font-size:.72rem; color:var(--muted); margin-top:.45rem; flex-wrap:wrap; }
+    .cov-legend .sw { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:.3rem; }
 
-    /* Score comparaison */
-    .score-bar-wrap {
-      background: #f6f8fa;
-      border-radius: 4px;
-      height: 8px;
-      width: 100%;
-      overflow: hidden;
-    }
-    .score-bar-fill { height: 100%; border-radius: 4px; }
+    /* Scores comparaison */
+    .score-bar-wrap { background:var(--soft); border-radius:5px; height:9px; width:100%; overflow:hidden; }
+    .score-bar-fill { height:100%; border-radius:5px; }
 
-    /* Pied de page rapport */
     .report-footer {
-      border-top: 1px solid #d0d7de;
-      padding: 1rem 2.5rem;
-      font-size: .72rem;
-      color: #57606a;
-      display: flex;
-      justify-content: space-between;
+      border-top:1px solid var(--line); padding:1rem 2.5rem; font-size:.72rem; color:var(--muted);
+      display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;
     }
 
-    /* ── Impression ── */
     @media print {
-      body { background: #fff; }
-      .print-bar { display: none !important; }
-      .no-print { display: none !important; }
-      .report-wrapper { border: none; border-radius: 0; margin: 0; max-width: 100%; }
-      .report-body { padding: 1.5rem; }
-      .section { page-break-inside: avoid; }
-      .page-break { page-break-before: always; }
-      a { color: inherit; text-decoration: none; }
+      body { background:#fff; }
+      .print-bar, .no-print { display:none !important; }
+      .report-wrapper { box-shadow:none; border-radius:0; margin:0; max-width:100%; }
+      .report-body { padding:1.4rem 1.6rem; }
+      .section, .kpi, .svc-row { page-break-inside:avoid; }
+      .page-break { page-break-before:always; }
+      a { color:inherit; text-decoration:none; }
     }
+    @media (max-width:680px){ .kpi-grid{grid-template-columns:repeat(2,1fr)} }
   </style>
 </head>
 <body>
 
-<!-- Barre actions (écran seulement) -->
+<!-- Barre actions (écran) -->
 <div class="print-bar no-print">
   <span class="brand"><i class="bi bi-radar me-2"></i>Net<b>Watch</b> Portal</span>
   <div class="d-flex gap-2">
     <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-light">
       <i class="bi bi-arrow-left me-1"></i>Retour
     </a>
-    <button onclick="window.print()" class="btn btn-sm btn-primary">
+    <button onclick="window.print()" class="btn btn-sm" style="background:var(--cyan);color:#06222b;font-weight:600">
       <i class="bi bi-file-earmark-pdf me-1"></i>Exporter PDF
     </button>
   </div>
 </div>
 
 <div class="report-wrapper">
-  <div class="report-body">
 
-    <!-- En-tête -->
-    <div class="report-header">
+  {# ── Posture globale ── #}
+  {% set crit = alert_stats.critical if alert_stats else 0 %}
+  {% if not alert_stats %}
+    {% set p_lbl, p_col, p_ic = 'Indéterminé', '#9fb6c9', 'bi-question-circle' %}
+  {% elif crit > 0 or global_status == 'down' %}
+    {% set p_lbl, p_col, p_ic = 'Vigilance requise', '#ff8a8a', 'bi-exclamation-octagon-fill' %}
+  {% elif global_status == 'degraded' or alert_stats.medium > 0 %}
+    {% set p_lbl, p_col, p_ic = 'À surveiller', '#ffd479', 'bi-exclamation-triangle-fill' %}
+  {% else %}
+    {% set p_lbl, p_col, p_ic = 'Nominal', '#7ee0a6', 'bi-shield-check' %}
+  {% endif %}
+
+  <!-- Couverture -->
+  <div class="cover">
+    <div class="d-flex justify-content-between align-items-start" style="position:relative;z-index:1">
       <div>
-        <div class="report-title">🔭 Rapport d'état NetWatch</div>
-        <div style="color:#57606a;font-size:.85rem;margin-top:.25rem">
-          Stack d'observabilité réseau multi-moteurs — Zeek · Snort 3 · Suricata 7
+        <div class="cover-brand">
+          <span class="logo"><i class="bi bi-radar"></i></span>
+          <span>Net<b>Watch</b> · <span class="os">observabilité réseau</span></span>
+        </div>
+        <div class="cover-title">Rapport de sécurité réseau</div>
+        <div class="cover-sub">Détection multi-moteurs — Zeek · Snort 3 · Suricata 7 · assistant IA local</div>
+        <div class="posture mt-3" style="color:{{ p_col }}">
+          <i class="bi {{ p_ic }}"></i>Posture : {{ p_lbl }}
         </div>
       </div>
-      <div class="report-meta">
-        Généré le {{ generated_at }}<br>
-        {% if proxmox_configured %}
-          Nœud : <strong>{{ proxmox_node }}</strong><br>
-          {% if proxmox_ok %}
-            <span style="color:#1a7f37">● Proxmox connecté</span>
-          {% else %}
-            <span style="color:#cf222e">● Proxmox hors ligne</span>
-          {% endif %}
-        {% else %}
-          <span style="color:#57606a">Déploiement ESXi / standalone</span>
-        {% endif %}
+      <div class="cover-meta text-end">
+        Généré le <b>{{ generated_at }}</b><br>
+        {% if proxmox_configured %}Nœud : <b>{{ proxmox_node }}</b><br>{% else %}Déploiement <b>ESXi / standalone</b><br>{% endif %}
+        Licence <b>AGPL v3</b> · 100 % on-prem
+      </div>
+    </div>
+  </div>
+
+  <div class="report-body">
+
+    <!-- ════ Synthèse exécutive ════ -->
+    {% set up_count = services | selectattr('status','eq','up') | list | length %}
+    <div class="kpi-grid">
+      <div class="kpi k-acc">
+        <i class="bi bi-activity ic"></i>
+        <div class="num">{{ alert_stats.total if alert_stats else '—' }}</div>
+        <div class="lbl">Détections</div>
+        <div class="sub">{{ alert_stats.last_24h if alert_stats else 0 }} sur 24 h</div>
+      </div>
+      <div class="kpi k-crit">
+        <i class="bi bi-exclamation-octagon ic"></i>
+        <div class="num">{{ crit }}</div>
+        <div class="lbl">Critiques</div>
+        <div class="sub">sévérité 1</div>
+      </div>
+      <div class="kpi k-ok">
+        <i class="bi bi-hdd-network ic"></i>
+        <div class="num">{{ up_count }}<small style="font-size:.9rem;color:var(--muted)">/{{ services|length }}</small></div>
+        <div class="lbl">Services OK</div>
+        <div class="sub">stack opérationnelle</div>
+      </div>
+      <div class="kpi k-teal">
+        <i class="bi bi-clipboard2-check ic"></i>
+        <div class="num">{{ nis2_summary.full + nis2_summary.partial }}<small style="font-size:.9rem;color:var(--muted)">/10</small></div>
+        <div class="lbl">Mesures NIS2</div>
+        <div class="sub">{{ nis2_summary.full }} couvertes</div>
       </div>
     </div>
 
-    <!-- 1. Statut des services -->
+    <!-- Résumé exécutif IA -->
+    <div class="ai-summary" id="ai-summary-block">
+      <div class="ai-head"><i class="bi bi-stars"></i>Résumé exécutif <span class="badge-ia">IA</span></div>
+      <div class="ai-sub"><i class="bi bi-shield-lock me-1"></i>Synthèse générée par l'assistant IA local (Ollama) — aucune donnée envoyée à l'extérieur.</div>
+      <button type="button" id="ai-summary-btn" class="btn-ia no-print"><i class="bi bi-stars"></i>Générer le résumé exécutif</button>
+      <div id="ai-summary-content" class="ai-content" style="display:none"></div>
+    </div>
+
+    <!-- ════ 1 — Statut des services ════ -->
     <div class="section">
-      <div class="section-title">
-        <i class="bi bi-activity me-1"></i>1 — Statut des services
-      </div>
-
-      <div class="d-flex gap-3 mb-3 flex-wrap">
-        {% set up_count = services | selectattr('status','eq','up') | list | length %}
-        {% set down_count = services | selectattr('status','eq','down') | list | length %}
-        {% set deg_count = services | selectattr('status','eq','degraded') | list | length %}
-        <div class="stat-pill">
-          <span class="num" style="color:{% if global_status=='up' %}#1a7f37{% elif global_status=='degraded' %}#9a6700{% else %}#cf222e{% endif %}">
-            {% if global_status == 'up' %}✅{% elif global_status == 'degraded' %}⚠️{% else %}❌{% endif %}
-          </span>
-          <span class="lbl">Statut global</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#1a7f37">{{ up_count }}</span>
-          <span class="lbl">En ligne</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#9a6700">{{ deg_count }}</span>
-          <span class="lbl">Dégradés</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#cf222e">{{ down_count }}</span>
-          <span class="lbl">Hors ligne</span>
-        </div>
-      </div>
-
+      <div class="section-head"><span class="section-num">1</span><span class="section-name">Statut des services</span><span class="hr"></span></div>
       {% for svc in services %}
       <div class="svc-row">
         <div class="svc-dot dot-{{ svc.status }}"></div>
-        <div style="min-width:130px;font-weight:600">{{ svc.name }}</div>
-        <div class="mono" style="color:#57606a;font-size:.75rem;flex:1">{{ svc.url }}</div>
-        {% if svc.latency is not none %}
-          <div class="mono" style="font-size:.75rem;color:#57606a">{{ svc.latency }} ms</div>
-        {% endif %}
-        {% if svc.detail %}
-          <div style="font-size:.75rem;color:#57606a">{{ svc.detail }}</div>
-        {% endif %}
+        <div style="min-width:150px;font-weight:600">{{ svc.name }}</div>
+        <div class="mono" style="color:var(--muted);font-size:.74rem;flex:1">{{ svc.url }}</div>
+        {% if svc.detail %}<div style="font-size:.72rem;color:var(--muted)">{{ svc.detail }}</div>{% endif %}
+        {% if svc.latency is not none %}<div class="mono" style="font-size:.72rem;color:var(--muted)">{{ svc.latency }} ms</div>{% endif %}
+        <span class="svc-state st-{{ svc.status }}">{{ {'up':'opérationnel','degraded':'dégradé','down':'hors ligne'}[svc.status] }}</span>
       </div>
       {% endfor %}
     </div>
 
-    <!-- 2. Ressources Proxmox -->
+    <!-- ════ 2 — Ressources Proxmox ════ -->
     {% if node_status %}
     <div class="section">
-      <div class="section-title">
-        <i class="bi bi-server me-1"></i>2 — Ressources nœud Proxmox ({{ proxmox_node }})
+      <div class="section-head"><span class="section-num">2</span><span class="section-name">Ressources nœud — {{ proxmox_node }}</span><span class="hr"></span></div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="num" style="color:{% if node_status.cpu_pct>80 %}var(--crit){% elif node_status.cpu_pct>60 %}var(--med){% else %}var(--accent){% endif %}">{{ node_status.cpu_pct }}%</div><div class="lbl">CPU</div></div>
+        <div class="kpi"><div class="num" style="color:{% if node_status.ram_pct>80 %}var(--crit){% elif node_status.ram_pct>60 %}var(--med){% else %}var(--accent){% endif %}">{{ node_status.ram_pct }}%</div><div class="lbl">RAM</div><div class="sub">{{ node_status.ram_used | fmt_bytes }} / {{ node_status.ram_total | fmt_bytes }}</div></div>
+        <div class="kpi"><div class="num">{{ node_status.disk_used | fmt_bytes }}</div><div class="lbl">Disque root</div></div>
+        <div class="kpi"><div class="num">{{ node_status.uptime | fmt_uptime }}</div><div class="lbl">Uptime</div></div>
       </div>
-      <div class="d-flex gap-3 flex-wrap">
-        <div class="stat-pill">
-          <span class="num" style="color:{% if node_status.cpu_pct > 80 %}#cf222e{% elif node_status.cpu_pct > 60 %}#9a6700{% else %}#0969da{% endif %}">
-            {{ node_status.cpu_pct }}%
-          </span>
-          <span class="lbl">CPU</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:{% if node_status.ram_pct > 80 %}#cf222e{% elif node_status.ram_pct > 60 %}#9a6700{% else %}#0969da{% endif %}">
-            {{ node_status.ram_pct }}%
-          </span>
-          <span class="lbl">RAM</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#24292f">{{ node_status.ram_used | fmt_bytes }}</span>
-          <span class="lbl">RAM utilisée</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#24292f">{{ node_status.disk_used | fmt_bytes }}</span>
-          <span class="lbl">Disque root</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#24292f">{{ node_status.uptime | fmt_uptime }}</span>
-          <span class="lbl">Uptime</span>
-        </div>
-      </div>
-
       {% if vms %}
       <table class="report-table mt-3">
-        <thead><tr>
-          <th>VMID</th><th>Nom</th><th>Statut</th><th>RAM</th><th>CPU</th><th>Uptime</th>
-        </tr></thead>
+        <thead><tr><th>VMID</th><th>Nom</th><th>Statut</th><th>RAM</th><th>CPU</th><th>Uptime</th></tr></thead>
         <tbody>
           {% for vm in vms %}
           <tr>
-            <td class="mono">{{ vm.vmid }}</td>
-            <td><strong>{{ vm.name }}</strong></td>
-            <td>
-              {% if vm.status == 'running' %}
-                <span class="b-run">running</span>
-              {% else %}
-                <span class="b-stop">{{ vm.status }}</span>
-              {% endif %}
-            </td>
+            <td class="mono">{{ vm.vmid }}</td><td><strong>{{ vm.name }}</strong></td>
+            <td>{% if vm.status=='running' %}<span class="b-run">running</span>{% else %}<span class="b-stop">{{ vm.status }}</span>{% endif %}</td>
             <td>{{ vm.mem | fmt_bytes }}</td>
-            <td>{% if vm.status == 'running' %}{{ "%.0f"|format(vm.cpu * 100) }}%{% else %}—{% endif %}</td>
+            <td>{% if vm.status=='running' %}{{ "%.0f"|format(vm.cpu*100) }}%{% else %}—{% endif %}</td>
             <td>{{ vm.uptime | fmt_uptime }}</td>
           </tr>
           {% endfor %}
@@ -352,244 +301,125 @@
     </div>
     {% endif %}
 
-    <!-- 3. Alertes IDS -->
+    <!-- ════ 3 — Bilan alertes IDS ════ -->
     <div class="section page-break">
-      <div class="section-title">
-        <i class="bi bi-shield-exclamation me-1"></i>3 — Bilan alertes IDS
-      </div>
-
-      <!-- Résumé exécutif IA (assistant local Ollama) -->
-      <div class="ai-summary" id="ai-summary-block">
-        <div class="ai-summary-head">
-          <i class="bi bi-stars"></i>Résumé exécutif
-          <span class="badge-ia">IA</span>
-        </div>
-        <div class="ai-summary-sub">
-          <i class="bi bi-shield-lock me-1"></i>Synthèse générée par l'assistant IA local (Ollama) — aucune donnée envoyée à l'extérieur.
-        </div>
-        <button type="button" id="ai-summary-btn" class="btn-ia no-print">
-          <i class="bi bi-stars"></i>Générer le résumé exécutif
-        </button>
-        <div id="ai-summary-content" class="ai-summary-content" style="display:none"></div>
-      </div>
-
+      <div class="section-head"><span class="section-num">3</span><span class="section-name">Bilan des alertes IDS</span><span class="hr"></span></div>
       {% if alert_stats %}
-      <div class="d-flex gap-3 mb-3 flex-wrap">
-        <div class="stat-pill">
-          <span class="num" style="color:#0969da">{{ alert_stats.total }}</span>
-          <span class="lbl">Total</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#0969da">{{ alert_stats.last_24h }}</span>
-          <span class="lbl">Dernières 24h</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#cf222e">{{ alert_stats.critical }}</span>
-          <span class="lbl">Critiques (sev 1)</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#9a6700">{{ alert_stats.medium }}</span>
-          <span class="lbl">Moyennes (sev 2)</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#6e7781">{{ alert_stats.low }}</span>
-          <span class="lbl">Faibles (sev 3)</span>
-        </div>
+      <div class="kpi-grid mb-2">
+        <div class="kpi k-acc"><div class="num">{{ alert_stats.total }}</div><div class="lbl">Total</div></div>
+        <div class="kpi k-crit"><div class="num">{{ alert_stats.critical }}</div><div class="lbl">Critiques</div></div>
+        <div class="kpi" style="border-top-color:var(--med)"><div class="num" style="color:var(--med)">{{ alert_stats.medium }}</div><div class="lbl">Moyennes</div></div>
+        <div class="kpi"><div class="num" style="color:var(--low)">{{ alert_stats.low }}</div><div class="lbl">Faibles</div></div>
       </div>
-
       {% if alert_stats.mitre %}
       <div class="mb-3">
-        <div style="font-size:.75rem;color:#57606a;margin-bottom:.4rem;font-weight:600">Top MITRE ATT&CK tactics</div>
-        <div class="d-flex flex-wrap gap-2">
-          {% for tactic, count in alert_stats.mitre %}
-          <span class="b-mitre">{{ tactic }} ({{ count }})</span>
-          {% endfor %}
-        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem;font-weight:600">TOP MITRE ATT&CK</div>
+        <div class="d-flex flex-wrap gap-2">{% for tactic, count in alert_stats.mitre %}<span class="b-mitre">{{ tactic }} ({{ count }})</span>{% endfor %}</div>
       </div>
       {% endif %}
       {% endif %}
 
       {% if critical_alerts %}
-      <div style="font-size:.75rem;color:#57606a;margin-bottom:.4rem;font-weight:600">
-        Alertes critiques récentes (sévérité 1)
-      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem;font-weight:600">ALERTES CRITIQUES RÉCENTES (sévérité 1)</div>
       <table class="report-table">
-        <thead><tr>
-          <th>Horodatage</th><th>Moteur</th><th>Signature</th><th>Source</th><th>Dest.</th><th>MITRE</th>
-        </tr></thead>
+        <thead><tr><th>Horodatage</th><th>Moteur</th><th>Signature</th><th>Source</th><th>Dest.</th><th>MITRE</th></tr></thead>
         <tbody>
           {% for a in critical_alerts %}
           <tr>
             <td class="mono" style="white-space:nowrap">{{ a.timestamp[:19] | replace('T',' ') if a.timestamp else '—' }}</td>
-            <td>
-              {% if a.engine == 'suricata' %}<span class="b-suri">Suricata</span>
-              {% else %}<span class="b-snort">Snort</span>{% endif %}
-            </td>
-            <td>{{ a.signature | truncate(50) }}</td>
-            <td class="mono">{{ a.src_ip }}</td>
-            <td class="mono">{{ a.dest_ip }}</td>
+            <td>{% if a.engine=='suricata' %}<span class="b-suri">Suricata</span>{% else %}<span class="b-snort">Snort</span>{% endif %}</td>
+            <td>{{ a.signature | truncate(48) }}</td>
+            <td class="mono">{{ a.src_ip }}</td><td class="mono">{{ a.dest_ip }}</td>
             <td>{% if a.mitre_tactic %}<span class="b-mitre">{{ a.mitre_tactic }}</span>{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% elif alert_stats %}
-      <div style="color:#57606a;font-size:.82rem;padding:.5rem 0">
-        ✅ Aucune alerte critique sur la période.
-      </div>
+      <div style="color:var(--ok);font-size:.85rem;padding:.5rem 0"><i class="bi bi-shield-check me-1"></i>Aucune alerte critique sur la période.</div>
       {% else %}
-      <div style="color:#cf222e;font-size:.82rem;padding:.5rem 0">
-        ⚠️ Elasticsearch non joignable — données d'alertes indisponibles.
-      </div>
+      <div style="color:var(--crit);font-size:.85rem;padding:.5rem 0"><i class="bi bi-exclamation-triangle me-1"></i>Elasticsearch non joignable — données d'alertes indisponibles.</div>
       {% endif %}
     </div>
 
-    <!-- 4. Conformité NIS2 -->
+    <!-- ════ 4 — Conformité NIS2 ════ -->
     <div class="section page-break">
-      <div class="section-title">
-        <i class="bi bi-clipboard2-check me-1"></i>4 — Couverture NIS2 (article 21.2)
+      <div class="section-head"><span class="section-num">4</span><span class="section-name">Couverture NIS2 (article 21.2)</span><span class="hr"></span></div>
+      {% set nt = nis2_summary.full + nis2_summary.partial + nis2_summary.none %}
+      <div class="cov-bar">
+        <div style="width:{{ (nis2_summary.full / nt * 100) | round(1) }}%;background:var(--ok)"></div>
+        <div style="width:{{ (nis2_summary.partial / nt * 100) | round(1) }}%;background:var(--med)"></div>
+        <div style="width:{{ (nis2_summary.none / nt * 100) | round(1) }}%;background:var(--line)"></div>
       </div>
-
-      <div class="d-flex gap-3 mb-3 flex-wrap">
-        <div class="stat-pill">
-          <span class="num" style="color:#1a7f37">{{ nis2_summary.full }}</span>
-          <span class="lbl">Couvert</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#9a6700">{{ nis2_summary.partial }}</span>
-          <span class="lbl">Contribution</span>
-        </div>
-        <div class="stat-pill">
-          <span class="num" style="color:#6e7781">{{ nis2_summary.none }}</span>
-          <span class="lbl">Hors périmètre</span>
-        </div>
+      <div class="cov-legend">
+        <span><span class="sw" style="background:var(--ok)"></span>{{ nis2_summary.full }} couvert</span>
+        <span><span class="sw" style="background:var(--med)"></span>{{ nis2_summary.partial }} contribution</span>
+        <span><span class="sw" style="background:var(--line)"></span>{{ nis2_summary.none }} hors périmètre</span>
       </div>
-
-      <table class="report-table">
-        <thead><tr>
-          <th style="width:34px"></th><th style="width:110px">Réf.</th><th>Mesure & apport NetWatch</th>
-        </tr></thead>
+      <table class="report-table mt-3">
+        <thead><tr><th style="width:30px"></th><th style="width:110px">Réf.</th><th>Mesure & apport NetWatch</th></tr></thead>
         <tbody>
           {% for m in nis2_measures %}
           <tr>
-            <td style="text-align:center;font-size:1rem">
-              {% if m.coverage == 'full' %}<span style="color:#1a7f37">●</span>
-              {% elif m.coverage == 'partial' %}<span style="color:#9a6700">●</span>
-              {% else %}<span style="color:#cf222e;opacity:.5">●</span>{% endif %}
-            </td>
-            <td class="mono" style="color:#57606a;font-size:.72rem;white-space:nowrap">{{ m.ref }}</td>
-            <td>
-              <strong>{{ m.title }}</strong><br>
-              <span style="font-size:.76rem;color:#57606a">{{ m.netwatch }}</span>
-            </td>
+            <td style="text-align:center;font-size:1rem">{% if m.coverage=='full' %}<span style="color:var(--ok)">●</span>{% elif m.coverage=='partial' %}<span style="color:var(--med)">●</span>{% else %}<span style="color:var(--crit);opacity:.45">●</span>{% endif %}</td>
+            <td class="mono" style="color:var(--muted);font-size:.72rem;white-space:nowrap">{{ m.ref }}</td>
+            <td><strong>{{ m.title }}</strong><br><span style="font-size:.76rem;color:var(--muted)">{{ m.netwatch }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      <div style="font-size:.72rem;color:#57606a;margin-top:.5rem">
-        NetWatch couvre le volet <strong>détection/réponse d'incidents</strong> (art. 21.2.b) et contribue à
-        {{ nis2_summary.partial }} autres mesures. Solution open-source on-prem (AGPL v3) — réponse NIS2 à coût zéro pour PME/ETI.
-      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">NetWatch couvre pleinement la <strong>détection/réponse d'incidents</strong> (art. 21.2.b) et contribue à {{ nis2_summary.partial }} autres mesures. Référentiels complémentaires (NIST CSF, ANSSI, ISO 27001) disponibles dans le portail.</div>
     </div>
 
-    <!-- 5. Comparaison open-source vs commercial (scores) -->
+    <!-- ════ 5 — Comparaison ════ -->
     <div class="section">
-      <div class="section-title">
-        <i class="bi bi-bar-chart-steps me-1"></i>5 — Scores comparaison outils
-      </div>
+      <div class="section-head"><span class="section-num">5</span><span class="section-name">Comparaison outils — score de couverture</span><span class="hr"></span></div>
       <table class="report-table">
-        <thead><tr>
-          <th>Outil</th><th>Type</th><th style="width:200px">Score couverture</th><th style="width:60px">Score</th>
-        </tr></thead>
+        <thead><tr><th>Outil</th><th>Type</th><th style="width:190px">Couverture</th><th style="width:54px">Score</th></tr></thead>
         <tbody>
           {% for tool in tool_cols %}
-          {% set full_count = namespace(val=0) %}
-          {% set partial_count = namespace(val=0) %}
-          {% set none_count = namespace(val=0) %}
-          {% for section in compare_matrix %}
-            {% for row in section.rows %}
-              {% set v = row[tool.id] %}
-              {% if v == 'full' %}{% set full_count.val = full_count.val + 1 %}
-              {% elif v == 'partial' %}{% set partial_count.val = partial_count.val + 1 %}
-              {% elif v == 'none' %}{% set none_count.val = none_count.val + 1 %}
-              {% endif %}
-            {% endfor %}
-          {% endfor %}
-          {% set total = full_count.val + partial_count.val + none_count.val %}
-          {% set score = ((full_count.val + partial_count.val * 0.5) / total * 100) | round | int %}
-          <tr {% if tool.id == 'netwatch' %}style="background:#ddf4ff"{% endif %}>
-            <td>
-              <span style="font-size:1.1rem;margin-right:.4rem">{{ tool.logo }}</span>
-              <strong>{{ tool.name }}</strong>
-              {% if tool.id == 'netwatch' %} ← ce projet{% endif %}
-            </td>
-            <td>
-              {% if tool.type == 'open-source' %}
-                <span style="background:#ddf4ff;color:#0969da;padding:.1rem .4rem;border-radius:4px;font-size:.72rem">open-source</span>
-              {% else %}
-                <span style="background:#fff8c5;color:#9a6700;padding:.1rem .4rem;border-radius:4px;font-size:.72rem">commercial</span>
-              {% endif %}
-            </td>
-            <td>
-              <div class="score-bar-wrap">
-                <div class="score-bar-fill"
-                     style="width:{{ score }}%;background:{% if score >= 75 %}#1a7f37{% elif score >= 50 %}#9a6700{% else %}#cf222e{% endif %}">
-                </div>
-              </div>
-            </td>
-            <td style="font-weight:700;color:{% if score >= 75 %}#1a7f37{% elif score >= 50 %}#9a6700{% else %}#cf222e{% endif %}">
-              {{ score }}%
-            </td>
+          {% set fc = namespace(v=0) %}{% set pc = namespace(v=0) %}{% set nc = namespace(v=0) %}
+          {% for section in compare_matrix %}{% for row in section.rows %}{% set v = row[tool.id] %}
+            {% if v=='full' %}{% set fc.v = fc.v+1 %}{% elif v=='partial' %}{% set pc.v = pc.v+1 %}{% elif v=='none' %}{% set nc.v = nc.v+1 %}{% endif %}
+          {% endfor %}{% endfor %}
+          {% set total = fc.v+pc.v+nc.v %}{% set score = ((fc.v + pc.v*0.5)/total*100)|round|int %}
+          <tr {% if tool.id=='netwatch' %}style="background:#e8f6fb"{% endif %}>
+            <td><span style="font-size:1.1rem;margin-right:.4rem">{{ tool.logo }}</span><strong>{{ tool.name }}</strong>{% if tool.id=='netwatch' %} <span style="color:var(--accent);font-size:.72rem">← ce projet</span>{% endif %}</td>
+            <td>{% if tool.type=='open-source' %}<span style="background:#e8f6fb;color:var(--accent);padding:.1rem .4rem;border-radius:4px;font-size:.72rem">open-source</span>{% else %}<span style="background:#fdf3e0;color:var(--med);padding:.1rem .4rem;border-radius:4px;font-size:.72rem">commercial</span>{% endif %}</td>
+            <td><div class="score-bar-wrap"><div class="score-bar-fill" style="width:{{ score }}%;background:{% if score>=75 %}var(--ok){% elif score>=50 %}var(--med){% else %}var(--crit){% endif %}"></div></div></td>
+            <td style="font-weight:700;color:{% if score>=75 %}var(--ok){% elif score>=50 %}var(--med){% else %}var(--crit){% endif %}">{{ score }}%</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      <div style="font-size:.72rem;color:#57606a;margin-top:.5rem">
-        Score = (fonctionnalités supportées + 0,5 × partielles) / total — 24 critères évalués.
-      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Score = (fonctionnalités supportées + 0,5 × partielles) / total des critères évalués.</div>
     </div>
 
   </div><!-- /.report-body -->
 
-  <!-- Pied de page -->
   <div class="report-footer">
-    <span>NetWatch v2.0 — Licence AGPL v3 — github.com/Ourslow/Netwatch</span>
-    <span>Nicolas Malok · Analyste Observabilité NPM · Axians / Vinci Energies · France</span>
+    <span><i class="bi bi-radar me-1"></i>NetWatch v2 — AGPL v3 — github.com/Ourslow/Netwatch</span>
+    <span>Nicolas Malok · Analyste Observabilité NPM · Axians / Vinci Energies</span>
   </div>
-</div><!-- /.report-wrapper -->
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-/* ---- Résumé exécutif IA (assistant local Ollama) ---- */
-const aiBtn     = document.getElementById('ai-summary-btn');
+const aiBtn = document.getElementById('ai-summary-btn');
 const aiContent = document.getElementById('ai-summary-content');
-
 if (aiBtn) {
   aiBtn.addEventListener('click', () => {
     aiBtn.disabled = true;
     aiBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Génération en cours…';
     aiContent.style.display = 'block';
-    aiContent.innerHTML =
-      '<div class="ai-skel-line" style="width:95%"></div>' +
-      '<div class="ai-skel-line" style="width:100%"></div>' +
-      '<div class="ai-skel-line" style="width:88%"></div>' +
-      '<div class="ai-skel-line" style="width:70%"></div>';
-
+    aiContent.innerHTML = '<div class="ai-skel-line" style="width:95%"></div><div class="ai-skel-line" style="width:100%"></div><div class="ai-skel-line" style="width:88%"></div><div class="ai-skel-line" style="width:70%"></div>';
     fetch('/api/summary')
       .then(r => r.json().then(data => ({ ok: r.ok, data })))
       .then(({ ok, data }) => {
-        if (!ok) {
-          aiContent.textContent = '⚠️ ' + (data.error || 'Erreur inconnue — assistant IA indisponible.');
-          aiBtn.style.display = 'none';
-          return;
-        }
-        aiContent.textContent = data.summary;
-        aiBtn.style.display = 'none';
+        if (!ok) { aiContent.textContent = '⚠️ ' + (data.error || 'Assistant IA indisponible.'); aiBtn.style.display='none'; return; }
+        aiContent.textContent = data.summary; aiBtn.style.display = 'none';
       })
-      .catch(() => {
-        aiContent.textContent = '⚠️ Impossible de contacter l\'assistant IA local.';
-        aiBtn.style.display = 'none';
-      });
+      .catch(() => { aiContent.textContent = '⚠️ Impossible de contacter l\'assistant IA local.'; aiBtn.style.display='none'; });
   });
 }
 </script>
