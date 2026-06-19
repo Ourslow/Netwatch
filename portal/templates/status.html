@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Statut services — NetWatch Portal{% endblock %}
-{% block page_title %}Statut des services{% endblock %}
+{% block page_title %}<span data-i18n="page_status">Statut des services</span>{% endblock %}
 
 {% block topbar_actions %}
 <span id="last-refresh" class="text-muted small">
@@ -19,20 +19,20 @@
     {% if global_status == 'up' %}
       <i class="bi bi-check-circle-fill fs-3 text-success"></i>
       <div>
-        <div class="fw-bold">Tous les services opérationnels</div>
-        <small class="text-muted">Stack NetWatch fonctionnelle</small>
+        <div class="fw-bold" data-i18n="status_up">Tous les services opérationnels</div>
+        <small class="text-muted" data-i18n="status_up_sub">Stack NetWatch fonctionnelle</small>
       </div>
     {% elif global_status == 'degraded' %}
       <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
       <div>
-        <div class="fw-bold text-warning">Services dégradés</div>
-        <small class="text-muted">Un ou plusieurs services en anomalie</small>
+        <div class="fw-bold text-warning" data-i18n="status_deg">Services dégradés</div>
+        <small class="text-muted" data-i18n="status_deg_sub">Un ou plusieurs services en anomalie</small>
       </div>
     {% else %}
       <i class="bi bi-x-circle-fill fs-3 text-danger"></i>
       <div>
-        <div class="fw-bold text-danger">Services indisponibles</div>
-        <small class="text-muted">Vérifier que la stack Docker est lancée : <code>make start</code></small>
+        <div class="fw-bold text-danger" data-i18n="status_down">Services indisponibles</div>
+        <small class="text-muted" data-i18n="status_down_sub">Vérifier que la stack Docker est lancée</small> : <code>make start</code>
       </div>
     {% endif %}
   </div>

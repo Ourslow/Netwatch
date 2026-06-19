@@ -26,73 +26,73 @@
       <span class="brand-mark"><i class="bi bi-radar"></i></span>
       <span class="brand-text">
         <span class="brand-name">Net<b>Watch</b></span>
-        <span class="brand-tag d-block">Observabilité réseau</span>
+        <span class="brand-tag d-block" data-i18n="brand_tag">Observabilité réseau</span>
       </span>
     </a>
 
-    <div class="nav-section">Supervision</div>
+    <div class="nav-section" data-i18n="nav_supervision">Supervision</div>
     <ul class="nav nav-pills flex-column gap-1">
       <li class="nav-item">
         <a href="{{ url_for('dashboard') }}"
            class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-          <i class="bi bi-grid-1x2"></i> <span>Dashboard</span>
+          <i class="bi bi-grid-1x2"></i> <span data-i18n="nav_dashboard">Dashboard</span>
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('alerts') }}"
            class="nav-link {% if request.endpoint in ['alerts'] %}active{% endif %}">
-          <i class="bi bi-shield-exclamation"></i> <span>Alertes IDS</span>
+          <i class="bi bi-shield-exclamation"></i> <span data-i18n="nav_alerts">Alertes IDS</span>
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('audit') }}"
            class="nav-link {% if request.endpoint == 'audit' %}active{% endif %}">
-          <i class="bi bi-clipboard2-data"></i> <span>Audit réseau</span>
+          <i class="bi bi-clipboard2-data"></i> <span data-i18n="nav_audit">Audit réseau</span>
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('status') }}"
            class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
-          <i class="bi bi-activity"></i> <span>Statut services</span>
+          <i class="bi bi-activity"></i> <span data-i18n="nav_status">Statut services</span>
         </a>
       </li>
     </ul>
 
-    <div class="nav-section">Infrastructure</div>
+    <div class="nav-section" data-i18n="nav_infra">Infrastructure</div>
     <ul class="nav nav-pills flex-column gap-1">
       <li class="nav-item">
         <a href="{{ url_for('vms') }}"
            class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
-          <i class="bi bi-hdd-stack"></i> <span>Machines virtuelles</span>
+          <i class="bi bi-hdd-stack"></i> <span data-i18n="nav_vms">Machines virtuelles</span>
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('catalog') }}"
            class="nav-link {% if request.endpoint in ['catalog','tool_detail','deploy'] %}active{% endif %}">
-          <i class="bi bi-grid-3x3-gap"></i> <span>Catalogue outils</span>
+          <i class="bi bi-grid-3x3-gap"></i> <span data-i18n="nav_catalog">Catalogue outils</span>
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('compare') }}"
            class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
-          <i class="bi bi-bar-chart-steps"></i> <span>Comparaison</span>
+          <i class="bi bi-bar-chart-steps"></i> <span data-i18n="nav_compare">Comparaison</span>
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('compliance') }}"
            class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
-          <i class="bi bi-clipboard2-check"></i> <span>Conformité</span>
+          <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
         </a>
       </li>
     </ul>
 
-    <div class="nav-section">Rapport</div>
+    <div class="nav-section" data-i18n="nav_report_sec">Rapport</div>
     <ul class="nav nav-pills flex-column gap-1">
       <li class="nav-item">
         <a href="{{ url_for('report') }}"
            class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"
            target="_blank">
-          <i class="bi bi-file-earmark-text"></i> <span>Rapport exécutif</span>
+          <i class="bi bi-file-earmark-text"></i> <span data-i18n="nav_report">Rapport exécutif</span>
         </a>
       </li>
     </ul>
