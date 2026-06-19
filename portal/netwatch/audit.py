@@ -29,6 +29,20 @@ RISKY_PORTS = {
 
 _WEIGHT = {"critical": 25, "warning": 10, "info": 0, "ok": 0}
 
+# Offre de remédiation par constat (catégorie de solution à proposer en avant-vente).
+# Clé = sous-chaîne du titre du finding.
+REMEDIATION = {
+    "Identifiants transmis en clair": "IAM / MFA · chiffrement des flux (HTTPS, HSTS)",
+    "TLS obsolètes":                  "PKI managée · WAF / reverse-proxy TLS",
+    "Certificats expirés":            "Gestion de certificats (PKI managée)",
+    "IoC connus":                     "SOC managé (MDR) · Threat Intelligence",
+    "Services à risque exposés":      "NGFW · micro-segmentation · audit d'exposition",
+    "Beaconing C2":                   "NDR / EDR managé · SOC (MDR)",
+    "DNS à haute entropie":           "Secure DNS / proxy filtrant · SOC",
+    "Scans de ports":                 "NGFW · supervision managée",
+    "Alertes critiques":              "SOC managé (MDR) · réponse à incident",
+}
+
 
 # ── Helpers ES ──────────────────────────────────────────────
 def _search(index, body):
@@ -222,6 +236,14 @@ def run_audit():
             if f["count"] != "—":
                 es_ok = True
             counts[f["severity"]] = counts.get(f["severity"], 0) + 1
+            # Offre de remédiation : seulement sur un constat actif (à corriger/critique)
+            offer = "—"
+            if f["severity"] in ("critical", "warning"):
+                for key, val in REMEDIATION.items():
+                    if key in f["title"]:
+                        offer = val
+                        break
+            f["remediation"] = offer
     score = max(0, 100 - counts["critical"] * _WEIGHT["critical"] - counts["warning"] * _WEIGHT["warning"])
     if score >= 80:
         label, color = "Bonne posture", "ok"
