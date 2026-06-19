@@ -342,9 +342,47 @@
       {% endif %}
     </div>
 
-    <!-- ════ 4 — Conformité NIS2 ════ -->
+    <!-- ════ 4 — Audit réseau ════ -->
     <div class="section page-break">
-      <div class="section-head"><span class="section-num">4</span><span class="section-name">Couverture NIS2 (article 21.2)</span><span class="hr"></span></div>
+      <div class="section-head"><span class="section-num">4</span><span class="section-name">Audit réseau — synthèse</span><span class="hr"></span></div>
+      {% set sc = {'ok':'var(--ok)','warning':'var(--med)','critical':'var(--crit)'} %}
+      <div class="d-flex align-items-center gap-4 mb-3 flex-wrap">
+        <div style="text-align:center;min-width:90px">
+          <div style="font-size:2.2rem;font-weight:800;line-height:1;color:{{ sc[audit.score_color] }}">{{ audit.score }}<small style="font-size:1rem;color:var(--muted)">/100</small></div>
+          <div style="font-weight:700;font-size:.78rem;color:{{ sc[audit.score_color] }}">{{ audit.score_label }}</div>
+        </div>
+        <div class="d-flex gap-3">
+          <div style="text-align:center"><div style="font-size:1.35rem;font-weight:700;color:var(--crit)">{{ audit.counts.critical }}</div><div style="font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Critiques</div></div>
+          <div style="text-align:center"><div style="font-size:1.35rem;font-weight:700;color:var(--med)">{{ audit.counts.warning }}</div><div style="font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">À corriger</div></div>
+          <div style="text-align:center"><div style="font-size:1.35rem;font-weight:700;color:var(--ok)">{{ audit.counts.ok }}</div><div style="font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Conformes</div></div>
+        </div>
+        <div class="flex-grow-1 text-end" style="font-size:.72rem;color:var(--muted)">Audit passif du trafic observé.<br>Score : −25 pts / constat critique, −10 pts / point à corriger.</div>
+      </div>
+
+      {% set total_issues = audit.counts.critical + audit.counts.warning %}
+      {% if total_issues %}
+      <table class="report-table">
+        <thead><tr><th style="width:26px"></th><th>Constat & recommandation</th><th style="width:120px">Référentiel</th><th style="width:175px">Remédiation</th></tr></thead>
+        <tbody>
+          {% for ax in audit.axes %}{% for f in ax.findings %}{% if f.severity in ['critical','warning'] %}
+          <tr>
+            <td style="text-align:center">{% if f.severity=='critical' %}<i class="bi bi-exclamation-octagon-fill" style="color:var(--crit)"></i>{% else %}<i class="bi bi-exclamation-triangle-fill" style="color:var(--med)"></i>{% endif %}</td>
+            <td><strong>{{ f.title }}</strong> <span style="color:var(--muted)">({{ f.count }})</span><br><span style="font-size:.74rem;color:var(--muted)">{{ f.reco }}</span></td>
+            <td style="font-size:.72rem;color:var(--muted)">{{ f.ref }}</td>
+            <td style="font-size:.74rem">{% if f.remediation and f.remediation!='—' %}{{ f.remediation }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endif %}{% endfor %}{% endfor %}
+        </tbody>
+      </table>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">L'audit relie chaque constat à une exigence réglementaire et à une offre de remédiation — détail complet dans le portail (Audit réseau).</div>
+      {% else %}
+      <div style="color:var(--ok);font-size:.85rem;padding:.5rem 0"><i class="bi bi-shield-check me-1"></i>Aucun point d'attention sur la période observée — posture conforme.</div>
+      {% endif %}
+    </div>
+
+    <!-- ════ 5 — Conformité NIS2 ════ -->
+    <div class="section page-break">
+      <div class="section-head"><span class="section-num">5</span><span class="section-name">Couverture NIS2 (article 21.2)</span><span class="hr"></span></div>
       {% set nt = nis2_summary.full + nis2_summary.partial + nis2_summary.none %}
       <div class="cov-bar">
         <div style="width:{{ (nis2_summary.full / nt * 100) | round(1) }}%;background:var(--ok)"></div>
@@ -373,7 +411,7 @@
 
     <!-- ════ 5 — Comparaison ════ -->
     <div class="section">
-      <div class="section-head"><span class="section-num">5</span><span class="section-name">Comparaison outils — score de couverture</span><span class="hr"></span></div>
+      <div class="section-head"><span class="section-num">6</span><span class="section-name">Comparaison outils — score de couverture</span><span class="hr"></span></div>
       <table class="report-table">
         <thead><tr><th>Outil</th><th>Type</th><th style="width:190px">Couverture</th><th style="width:54px">Score</th></tr></thead>
         <tbody>

@@ -710,6 +710,7 @@ def report():
             "partial": sum(1 for m in NIS2_MATRIX if m["coverage"] == "partial"),
             "none":    sum(1 for m in NIS2_MATRIX if m["coverage"] == "none"),
         },
+        audit          = nw_audit.run_audit(),
         generated_at   = datetime.now().strftime("%d/%m/%Y à %H:%M"),
     )
 
