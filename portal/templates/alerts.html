@@ -3,7 +3,9 @@
 {% block page_title %}Alertes IDS{% endblock %}
 
 {% block topbar_actions %}
-<span class="text-muted small" id="alert-count-label">
+<span class="text-muted small" id="alert-count-label"
+      data-count-fr="{{ alerts | length }} alertes"
+      data-count-en="{{ alerts | length }} alerts">
   {% if alerts %}{{ alerts | length }} alertes{% endif %}
 </span>
 <span class="live-pill" id="alerts-live" title="Rafraîchi toutes les 30s">
@@ -19,7 +21,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center">
       <div class="card-body py-3">
-        <p class="stat-label">Total alertes</p>
+        <p class="stat-label" data-i18n="stat_total">Total alertes</p>
         <h2 class="stat-value" data-countup="{{ stats.total }}">{{ stats.total }}</h2>
       </div>
     </div>
@@ -27,7 +29,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center">
       <div class="card-body py-3">
-        <p class="stat-label">Dernières 24h</p>
+        <p class="stat-label" data-i18n="stat_24h">Dernières 24h</p>
         <h2 class="stat-value text-info" data-countup="{{ stats.last_24h }}">{{ stats.last_24h }}</h2>
       </div>
     </div>
@@ -35,7 +37,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center">
       <div class="card-body py-3">
-        <p class="stat-label">Critiques (sev 1)</p>
+        <p class="stat-label" data-i18n="stat_critical">Critiques (sev 1)</p>
         <h2 class="stat-value text-danger" data-countup="{{ stats.critical }}">{{ stats.critical }}</h2>
       </div>
     </div>
@@ -43,7 +45,7 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center">
       <div class="card-body py-3">
-        <p class="stat-label">Moyennes (sev 2)</p>
+        <p class="stat-label" data-i18n="stat_medium">Moyennes (sev 2)</p>
         <h2 class="stat-value text-warning" data-countup="{{ stats.medium }}">{{ stats.medium }}</h2>
       </div>
     </div>
@@ -55,13 +57,13 @@
 <div class="card mb-4" data-spark-wrap>
   <div class="card-body py-3">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <span class="stat-label mb-0">Activité des alertes · 24 h</span>
+      <span class="stat-label mb-0" data-i18n="spark_label">Activité des alertes · 24 h</span>
       <span class="d-flex gap-3 small text-muted">
         <span class="d-inline-flex align-items-center gap-1">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>Volume
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span><span data-i18n="spark_volume">Volume</span>
         </span>
         <span class="d-inline-flex align-items-center gap-1">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block"></span>Critiques
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block"></span><span data-i18n="spark_critical">Critiques</span>
         </span>
       </span>
     </div>
@@ -93,7 +95,7 @@
     <!-- Filtre moteur -->
     <div class="btn-group btn-group-sm">
       <a href="{{ url_for('alerts', severity=severity, q=search) }}"
-         class="btn {% if not engine %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+         class="btn {% if not engine %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-i18n="filter_all">
         Tous
       </a>
       <a href="{{ url_for('alerts', engine='suricata', severity=severity, q=search) }}"
@@ -109,7 +111,7 @@
     <!-- Filtre sévérité -->
     <div class="btn-group btn-group-sm">
       <a href="{{ url_for('alerts', engine=engine, q=search) }}"
-         class="btn {% if not severity %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+         class="btn {% if not severity %}btn-secondary{% else %}btn-outline-secondary{% endif %}" data-i18n="filter_all_sev">
         Toutes sév.
       </a>
       <a href="{{ url_for('alerts', engine=engine, severity=1, q=search) }}"
@@ -151,12 +153,12 @@
     <table class="table table-hover mb-0 align-middle" id="alerts-table">
       <thead>
         <tr>
-          <th style="width:130px">Horodatage</th>
-          <th style="width:90px">Moteur</th>
-          <th style="width:80px">Sév.</th>
-          <th>Signature</th>
-          <th style="width:130px">Source</th>
-          <th style="width:130px">Destination</th>
+          <th style="width:130px" data-i18n="col_timestamp">Horodatage</th>
+          <th style="width:90px" data-i18n="col_engine">Moteur</th>
+          <th style="width:80px" data-i18n="col_severity">Sév.</th>
+          <th data-i18n="col_signature">Signature</th>
+          <th style="width:130px" data-i18n="col_source">Source</th>
+          <th style="width:130px" data-i18n="col_destination">Destination</th>
           <th>MITRE</th>
           <th style="width:54px" class="text-center" title="Explication par l'assistant IA local">
             <i class="bi bi-stars" style="color:var(--accent)"></i>
@@ -167,7 +169,8 @@
         {% if alerts %}
           {% for a in alerts %}
           <tr>
-            <td class="text-muted fw-mono small">
+            <td class="text-muted fw-mono small"
+                data-ts="{{ a.timestamp[:19] if a.timestamp else '' }}">
               {{ a.timestamp[:19] | replace('T', ' ') if a.timestamp else '—' }}
             </td>
             <td>
@@ -179,11 +182,11 @@
             </td>
             <td>
               {% if a.severity == 1 %}
-                <span class="sev sev-crit">Critique</span>
+                <span class="sev sev-crit" data-i18n="sev_critical">Critique</span>
               {% elif a.severity == 2 %}
-                <span class="sev sev-med">Moyen</span>
+                <span class="sev sev-med" data-i18n="sev_medium">Moyen</span>
               {% else %}
-                <span class="sev sev-low">Faible</span>
+                <span class="sev sev-low" data-i18n="sev_low">Faible</span>
               {% endif %}
             </td>
             <td class="small">
@@ -261,15 +264,15 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-stars me-2"></i>Assistant IA — explication de l'alerte</h5>
+        <h5 class="modal-title"><i class="bi bi-stars me-2"></i><span data-i18n="modal_title">Assistant IA — explication de l'alerte</span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="explain-modal-body"></div>
       <div class="modal-footer">
         <span class="ai-privacy me-auto">
-          <i class="bi bi-shield-lock"></i>Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur
+          <i class="bi bi-shield-lock"></i><span data-i18n="modal_privacy">Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur</span>
         </span>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" data-i18n="modal_close">Fermer</button>
       </div>
     </div>
   </div>
@@ -299,9 +302,9 @@ const AI_SKELETON = `
   </div>`;
 
 function severityBadge(s) {
-  if (s === 1) return '<span class="sev sev-crit">Critique</span>';
-  if (s === 2) return '<span class="sev sev-med">Moyen</span>';
-  return '<span class="sev sev-low">Faible</span>';
+  if (s === 1) return '<span class="sev sev-crit" data-i18n="sev_critical">' + NW.t('sev_critical') + '</span>';
+  if (s === 2) return '<span class="sev sev-med" data-i18n="sev_medium">'   + NW.t('sev_medium')   + '</span>';
+  return             '<span class="sev sev-low" data-i18n="sev_low">'        + NW.t('sev_low')      + '</span>';
 }
 
 function engineBadge(e) {
@@ -311,7 +314,7 @@ function engineBadge(e) {
 }
 
 function fmtTs(ts) {
-  return ts ? ts.slice(0,19).replace('T',' ') : '—';
+  return NW.fmtTs(ts);
 }
 
 function mitreBadge(a) {
@@ -371,7 +374,7 @@ function refreshAlerts() {
       if (label) {
         const prev = label.dataset.count;
         const next = String(data.length);
-        label.textContent = data.length + ' alertes';
+        label.textContent = NW.t('alerts_label', { n: data.length });
         if (prev !== undefined && prev !== next) {
           label.classList.remove('val-pulse');
           void label.offsetWidth;

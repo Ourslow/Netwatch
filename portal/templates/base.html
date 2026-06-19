@@ -114,6 +114,14 @@
         </span>
         {% endif %}
         {% block topbar_actions %}{% endblock %}
+        <button id="lang-toggle" onclick="NW.switchLang()"
+                class="btn btn-sm btn-outline-secondary"
+                title="Switch language / Changer la langue"
+                style="font-size:.75rem;letter-spacing:.04em;min-width:54px">
+          <span class="lang-active">FR</span>
+          <span class="text-muted mx-1">|</span>
+          <span class="lang-other" style="opacity:.45">EN</span>
+        </button>
         <a href="{{ url_for('logout') }}"
            class="btn btn-sm btn-outline-secondary"
            title="Déconnexion">

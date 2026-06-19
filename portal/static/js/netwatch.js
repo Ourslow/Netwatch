@@ -7,6 +7,143 @@
   "use strict";
 
   const NW = {};
+
+  /* ---- i18n ------------------------------------------------- */
+  const TRANSLATIONS = {
+    fr: {
+      "ts_format":         "fr",
+      "just_now":          "à l'instant",
+      "ago":               "il y a {n} s",
+      "alerts_label":      "{n} alertes",
+      "alerts_in_header":  "alertes",
+      /* Tableau alertes */
+      "col_timestamp":     "Horodatage",
+      "col_engine":        "Moteur",
+      "col_severity":      "Sév.",
+      "col_signature":     "Signature",
+      "col_source":        "Source",
+      "col_destination":   "Destination",
+      /* Stats */
+      "stat_total":        "Total alertes",
+      "stat_24h":          "Dernières 24h",
+      "stat_critical":     "Critiques (sev 1)",
+      "stat_medium":       "Moyennes (sev 2)",
+      /* Spark */
+      "spark_label":       "Activité des alertes · 24 h",
+      "spark_volume":      "Volume",
+      "spark_critical":    "Critiques",
+      /* Filtres */
+      "filter_all":        "Tous",
+      "filter_all_sev":    "Toutes sév.",
+      "filter_search":     "Rechercher",
+      /* Sévérités */
+      "sev_critical":      "Critique",
+      "sev_medium":        "Moyen",
+      "sev_low":           "Faible",
+      /* Tooltip sparkline */
+      "spark_tooltip":     "alerte(s)",
+      /* Modal IA */
+      "modal_title":       "Assistant IA — explication de l'alerte",
+      "modal_close":       "Fermer",
+      "modal_privacy":     "Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur",
+      "modal_loading":     "L'assistant IA analyse l'alerte…",
+      /* MITRE */
+      "mitre_header":      "Top MITRE ATT&CK tactics",
+      /* Empty states */
+      "empty_es":          "Elasticsearch non joignable — lancez le stack NetWatch (<code>make start</code>)",
+      "empty_filter":      "Aucune alerte pour ces filtres",
+      "empty_no_data":     "Aucune alerte — stack silencieuse ou Elasticsearch vide (<code>make sim</code> pour générer du trafic)",
+    },
+    en: {
+      "ts_format":         "en",
+      "just_now":          "just now",
+      "ago":               "{n}s ago",
+      "alerts_label":      "{n} alerts",
+      "alerts_in_header":  "alerts",
+      "col_timestamp":     "Timestamp",
+      "col_engine":        "Engine",
+      "col_severity":      "Sev.",
+      "col_signature":     "Signature",
+      "col_source":        "Source",
+      "col_destination":   "Destination",
+      "stat_total":        "Total alerts",
+      "stat_24h":          "Last 24h",
+      "stat_critical":     "Critical (sev 1)",
+      "stat_medium":       "Medium (sev 2)",
+      "spark_label":       "Alert activity · 24h",
+      "spark_volume":      "Volume",
+      "spark_critical":    "Critical",
+      "filter_all":        "All",
+      "filter_all_sev":    "All sev.",
+      "filter_search":     "Search",
+      "sev_critical":      "Critical",
+      "sev_medium":        "Medium",
+      "sev_low":           "Low",
+      "spark_tooltip":     "alert(s)",
+      "modal_title":       "AI Assistant — alert explanation",
+      "modal_close":       "Close",
+      "modal_privacy":     "Model running locally (Ollama) — no data sent externally",
+      "modal_loading":     "AI assistant is analysing the alert…",
+      "mitre_header":      "Top MITRE ATT&CK tactics",
+      "empty_es":          "Elasticsearch unreachable — start the NetWatch stack (<code>make start</code>)",
+      "empty_filter":      "No alerts match the current filters",
+      "empty_no_data":     "No alerts — stack silent or Elasticsearch empty (<code>make sim</code> to generate traffic)",
+    },
+  };
+
+  NW.lang = localStorage.getItem("nw_lang") || "fr";
+
+  NW.t = function (key, vars) {
+    const dict = TRANSLATIONS[NW.lang] || TRANSLATIONS["fr"];
+    let s = dict[key] || key;
+    if (vars) Object.keys(vars).forEach(function (k) { s = s.replace("{" + k + "}", vars[k]); });
+    return s;
+  };
+
+  /* Formate un timestamp ISO en DD/MM/YYYY HH:mm:ss (FR) ou YYYY-MM-DD HH:mm:ss (EN) */
+  NW.fmtTs = function (ts) {
+    if (!ts) return "—";
+    const s = ts.slice(0, 19).replace("T", " ");
+    if (NW.lang === "en") return s; /* déjà YYYY-MM-DD HH:mm:ss */
+    /* FR : réorganise en DD/MM/YYYY HH:mm:ss */
+    const [date, time] = s.split(" ");
+    const [y, m, d] = date.split("-");
+    return d + "/" + m + "/" + y + " " + time;
+  };
+
+  /* Applique les traductions sur tous les [data-i18n] du DOM */
+  NW.applyLang = function () {
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      const key = el.getAttribute("data-i18n");
+      const t = NW.t(key);
+      /* innerHTML pour les clés contenant <code> */
+      if (t.includes("<")) el.innerHTML = t;
+      else el.textContent = t;
+    });
+    /* Met à jour le bouton toggle */
+    const btn = document.getElementById("lang-toggle");
+    if (btn) {
+      btn.querySelector(".lang-active").textContent = NW.lang.toUpperCase();
+      btn.querySelector(".lang-other").textContent  = NW.lang === "fr" ? "EN" : "FR";
+    }
+    /* Re-formate tous les horodatages déjà rendus dans le tableau */
+    document.querySelectorAll("[data-ts]").forEach(function (el) {
+      const raw = el.getAttribute("data-ts");
+      if (raw) el.textContent = NW.fmtTs(raw);
+    });
+    /* Compteur topbar rendu côté serveur */
+    const countLabel = document.getElementById("alert-count-label");
+    if (countLabel) {
+      const v = countLabel.getAttribute("data-count-" + NW.lang);
+      if (v) countLabel.textContent = v;
+    }
+  };
+
+  NW.switchLang = function () {
+    NW.lang = NW.lang === "fr" ? "en" : "fr";
+    localStorage.setItem("nw_lang", NW.lang);
+    NW.applyLang();
+  };
   const prefersReduced = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -120,7 +257,7 @@
     const now = Date.now();
     NW.relativeClocks.forEach(function (c) {
       const s = Math.round((now - c.ts) / 1000);
-      const label = s < 2 ? "à l'instant" : "il y a " + s + " s";
+      const label = s < 2 ? NW.t("just_now") : NW.t("ago", { n: s });
       const span = c.el.querySelector(".rel-time");
       if (span) span.textContent = label;
     });
@@ -162,6 +299,7 @@
     NW.autoCountUp();
     NW.loadAlertSparklines();
     NW.flushFlashes();
+    NW.applyLang();
   });
 
   window.NW = NW;
