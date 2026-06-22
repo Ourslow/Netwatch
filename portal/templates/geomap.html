@@ -168,26 +168,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const GEO_DATA = {{ countries | tojson }};
-
-/* Carte Leaflet — initialisation après que le layout Bootstrap soit prêt */
-const mapEl = document.getElementById('geo-map');
-const map = L.map(mapEl, {
-  center: [20, 10],
-  zoom: 2,
-  zoomControl: true,
-  attributionControl: true,
-});
-
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  maxZoom: 19,
-}).addTo(map);
-
-/* Forcer le recalcul des dimensions après rendu complet */
-setTimeout(() => map.invalidateSize(), 250);
-
-/* Marqueurs circulaires par pays */
-const markers = {};
+const _markers = {};
+let _map = null;
 
 function severityColor(c) {
   if (c.critical > 0) return '#cf222e';
@@ -201,59 +183,53 @@ function markerRadius(count) {
 
 function flagEmoji(iso) {
   if (!iso || iso.length !== 2) return '';
-  return String.fromCodePoint(
-    ...iso.toUpperCase().split('').map(c => c.charCodeAt(0) + 127397)
-  );
+  return String.fromCodePoint(...iso.toUpperCase().split('').map(c => c.charCodeAt(0) + 127397));
 }
 
-GEO_DATA.forEach(c => {
-  if (c.lat === null || c.lat === undefined || (c.lat === 0 && c.lon === 0)) return;
-  const color  = severityColor(c);
-  const radius = markerRadius(c.count);
-
-  const circle = L.circleMarker([c.lat, c.lon], {
-    radius,
-    fillColor:   color,
-    color:       color,
-    weight:      1.5,
-    opacity:     0.9,
-    fillOpacity: 0.35,
-  });
-
-  const flag = flagEmoji(c.iso);
-  circle.bindPopup(`
-    <div class="geo-popup-country">${flag} ${c.country}</div>
-    <div class="geo-popup-row">
-      <span class="geo-popup-label">Total événements</span>
-      <strong>${c.count}</strong>
-    </div>
-    ${c.critical ? `<div class="geo-popup-row">
-      <span class="geo-popup-label">Critiques</span>
-      <strong style="color:#cf222e">${c.critical}</strong>
-    </div>` : ''}
-    ${c.medium ? `<div class="geo-popup-row">
-      <span class="geo-popup-label">Moyens</span>
-      <strong style="color:#bf8700">${c.medium}</strong>
-    </div>` : ''}
-    ${c.low ? `<div class="geo-popup-row">
-      <span class="geo-popup-label">Faibles</span>
-      <strong style="color:#3b82f6">${c.low}</strong>
-    </div>` : ''}
-    <div style="margin-top:8px;font-size:.78rem">
-      <a href="/alerts?q=${encodeURIComponent(c.country)}"
-         style="color:var(--accent)">Voir les alertes →</a>
-    </div>
-  `);
-
-  circle.addTo(map);
-  markers[c.country] = circle;
-});
-
-/* Focus depuis la sidebar */
+/* Accessible depuis la sidebar (onclick) */
 function focusCountry(lat, lon, country) {
-  map.setView([lat, lon], 5, {animate: true});
-  if (markers[country]) markers[country].openPopup();
+  if (!_map) return;
+  _map.setView([lat, lon], 5, { animate: true });
+  if (_markers[country]) _markers[country].openPopup();
 }
+
+window.addEventListener('load', function () {
+  _map = L.map('geo-map', { center: [20, 10], zoom: 2 });
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(_map);
+
+  /* Recalcule les dimensions une fois le layout stable */
+  setTimeout(() => _map.invalidateSize(), 300);
+
+  /* Marqueurs */
+  GEO_DATA.forEach(c => {
+    if (!c.lat || (c.lat === 0 && c.lon === 0)) return;
+    const color  = severityColor(c);
+    const radius = markerRadius(c.count);
+
+    const circle = L.circleMarker([c.lat, c.lon], {
+      radius, fillColor: color, color, weight: 1.5, opacity: 0.9, fillOpacity: 0.35,
+    });
+
+    const flag = flagEmoji(c.iso);
+    circle.bindPopup(`
+      <div class="geo-popup-country">${flag} ${c.country}</div>
+      <div class="geo-popup-row"><span class="geo-popup-label">Total</span><strong>${c.count}</strong></div>
+      ${c.critical ? `<div class="geo-popup-row"><span class="geo-popup-label">Critiques</span><strong style="color:#cf222e">${c.critical}</strong></div>` : ''}
+      ${c.medium   ? `<div class="geo-popup-row"><span class="geo-popup-label">Moyens</span><strong style="color:#bf8700">${c.medium}</strong></div>` : ''}
+      ${c.low      ? `<div class="geo-popup-row"><span class="geo-popup-label">Faibles</span><strong style="color:#3b82f6">${c.low}</strong></div>` : ''}
+      <div style="margin-top:8px;font-size:.78rem">
+        <a href="/alerts?q=${encodeURIComponent(c.country)}" style="color:var(--accent)">Voir les alertes →</a>
+      </div>
+    `);
+
+    circle.addTo(_map);
+    _markers[c.country] = circle;
+  });
+});
 </script>
 {% endif %}
 {% endblock %}
