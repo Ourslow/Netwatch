@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Incidents — NetWatch Portal{% endblock %}
+{% block page_title %}Incidents détectés{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small">
+  <i class="bi bi-layers me-1"></i>{{ incidents | length }} incident(s) · fenêtre 5 min
+</span>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>{{ error }}</div>
+</div>
+{% endif %}
+
+{% if not incidents %}
+<div class="card">
+  <div class="card-body empty-state py-5">
+    <i class="bi bi-shield-check empty-icon"></i>
+    <div>Aucun incident — aucune alerte dans Elasticsearch ou stack silencieuse.</div>
+    <small class="text-muted">Lancez <code>make sim</code> pour générer du trafic simulé.</small>
+  </div>
+</div>
+{% else %}
+
+<!-- Résumé -->
+{% set total_crit = incidents | sum(attribute='critical') %}
+{% set total_med  = incidents | sum(attribute='medium') %}
+{% set nouveaux   = incidents | selectattr('status','equalto','nouveau')  | list | length %}
+{% set en_cours   = incidents | selectattr('status','equalto','en cours') | list | length %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Incidents total</p>
+        <h2 class="stat-value">{{ incidents | length }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Nouveaux (&lt; 1h)</p>
+        <h2 class="stat-value text-danger">{{ nouveaux }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">En cours (24h)</p>
+        <h2 class="stat-value text-warning">{{ en_cours }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Alertes critiques</p>
+        <h2 class="stat-value text-danger">{{ total_crit }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Timeline des incidents -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-layers me-2"></i>Timeline des incidents</span>
+    <span class="text-muted small">Alertes regroupées par fenêtres de 5 min</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:160px">Horodatage</th>
+          <th style="width:90px">Statut</th>
+          <th style="width:70px">Alertes</th>
+          <th>Signature principale</th>
+          <th style="width:110px">Moteurs</th>
+          <th>IPs sources</th>
+          <th style="width:80px" class="text-center">Sévérité</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inc in incidents %}
+        {% set sev_class = 'crit' if inc.max_severity == 1 else ('med' if inc.max_severity == 2 else 'low') %}
+        <tr class="alert-row-{{ sev_class }}" style="cursor:pointer"
+            data-bs-toggle="collapse" data-bs-target="#inc-{{ loop.index }}" aria-expanded="false">
+          <td class="fw-mono small text-muted">
+            {{ inc.start[:19] | replace('T',' ') }}
+          </td>
+          <td>
+            <span class="badge bg-{{ inc.status_color }}">{{ inc.status }}</span>
+          </td>
+          <td class="text-center fw-bold">{{ inc.count }}</td>
+          <td class="small fw-medium">{{ inc.top_signature | truncate(60) }}</td>
+          <td>
+            {% for e in inc.engines %}
+              {% if e == 'suricata' %}
+                <span class="badge engine-suricata">Suricata</span>
+              {% else %}
+                <span class="badge engine-snort">Snort</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+          <td class="fw-mono small">
+            {% for ip in inc.src_ips[:3] %}
+              <a href="{{ url_for('ip_detail', ip=ip) }}"
+                 class="text-decoration-none me-1"
+                 onclick="event.stopPropagation()"
+                 title="Voir tous les événements de {{ ip }}">{{ ip }}</a>
+            {% endfor %}
+            {% if inc.src_ips | length > 3 %}
+              <span class="text-muted">+{{ inc.src_ips | length - 3 }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if inc.critical %}
+              <span class="sev sev-crit">{{ inc.critical }}C</span>
+            {% endif %}
+            {% if inc.medium %}
+              <span class="sev sev-med">{{ inc.medium }}M</span>
+            {% endif %}
+            {% if inc.low %}
+              <span class="sev sev-low">{{ inc.low }}F</span>
+            {% endif %}
+          </td>
+        </tr>
+        <!-- Détail de l'incident (dépliable) -->
+        <tr class="collapse" id="inc-{{ loop.index }}">
+          <td colspan="7" class="p-0">
+            <div class="px-4 py-3" style="background:var(--bg-card);border-top:1px solid var(--border)">
+              <div class="small text-muted mb-2">
+                <i class="bi bi-clock me-1"></i>
+                Fenêtre :
+                {{ inc.start[:19] | replace('T',' ') }} →
+                {{ inc.end[:19]   | replace('T',' ') }}
+              </div>
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Horodatage</th><th>Moteur</th><th>Sév.</th><th>Signature</th><th>Source</th><th>Destination</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for a in inc.alerts %}
+                  <tr>
+                    <td class="fw-mono small text-muted">{{ a.timestamp[:19] | replace('T',' ') }}</td>
+                    <td>
+                      {% if a.engine == 'suricata' %}
+                        <span class="badge engine-suricata">Suricata</span>
+                      {% else %}
+                        <span class="badge engine-snort">Snort</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if a.severity == 1 %}<span class="sev sev-crit">Critique</span>
+                      {% elif a.severity == 2 %}<span class="sev sev-med">Moyen</span>
+                      {% else %}<span class="sev sev-low">Faible</span>{% endif %}
+                    </td>
+                    <td class="small">{{ a.signature | truncate(55) }}</td>
+                    <td class="fw-mono small">
+                      <a href="{{ url_for('ip_detail', ip=a.src_ip) }}"
+                         class="text-decoration-none">{{ a.src_ip }}</a>
+                    </td>
+                    <td class="fw-mono small">
+                      <a href="{{ url_for('ip_detail', ip=a.dest_ip) }}"
+                         class="text-decoration-none">{{ a.dest_ip }}</a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  {% if inc.count > 10 %}
+                  <tr>
+                    <td colspan="6" class="text-muted small text-center">
+                      … et {{ inc.count - 10 }} alerte(s) supplémentaire(s)
+                      <a href="{{ url_for('alerts') }}" class="ms-1">Voir dans /alertes</a>
+                    </td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="text-muted small mt-3 mb-0">
+  <i class="bi bi-info-circle me-1"></i>
+  Un incident regroupe toutes les alertes détectées dans une fenêtre de 5 minutes.
+  Cliquez sur une ligne pour voir le détail. Cliquez sur une IP pour son historique complet.
+</p>
+
+{% endif %}
+{% endblock %}

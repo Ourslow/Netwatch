@@ -201,8 +201,12 @@
                 <br><small class="text-muted">{{ a.category }}</small>
               {% endif %}
             </td>
-            <td class="fw-mono small">{{ a.src_ip }}</td>
-            <td class="fw-mono small">{{ a.dest_ip }}</td>
+            <td class="fw-mono small">
+              <a href="{{ url_for('ip_detail', ip=a.src_ip) }}" class="text-decoration-none">{{ a.src_ip }}</a>
+            </td>
+            <td class="fw-mono small">
+              <a href="{{ url_for('ip_detail', ip=a.dest_ip) }}" class="text-decoration-none">{{ a.dest_ip }}</a>
+            </td>
             <td>
               {% if a.mitre_tactic %}
                 <span class="badge mitre-badge" title="{{ a.mitre_tech or '' }}">

@@ -18,6 +18,7 @@ from netwatch import health as nw_health
 from netwatch import es_client
 from netwatch import llm_client
 from netwatch import audit as nw_audit
+from netwatch import incidents as nw_incidents
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -811,6 +812,22 @@ def api_alerts_series():
     if error:
         return jsonify({"error": error}), 503
     return jsonify(series)
+
+
+@app.route("/incidents")
+@login_required
+def incidents():
+    alerts_list, error = es_client.get_recent_alerts(size=500)
+    inc_list = nw_incidents.build_incidents(alerts_list, window_minutes=5)
+    return render_template("incidents.html", incidents=inc_list, error=error)
+
+
+@app.route("/ip/<ip>")
+@login_required
+def ip_detail(ip):
+    alerts_list, conn_stats, error = es_client.get_ip_events(ip)
+    return render_template("ip_detail.html", ip=ip,
+                           alerts=alerts_list, conn=conn_stats, error=error)
 
 
 @app.route("/api/explain", methods=["POST"])

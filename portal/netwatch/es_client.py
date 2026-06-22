@@ -230,6 +230,91 @@ def get_alert_timeseries(hours=24, interval="1h"):
         return [], str(e)[:80]
 
 
+def get_ip_events(ip, size=200):
+    """
+    Agrège toutes les alertes + stats Zeek pour une IP donnée.
+    Retourne (alerts: list, conn_stats: dict, error: str|None).
+    """
+    ip_filter = {
+        "bool": {
+            "should": [
+                {"term": {"src_ip":   ip}},
+                {"term": {"dest_ip":  ip}},
+                {"term": {"src_addr": ip}},
+                {"term": {"dst_addr": ip}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+    alert_body = {
+        "size": size,
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "query": {
+            "bool": {
+                "filter": [
+                    {"bool": {
+                        "should": [
+                            {"term":   {"event_type": "alert"}},
+                            {"exists": {"field": "rule"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }},
+                    ip_filter,
+                ]
+            }
+        },
+    }
+
+    alerts, error = [], None
+    try:
+        r = _es("/suricata-*,snort-*/_search", alert_body)
+        r.raise_for_status()
+        alerts = [_normalize(h) for h in r.json().get("hits", {}).get("hits", [])]
+    except Exception as e:
+        error = str(e)[:80]
+
+    zeek_body = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"id.orig_h": ip}},
+                    {"term": {"id.resp_h": ip}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "aggs": {
+            "top_ports":   {"terms": {"field": "id.resp_p", "size": 10}},
+            "total_bytes": {"sum":   {"field": "orig_bytes"}},
+            "first_seen":  {"min":   {"field": "@timestamp"}},
+            "last_seen":   {"max":   {"field": "@timestamp"}},
+            "proto":       {"terms": {"field": "proto",     "size": 5}},
+        },
+    }
+
+    conn_stats = {}
+    try:
+        r = _es("/zeek-*/_search", zeek_body)
+        r.raise_for_status()
+        data = r.json()
+        aggs = data.get("aggregations", {})
+        conn_stats = {
+            "total_conns":  data.get("hits", {}).get("total", {}).get("value", 0),
+            "top_ports":    [(b["key"], b["doc_count"])
+                             for b in aggs.get("top_ports", {}).get("buckets", [])],
+            "total_bytes":  int(aggs.get("total_bytes", {}).get("value") or 0),
+            "first_seen":   aggs.get("first_seen", {}).get("value_as_string", ""),
+            "last_seen":    aggs.get("last_seen",  {}).get("value_as_string", ""),
+            "protocols":    [b["key"] for b in aggs.get("proto", {}).get("buckets", [])],
+        }
+    except Exception:
+        pass
+
+    return alerts, conn_stats, error
+
+
 def get_alert_stats():
     """
     Statistiques pour le widget dashboard et le header /alerts.

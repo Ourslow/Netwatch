@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}IP {{ ip }} — NetWatch Portal{% endblock %}
+{% block page_title %}Pivot IP : <code style="font-size:1rem">{{ ip }}</code>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('alerts', q=ip) }}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-shield-exclamation me-1"></i>Alertes
+</a>
+<a href="{{ url_for('incidents') }}" class="btn btn-sm btn-outline-secondary ms-1">
+  <i class="bi bi-layers me-1"></i>Incidents
+</a>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-exclamation-triangle-fill"></i><div>{{ error }}</div>
+</div>
+{% endif %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Alertes IDS</p>
+        <h2 class="stat-value {% if alerts %}text-danger{% endif %}">{{ alerts | length }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Connexions Zeek</p>
+        <h2 class="stat-value text-info">{{ conn.total_conns | default(0) }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Alertes critiques</p>
+        {% set crit = alerts | selectattr('severity','equalto',1) | list | length %}
+        <h2 class="stat-value {% if crit %}text-danger{% endif %}">{{ crit }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Volume Zeek</p>
+        <h2 class="stat-value text-muted" style="font-size:1.2rem">
+          {% set b = conn.total_bytes | default(0) %}
+          {% if b > 1073741824 %}{{ "%.1f"|format(b/1073741824) }} GB
+          {% elif b > 1048576 %}{{ "%.1f"|format(b/1048576) }} MB
+          {% elif b > 1024 %}{{ "%.1f"|format(b/1024) }} KB
+          {% else %}{{ b }} B{% endif %}
+        </h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+  <!-- Activité Zeek -->
+  <div class="col-md-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-diagram-2 me-2"></i>Activité réseau (Zeek)</div>
+      <div class="card-body">
+        {% if conn %}
+          {% if conn.first_seen %}
+          <div class="mb-3">
+            <div class="stat-label mb-1">Première / dernière vue</div>
+            <div class="fw-mono small">
+              {{ conn.first_seen[:19] | replace('T',' ') if conn.first_seen else '—' }}
+              <span class="text-muted mx-1">→</span>
+              {{ conn.last_seen[:19] | replace('T',' ') if conn.last_seen else '—' }}
+            </div>
+          </div>
+          {% endif %}
+          {% if conn.protocols %}
+          <div class="mb-3">
+            <div class="stat-label mb-1">Protocoles</div>
+            <div class="d-flex gap-1 flex-wrap">
+              {% for p in conn.protocols %}
+                <span class="badge mitre-badge">{{ p | upper }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if conn.top_ports %}
+          <div>
+            <div class="stat-label mb-2">Ports de destination (top {{ conn.top_ports | length }})</div>
+            {% for port, count in conn.top_ports %}
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="fw-mono small">
+                {{ port }}
+                {% set svc = {80:'HTTP',443:'HTTPS',22:'SSH',53:'DNS',
+                              21:'FTP',25:'SMTP',3389:'RDP',445:'SMB',
+                              23:'Telnet',3306:'MySQL',8080:'HTTP-alt'} %}
+                {% if port in svc %}
+                  <span class="text-muted ms-1">· {{ svc[port] }}</span>
+                {% endif %}
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress" style="width:80px;height:5px">
+                  {% set max_count = conn.top_ports[0][1] %}
+                  <div class="progress-bar bg-info"
+                       style="width:{{ (count / max_count * 100)|int }}%"></div>
+                </div>
+                <span class="text-muted small">{{ count }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if not conn.first_seen and not conn.top_ports %}
+          <div class="text-muted small">Aucune connexion Zeek enregistrée pour cette IP.</div>
+          {% endif %}
+        {% else %}
+          <div class="text-muted small">Zeek non joignable ou aucune donnée.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- MITRE tactics observées -->
+  <div class="col-md-7">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-diagram-3 me-2"></i>MITRE ATT&CK observées</div>
+      <div class="card-body">
+        {% set tactics = alerts | map(attribute='mitre_tactic') | select | list %}
+        {% if tactics %}
+          {% set tactic_counts = {} %}
+          {% for t in tactics %}
+            {% if t %}
+              {% set _ = tactic_counts.update({t: tactic_counts.get(t, 0) + 1}) %}
+            {% endif %}
+          {% endfor %}
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            {% for tactic, count in tactic_counts.items() | sort(attribute='1', reverse=true) %}
+              <span class="badge mitre-badge" style="font-size:.8rem;padding:.4rem .7rem">
+                {{ tactic }} <span class="opacity-75">({{ count }})</span>
+              </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-muted small mb-3">Aucune technique MITRE identifiée.</div>
+        {% endif %}
+
+        <!-- Répartition sévérité -->
+        {% set crit = alerts | selectattr('severity','equalto',1) | list | length %}
+        {% set med  = alerts | selectattr('severity','equalto',2) | list | length %}
+        {% set low  = alerts | selectattr('severity','equalto',3) | list | length %}
+        {% if alerts %}
+        <div class="stat-label mb-2">Répartition des alertes</div>
+        <div class="d-flex gap-3">
+          <div><span class="sev sev-crit">Critique</span> <strong class="ms-1">{{ crit }}</strong></div>
+          <div><span class="sev sev-med">Moyen</span>     <strong class="ms-1">{{ med }}</strong></div>
+          <div><span class="sev sev-low">Faible</span>    <strong class="ms-1">{{ low }}</strong></div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tableau alertes -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-shield-exclamation me-2 text-danger"></i>Alertes IDS impliquant {{ ip }}</span>
+    {% if alerts %}
+    <a href="{{ url_for('alerts_export_csv', q=ip) }}"
+       class="btn btn-sm btn-outline-success">
+      <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+    {% endif %}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:160px">Horodatage</th>
+          <th style="width:90px">Moteur</th>
+          <th style="width:80px">Sév.</th>
+          <th>Signature</th>
+          <th style="width:130px">Source</th>
+          <th style="width:130px">Destination</th>
+          <th>MITRE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if alerts %}
+          {% for a in alerts %}
+          <tr class="alert-row-{% if a.severity == 1 %}critical{% elif a.severity == 2 %}medium{% else %}low{% endif %}">
+            <td class="text-muted fw-mono small">{{ a.timestamp[:19] | replace('T',' ') }}</td>
+            <td>
+              {% if a.engine == 'suricata' %}
+                <span class="badge engine-suricata">Suricata</span>
+              {% else %}
+                <span class="badge engine-snort">Snort</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if a.severity == 1 %}<span class="sev sev-crit">Critique</span>
+              {% elif a.severity == 2 %}<span class="sev sev-med">Moyen</span>
+              {% else %}<span class="sev sev-low">Faible</span>{% endif %}
+            </td>
+            <td class="small fw-medium">{{ a.signature | truncate(60) }}</td>
+            <td class="fw-mono small">
+              {% if a.src_ip != ip %}
+                <a href="{{ url_for('ip_detail', ip=a.src_ip) }}"
+                   class="text-decoration-none">{{ a.src_ip }}</a>
+              {% else %}
+                <strong>{{ a.src_ip }}</strong>
+              {% endif %}
+            </td>
+            <td class="fw-mono small">
+              {% if a.dest_ip != ip %}
+                <a href="{{ url_for('ip_detail', ip=a.dest_ip) }}"
+                   class="text-decoration-none">{{ a.dest_ip }}</a>
+              {% else %}
+                <strong>{{ a.dest_ip }}</strong>
+              {% endif %}
+            </td>
+            <td>
+              {% if a.mitre_tactic %}
+                <span class="badge mitre-badge">{{ a.mitre_tactic }}</span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="empty-state">
+              <i class="bi bi-shield-check empty-icon"></i>
+              Aucune alerte IDS pour cette IP
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

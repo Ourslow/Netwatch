@@ -40,8 +40,14 @@
       </li>
       <li class="nav-item">
         <a href="{{ url_for('alerts') }}"
-           class="nav-link {% if request.endpoint in ['alerts'] %}active{% endif %}">
+           class="nav-link {% if request.endpoint in ['alerts', 'alerts_export_csv'] %}active{% endif %}">
           <i class="bi bi-shield-exclamation"></i> <span data-i18n="nav_alerts">Alertes IDS</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('incidents') }}"
+           class="nav-link {% if request.endpoint in ['incidents', 'ip_detail'] %}active{% endif %}">
+          <i class="bi bi-layers"></i> <span>Incidents</span>
         </a>
       </li>
       <li class="nav-item">
