@@ -36,31 +36,64 @@ EXTERNAL_IPS = [
     "157.240.1.35", "31.13.65.36", "69.171.250.35",
 ]
 
-# IPs sources d'attaque — géographiquement diversifiées (géolocalisables)
-ATTACK_IPS = [
+# IPs sources d'attaque avec coordonnées GeoIP embarquées
+# Format : ip -> {lat, lon, country_name, country_iso_code, city_name}
+ATTACK_GEO = {
     # Russie
-    "5.8.8.180", "5.45.208.10", "194.165.16.42", "91.108.4.15",
+    "5.8.8.180":       {"lat": 55.75, "lon": 37.62, "country_name": "Russia",       "country_iso_code": "RU", "city_name": "Moscow"},
+    "5.45.208.10":     {"lat": 59.89, "lon": 30.32, "country_name": "Russia",       "country_iso_code": "RU", "city_name": "Saint Petersburg"},
+    "194.165.16.42":   {"lat": 55.75, "lon": 37.62, "country_name": "Russia",       "country_iso_code": "RU", "city_name": "Moscow"},
+    "91.108.4.15":     {"lat": 55.75, "lon": 37.62, "country_name": "Russia",       "country_iso_code": "RU", "city_name": "Moscow"},
     # Chine
-    "1.180.0.12", "58.30.8.21", "114.114.114.114", "219.76.15.8",
+    "1.180.0.12":      {"lat": 39.93, "lon": 116.39, "country_name": "China",       "country_iso_code": "CN", "city_name": "Beijing"},
+    "58.30.8.21":      {"lat": 31.22, "lon": 121.46, "country_name": "China",       "country_iso_code": "CN", "city_name": "Shanghai"},
+    "114.114.114.114": {"lat": 32.06, "lon": 118.77, "country_name": "China",       "country_iso_code": "CN", "city_name": "Nanjing"},
+    "219.76.15.8":     {"lat": 22.27, "lon": 114.17, "country_name": "Hong Kong",   "country_iso_code": "HK", "city_name": "Hong Kong"},
     # Corée du Nord
-    "175.45.176.5", "175.45.179.12",
+    "175.45.176.5":    {"lat": 39.03, "lon": 125.75, "country_name": "North Korea", "country_iso_code": "KP", "city_name": "Pyongyang"},
+    "175.45.179.12":   {"lat": 39.03, "lon": 125.75, "country_name": "North Korea", "country_iso_code": "KP", "city_name": "Pyongyang"},
     # Iran
-    "5.160.0.48", "78.38.30.7", "94.182.195.3",
+    "5.160.0.48":      {"lat": 35.69, "lon": 51.42, "country_name": "Iran",         "country_iso_code": "IR", "city_name": "Tehran"},
+    "78.38.30.7":      {"lat": 35.69, "lon": 51.42, "country_name": "Iran",         "country_iso_code": "IR", "city_name": "Tehran"},
+    "94.182.195.3":    {"lat": 35.69, "lon": 51.42, "country_name": "Iran",         "country_iso_code": "IR", "city_name": "Tehran"},
     # Roumanie
-    "79.112.0.60", "79.115.12.88",
-    # Pays-Bas (hébergement bulletproof)
-    "31.3.96.45", "188.165.200.12", "185.220.101.5",
+    "79.112.0.60":     {"lat": 44.43, "lon": 26.10, "country_name": "Romania",      "country_iso_code": "RO", "city_name": "Bucharest"},
+    "79.115.12.88":    {"lat": 44.43, "lon": 26.10, "country_name": "Romania",      "country_iso_code": "RO", "city_name": "Bucharest"},
+    # Pays-Bas
+    "31.3.96.45":      {"lat": 52.37, "lon": 4.90,  "country_name": "Netherlands",  "country_iso_code": "NL", "city_name": "Amsterdam"},
+    "188.165.200.12":  {"lat": 52.37, "lon": 4.90,  "country_name": "Netherlands",  "country_iso_code": "NL", "city_name": "Amsterdam"},
+    "185.220.101.5":   {"lat": 52.37, "lon": 4.90,  "country_name": "Netherlands",  "country_iso_code": "NL", "city_name": "Amsterdam"},
     # Brésil
-    "177.71.0.82", "200.147.55.3",
+    "177.71.0.82":     {"lat": -23.55, "lon": -46.63, "country_name": "Brazil",     "country_iso_code": "BR", "city_name": "Sao Paulo"},
+    "200.147.55.3":    {"lat": -22.90, "lon": -43.17, "country_name": "Brazil",     "country_iso_code": "BR", "city_name": "Rio de Janeiro"},
     # Inde
-    "117.18.0.55", "49.206.12.8",
+    "117.18.0.55":     {"lat": 28.61, "lon": 77.21, "country_name": "India",        "country_iso_code": "IN", "city_name": "New Delhi"},
+    "49.206.12.8":     {"lat": 19.08, "lon": 72.88, "country_name": "India",        "country_iso_code": "IN", "city_name": "Mumbai"},
     # Allemagne
-    "46.23.0.82", "85.214.55.3",
+    "46.23.0.82":      {"lat": 52.52, "lon": 13.40, "country_name": "Germany",      "country_iso_code": "DE", "city_name": "Berlin"},
+    "85.214.55.3":     {"lat": 53.57, "lon": 10.02, "country_name": "Germany",      "country_iso_code": "DE", "city_name": "Hamburg"},
     # France
-    "217.70.184.38", "88.190.16.12",
-    # États-Unis (infrastructure malveillante)
-    "23.45.67.89", "104.21.48.3", "198.199.64.12",
-]
+    "217.70.184.38":   {"lat": 48.86, "lon": 2.35,  "country_name": "France",       "country_iso_code": "FR", "city_name": "Paris"},
+    "88.190.16.12":    {"lat": 48.86, "lon": 2.35,  "country_name": "France",       "country_iso_code": "FR", "city_name": "Paris"},
+    # États-Unis
+    "23.45.67.89":     {"lat": 37.39, "lon": -122.08, "country_name": "United States", "country_iso_code": "US", "city_name": "Mountain View"},
+    "104.21.48.3":     {"lat": 37.78, "lon": -122.41, "country_name": "United States", "country_iso_code": "US", "city_name": "San Francisco"},
+    "198.199.64.12":   {"lat": 40.71, "lon": -74.01,  "country_name": "United States", "country_iso_code": "US", "city_name": "New York"},
+}
+ATTACK_IPS = list(ATTACK_GEO.keys())
+
+
+def attack_geo(ip):
+    """Retourne le bloc source.geo pour une IP d'attaque."""
+    g = ATTACK_GEO.get(ip, {})
+    if not g:
+        return {}
+    return {
+        "location":          {"lat": g["lat"], "lon": g["lon"]},
+        "country_name":      g["country_name"],
+        "country_iso_code":  g["country_iso_code"],
+        "city_name":         g["city_name"],
+    }
 
 # Domaines normaux
 NORMAL_DOMAINS = [
@@ -453,7 +486,8 @@ def gen_snort_alert(ts):
         "rule": f"1:{random.randint(1000001, 1000999)}:1",
         "action": "alert", "msg": sig_msg,
         "priority": priority, "class_desc": classtype,
-        "log_type": "snort", "engine": "snort"
+        "log_type": "snort", "engine": "snort",
+        "source": {"geo": attack_geo(src)},
     }
 
 def gen_suricata_alert(ts):
@@ -480,7 +514,8 @@ def gen_suricata_alert(ts):
                 "mitre_technique_id": [mitre_technique]
             }
         },
-        "log_type": "suricata", "engine": "suricata"
+        "log_type": "suricata", "engine": "suricata",
+        "source": {"geo": attack_geo(src)},
     }
 
 def gen_long_connection(ts, src=None, dst=None):
