@@ -1,10 +1,13 @@
+import csv
 import hmac
+import io
 import json
 import os
+from datetime import datetime
 from functools import wraps
 from urllib.parse import urlsplit, urlunsplit
 
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import (LoginManager, UserMixin,
                          login_user, logout_user,
                          login_required, current_user)
@@ -662,7 +665,7 @@ def api_status():
 @app.route("/report")
 @login_required
 def report():
-    from datetime import datetime
+
 
     # Proxmox
     px = get_proxmox()
@@ -756,6 +759,48 @@ def api_alerts():
     if error:
         return jsonify({"error": error}), 503
     return jsonify(alerts_list)
+
+
+@app.route("/alerts/export.csv")
+@login_required
+def alerts_export_csv():
+    """Export des alertes filtrées au format CSV (max 1000 lignes)."""
+    engine   = request.args.get("engine",   "")
+    severity = request.args.get("severity", "")
+    search   = request.args.get("q",        "").strip()
+
+    alerts_list, _ = es_client.get_recent_alerts(
+        size=1000,
+        engine=engine   or None,
+        severity=int(severity) if severity else None,
+        search=search   or None,
+    )
+
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=[
+        "timestamp", "engine", "severity", "signature", "category",
+        "src_ip", "dest_ip", "mitre_tactic", "mitre_tech",
+    ])
+    writer.writeheader()
+    sev_label = {1: "critique", 2: "moyen", 3: "faible"}
+    for a in alerts_list:
+        writer.writerow({
+            "timestamp":    a.get("timestamp", ""),
+            "engine":       a.get("engine", ""),
+            "severity":     sev_label.get(a.get("severity"), a.get("severity", "")),
+            "signature":    a.get("signature", ""),
+            "category":     a.get("category", ""),
+            "src_ip":       a.get("src_ip", ""),
+            "dest_ip":      a.get("dest_ip", ""),
+            "mitre_tactic": a.get("mitre_tactic") or "",
+            "mitre_tech":   a.get("mitre_tech")   or "",
+        })
+
+    filename = f"netwatch-alerts-{datetime.utcnow().strftime('%Y%m%d-%H%M')}.csv"
+    resp = make_response(out.getvalue())
+    resp.headers["Content-Type"]        = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return resp
 
 
 @app.route("/api/alerts/series")

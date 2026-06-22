@@ -136,6 +136,12 @@
       <i class="bi bi-x me-1"></i>Reset
     </a>
     {% endif %}
+
+    <a href="{{ url_for('alerts_export_csv', engine=engine, severity=severity, q=search) }}"
+       class="btn btn-sm btn-outline-success ms-auto"
+       title="Télécharger les alertes filtrées (CSV, max 1000 lignes)">
+      <i class="bi bi-download me-1"></i>Export CSV
+    </a>
   </div>
 </form>
 
