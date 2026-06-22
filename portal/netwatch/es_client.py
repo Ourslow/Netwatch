@@ -248,11 +248,13 @@ def get_geo_data():
                     "size": 100,
                 },
                 "aggs": {
-                    "centroid": {"geo_centroid": {"field": "source.geo.location"}},
-                    "iso": {
-                        "terms": {
-                            "field": "source.geo.country_iso_code.keyword",
+                    "sample": {
+                        "top_hits": {
                             "size": 1,
+                            "_source": [
+                                "source.geo.location",
+                                "source.geo.country_iso_code",
+                            ],
                         }
                     },
                     "critical": {
@@ -291,17 +293,31 @@ def get_geo_data():
 
         countries = []
         for b in aggs.get("by_country", {}).get("buckets", []):
-            centroid    = b.get("centroid", {}).get("location", {})
-            iso_buckets = b.get("iso",      {}).get("buckets", [])
-            iso         = iso_buckets[0]["key"] if iso_buckets else ""
-            critical    = b.get("critical", {}).get("doc_count", 0)
-            medium      = b.get("medium",   {}).get("doc_count", 0)
-            count       = b.get("doc_count", 0)
+            # Extraire lat/lon depuis un doc sample (top_hits)
+            hits   = b.get("sample", {}).get("hits", {}).get("hits", [])
+            geo    = (hits[0].get("_source", {})
+                              .get("source", {})
+                              .get("geo", {}) if hits else {})
+            loc    = geo.get("location", {})
+            # location peut être {"lat":x,"lon":y} ou "lat,lon" string
+            if isinstance(loc, dict):
+                lat = float(loc.get("lat", 0))
+                lon = float(loc.get("lon", 0))
+            elif isinstance(loc, str) and "," in loc:
+                parts = loc.split(",")
+                lat, lon = float(parts[0]), float(parts[1])
+            else:
+                lat, lon = 0.0, 0.0
+
+            iso      = geo.get("country_iso_code", "")
+            critical = b.get("critical", {}).get("doc_count", 0)
+            medium   = b.get("medium",   {}).get("doc_count", 0)
+            count    = b.get("doc_count", 0)
             countries.append({
                 "country":  b["key"],
                 "iso":      iso,
-                "lat":      centroid.get("lat", 0),
-                "lon":      centroid.get("lon", 0),
+                "lat":      lat,
+                "lon":      lon,
                 "count":    count,
                 "critical": critical,
                 "medium":   medium,

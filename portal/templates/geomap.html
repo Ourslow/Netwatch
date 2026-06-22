@@ -204,7 +204,7 @@ function flagEmoji(iso) {
 }
 
 GEO_DATA.forEach(c => {
-  if (!c.lat && !c.lon) return;
+  if (c.lat === null || c.lat === undefined || (c.lat === 0 && c.lon === 0)) return;
   const color  = severityColor(c);
   const radius = markerRadius(c.count);
 
