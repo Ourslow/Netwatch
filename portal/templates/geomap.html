@@ -11,567 +11,647 @@
 {% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='geo/maplibre-gl.css') }}">
 <style>
-/* ── Carte conteneur ── */
-#geo-wrap {
-  position: relative; width: 100%; border-radius: 0 0 8px 8px; overflow: hidden;
-}
-#geo-map { width: 100%; display: block; }
-#geo-map svg { display: block; width: 100%; cursor: grab; }
-#geo-map svg:active { cursor: grabbing; }
+/* ── Layout page ── */
+.geo-page { display:flex; flex-direction:column; gap:.75rem; }
+.geo-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
+.geo-main  { display:grid; grid-template-columns:1fr 270px; gap:.75rem;
+             height:calc(100vh - var(--topbar-height) - 145px); min-height:420px; }
 
-/* ── Thèmes carte ── */
-.theme-dark  { background: #0a0e16; }
-.theme-light { background: #eef2f7; }
+/* ── KPI cards ── */
+.kpi-card { background:var(--card-bg); border:1px solid var(--border);
+            border-radius:10px; padding:.75rem 1rem; text-align:center; }
+.kpi-lbl  { font-size:.65rem; text-transform:uppercase; letter-spacing:.07em;
+            color:#8b949e; margin-bottom:.25rem; }
+.kpi-val  { font-size:1.75rem; font-weight:700; line-height:1; }
 
-.theme-dark  .geo-country { fill: #1b2840; stroke: #2a3f5f; stroke-width: 0.5; }
-.theme-light .geo-country { fill: #d6e4f0; stroke: #8ab4d4; stroke-width: 0.5; }
-.theme-dark  .geo-country:hover { fill: #243554; }
-.theme-light .geo-country:hover { fill: #b8d0e8; }
-.theme-dark  .geo-graticule { stroke: #1a2332; }
-.theme-light .geo-graticule { stroke: #c8daea; }
-.theme-dark  .geo-border { stroke: #2a3f5f; }
-.theme-light .geo-border { stroke: #7aaecc; }
-
-/* ── Marqueurs et arcs ── */
-.geo-marker { cursor: pointer; }
-.geo-marker:hover { stroke-width: 3 !important; filter: brightness(1.3); }
-.geo-arc { pointer-events: none; }
-
-/* ── Tooltip ── */
-.geo-tooltip {
-  position: absolute; pointer-events: none; display: none; z-index: 200;
-  background: #0d1117; border: 1px solid #30363d; border-radius: 10px;
-  padding: 12px 16px; min-width: 190px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.6); color: #c9d1d9; font-size: .82rem;
-}
-.geo-tooltip-country { font-weight: 700; font-size: .96rem; margin-bottom: 8px;
-  display: flex; align-items: center; gap: 6px; }
-.geo-tooltip-badge { font-size: .72rem; padding: 1px 6px; border-radius: 10px; }
-.geo-tooltip-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #21262d; }
-.geo-tooltip-row:last-of-type { border-bottom: none; }
-.geo-tooltip-link { margin-top: 8px; font-size: .75rem; }
+/* ── Map card ── */
+.geo-card { background:var(--card-bg); border:1px solid var(--border);
+            border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
 
 /* ── Toolbar ── */
-.geo-toolbar {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  padding: 10px 16px; border-bottom: 1px solid var(--border);
-  background: var(--card-bg);
-}
-.geo-tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
-.geo-tb-label { font-size: .72rem; color: #8b949e; white-space: nowrap; }
+.geo-toolbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+               padding:8px 12px; border-bottom:1px solid var(--border);
+               background:var(--card-bg); flex-shrink:0; }
+.geo-sep { width:1px; height:18px; background:var(--border); margin:0 4px; }
+.geo-lbl { font-size:.7rem; color:#8b949e; white-space:nowrap; }
 
-.geo-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 12px; border-radius: 6px; border: 1px solid #30363d;
-  background: #161b22; color: #8b949e; cursor: pointer;
-  font-size: .76rem; font-family: inherit; transition: all .15s;
-  white-space: nowrap;
-}
-.geo-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
-.geo-btn.active { background: #1f2a3a; color: #e6edf3; border-color: #388bfd; }
-.geo-btn.active.crit { background: rgba(207,34,46,.18); color: #f85149; border-color: #da3633; }
-.geo-btn.active.med  { background: rgba(191,135,0,.18);  color: #e3b341; border-color: #d29922; }
-.geo-btn.active.low  { background: rgba(59,130,246,.18); color: #79c0ff; border-color: #388bfd; }
-.geo-btn.active.arc  { background: rgba(34,211,238,.12); color: #22d3ee; border-color: #22d3ee; }
-.geo-btn-dot { width: 8px; height: 8px; border-radius: 50%; }
+.geo-btn { display:inline-flex; align-items:center; gap:5px;
+           padding:3px 11px; border-radius:6px; border:1px solid #30363d;
+           background:#161b22; color:#8b949e; cursor:pointer;
+           font-size:.73rem; font-family:inherit; transition:all .15s; white-space:nowrap; }
+.geo-btn:hover { border-color:#58a6ff; color:#c9d1d9; }
+.geo-btn.active { background:#1f2a3a; color:#e6edf3; border-color:#388bfd; }
+.geo-btn.active.crit { background:rgba(207,34,46,.18); color:#f85149; border-color:#da3633; }
+.geo-btn.active.med  { background:rgba(191,135,0,.18);  color:#e3b341; border-color:#d29922; }
+.geo-btn.active.low  { background:rgba(59,130,246,.18); color:#79c0ff; border-color:#388bfd; }
+.geo-btn.active.arc  { background:rgba(34,211,238,.12); color:#22d3ee; border-color:#22d3ee; }
+.geo-btn-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
-/* ── Légende intégrée dans la carte ── */
-.geo-legend {
-  position: absolute; bottom: 14px; left: 14px; z-index: 10;
-  background: rgba(13,17,23,.82); border: 1px solid #30363d;
-  border-radius: 8px; padding: 8px 12px; font-size: .72rem; color: #8b949e;
-  backdrop-filter: blur(4px);
-}
-.geo-legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-.geo-legend-row:last-child { margin-bottom: 0; }
-.geo-legend-circle { border-radius: 50%; flex-shrink: 0; opacity: .75; }
+/* ── Map container ── */
+.geo-map-wrap { flex:1; min-height:0; position:relative; }
+#nw-map { width:100%; height:100%; }
 
-/* ── Badge live ── */
-.geo-live { display: flex; align-items: center; gap: 5px;
-  font-size: .72rem; color: #3fb950; margin-left: auto; white-space: nowrap; }
-.geo-live-dot { width: 7px; height: 7px; border-radius: 50%;
-  background: #3fb950; animation: livepulse 2s infinite; }
+/* ── Legend overlay ── */
+.geo-legend { position:absolute; bottom:40px; left:12px; z-index:10;
+              background:rgba(13,17,23,.88); border:1px solid #30363d;
+              border-radius:8px; padding:8px 12px; font-size:.7rem;
+              color:#8b949e; backdrop-filter:blur(6px); pointer-events:none; }
+.geo-legend.light { background:rgba(245,247,250,.92); border-color:#cdd5df; color:#556070; }
+.geo-legend-row { display:flex; align-items:center; gap:7px; margin-bottom:3px; }
+.geo-legend-row:last-child { margin-bottom:0; }
+.geo-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.geo-legend-sep { height:1px; background:#30363d; margin:5px 0; }
+.geo-legend.light .geo-legend-sep { background:#cdd5df; }
+
+/* ── Status bar ── */
+.geo-statusbar { display:flex; align-items:center; justify-content:space-between;
+                 padding:4px 12px; border-top:1px solid var(--border);
+                 font-size:.67rem; color:#8b949e; flex-shrink:0; }
+.geo-live { display:flex; align-items:center; gap:5px; color:#3fb950; }
+.geo-live-dot { width:6px; height:6px; border-radius:50%; background:#3fb950;
+                animation:livepulse 2s infinite; }
 @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-/* ── KPIs ── */
-.stat-label { font-size: .72rem; text-transform: uppercase;
-  letter-spacing: .06em; color: #8b949e; margin-bottom: 4px; }
-.stat-value { font-size: 1.8rem; font-weight: 700; margin: 0; line-height: 1; }
+/* ── Paris marker ── */
+.paris-wrap { position:relative; width:24px; height:24px; }
+.paris-pulse { position:absolute; inset:-4px; border-radius:50%;
+               background:rgba(63,185,80,.25); animation:ppulse 2s ease-out infinite; }
+.paris-dot   { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+               width:10px; height:10px; border-radius:50%;
+               background:#3fb950; border:2px solid #fff;
+               box-shadow:0 0 8px rgba(63,185,80,.7); z-index:2; }
+@keyframes ppulse { 0%{transform:scale(.5);opacity:.8} 100%{transform:scale(2.5);opacity:0} }
 
-/* ── Barres pays ── */
-.country-bar { height: 4px; border-radius: 2px; background: #21262d; margin-top: 4px; }
-.country-bar-fill { height: 100%; border-radius: 2px; transition: width .4s; }
+/* ── Attack dot ── */
+.atk-dot { width:8px; height:8px; border-radius:50%;
+           box-shadow:0 0 8px currentColor; transition:opacity .3s; }
+
+/* ── Sidebar ── */
+.geo-sidebar { display:flex; flex-direction:column; overflow:hidden; }
+.geo-sidebar-hdr { padding:.5rem .75rem; border-bottom:1px solid var(--border);
+                   font-size:.78rem; font-weight:600; flex-shrink:0; }
+.geo-sidebar-body { flex:1; overflow-y:auto; padding:.4rem; }
+.ctry-item { display:flex; align-items:center; padding:.35rem .5rem;
+             border-radius:6px; cursor:pointer; gap:.5rem; transition:background .1s; }
+.ctry-item:hover { background:rgba(255,255,255,.05); }
+.ctry-flag  { font-size:1.05rem; line-height:1; flex-shrink:0; }
+.ctry-info  { flex:1; min-width:0; }
+.ctry-name  { font-size:.75rem; font-weight:500; white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; }
+.ctry-sev   { display:flex; gap:6px; margin-top:2px; }
+.ctry-badge { font-size:.62rem; white-space:nowrap; }
+.ctry-count { font-size:.73rem; font-weight:700; padding:.1rem .45rem;
+              border-radius:5px; flex-shrink:0; }
+.ctry-bar   { height:3px; border-radius:2px; background:#21262d; margin-top:4px; }
+.ctry-bar-fill { height:100%; border-radius:2px; transition:width .4s ease; }
+
+/* ── MapLibre popup override ── */
+.maplibregl-popup-content {
+  background:#0d1117 !important; color:#c9d1d9 !important;
+  border:1px solid #30363d !important; border-radius:10px !important;
+  padding:10px 14px !important; box-shadow:0 6px 20px rgba(0,0,0,.5) !important;
+  font-size:.8rem; font-family:inherit; min-width:170px;
+}
+.maplibregl-popup-tip { display:none !important; }
+.nw-popup-country { font-weight:700; font-size:.9rem; margin-bottom:6px;
+                    display:flex; align-items:center; gap:6px; }
+.nw-popup-row { display:flex; justify-content:space-between; padding:2px 0;
+                border-bottom:1px solid #21262d; }
+.nw-popup-row:last-of-type { border:none; }
+.nw-popup-hint { margin-top:6px; font-size:.68rem; color:#8b949e; }
 </style>
 {% endblock %}
 
 {% block content %}
 
 {% if error %}
-<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
   <i class="bi bi-exclamation-triangle-fill"></i><div>{{ error }}</div>
 </div>
 {% endif %}
 
-<!-- KPIs -->
-{% set total_crit = countries | sum(attribute='critical') %}
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body py-3">
-        <p class="stat-label">Événements géolocalisés</p>
-        <h2 class="stat-value text-info" id="kpi-total">{{ total_geo }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body py-3">
-        <p class="stat-label">Pays sources</p>
-        <h2 class="stat-value" id="kpi-countries">{{ unique_countries }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body py-3">
-        <p class="stat-label">Alertes critiques</p>
-        <h2 class="stat-value text-danger" id="kpi-crit">{{ total_crit }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body py-3">
-        <p class="stat-label">Pays #1 menace</p>
-        <h2 class="stat-value" style="font-size:1rem" id="kpi-top">
-          {% if countries %}{{ countries[0].iso | geo_flag }} {{ countries[0].country }}{% else %}—{% endif %}
-        </h2>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="geo-page">
 
-<!-- Carte + sidebar -->
-<div class="row g-3 mb-4">
+  <!-- KPIs -->
+  {% set total_crit = countries | sum(attribute='critical') %}
+  <div class="geo-kpis">
+    <div class="kpi-card">
+      <p class="kpi-lbl">Événements géolocalisés</p>
+      <h2 class="kpi-val text-info" id="kpi-total">{{ total_geo }}</h2>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-lbl">Pays sources</p>
+      <h2 class="kpi-val text-primary" id="kpi-countries">{{ unique_countries }}</h2>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-lbl">Alertes critiques</p>
+      <h2 class="kpi-val text-danger" id="kpi-critical">{{ total_crit }}</h2>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-lbl" id="kpi-top-lbl">Pays #1 menace</p>
+      <h2 class="kpi-val text-warning" id="kpi-top"
+          style="font-size:{% if countries %}1.1rem{% else %}1.75rem{% endif %};">
+        {% if countries %}{{ countries[0].country }}{% else %}—{% endif %}
+      </h2>
+    </div>
+  </div>
 
-  <div class="col-lg-8 d-flex flex-column">
-    <div class="card flex-grow-1 d-flex flex-column">
+  <!-- Map + Sidebar -->
+  <div class="geo-main">
 
-      <!-- Header -->
-      <div class="card-header d-flex align-items-center justify-content-between gap-2">
-        <span class="fw-medium"><i class="bi bi-globe2 me-2 text-info"></i>Origines des menaces</span>
-        <div class="geo-live">
-          <div class="geo-live-dot"></div>
-          Live &nbsp;<span id="refresh-ts">—</span>
-        </div>
-      </div>
+    <!-- Map card -->
+    <div class="geo-card">
 
       <!-- Toolbar -->
-      {% if countries %}
       <div class="geo-toolbar">
-        <span class="geo-tb-label">Sévérité :</span>
-        <button class="geo-btn crit active" id="btn-crit" onclick="toggleFilter('critical')">
+        <span class="geo-lbl">Sévérité :</span>
+        <button class="geo-btn active crit" id="btn-crit" onclick="toggleSev('critical',this)">
           <span class="geo-btn-dot" style="background:#f85149"></span> Critique
         </button>
-        <button class="geo-btn med active" id="btn-med" onclick="toggleFilter('medium')">
+        <button class="geo-btn active med" id="btn-med" onclick="toggleSev('medium',this)">
           <span class="geo-btn-dot" style="background:#e3b341"></span> Moyen
         </button>
-        <button class="geo-btn low active" id="btn-low" onclick="toggleFilter('low')">
+        <button class="geo-btn active low" id="btn-low" onclick="toggleSev('low',this)">
           <span class="geo-btn-dot" style="background:#79c0ff"></span> Faible
         </button>
-        <div class="geo-tb-sep"></div>
-        <span class="geo-tb-label">Affichage :</span>
-        <button class="geo-btn arc active" id="btn-arc" onclick="toggleArcs()">
+
+        <div class="geo-sep"></div>
+
+        <button class="geo-btn active arc" id="btn-arcs" onclick="toggleArcs(this)">
           <i class="bi bi-share"></i> Arcs
         </button>
+
+        <div class="geo-sep"></div>
+
         <button class="geo-btn active" id="btn-theme" onclick="toggleTheme()">
-          <i class="bi bi-sun" id="theme-icon"></i> Clair
+          <i class="bi bi-moon-stars" id="theme-icon"></i>
+          <span id="theme-label">Sombre</span>
         </button>
-        <button class="geo-btn" onclick="resetZoom()" title="Réinitialiser le zoom">
-          <i class="bi bi-fullscreen-exit"></i> Reset
+        <button class="geo-btn" onclick="resetView()">
+          <i class="bi bi-arrows-fullscreen"></i> Reset
         </button>
       </div>
-      {% endif %}
 
-      <!-- Carte -->
-      <div class="card-body p-0 flex-grow-1">
-        {% if countries %}
-        <div id="geo-wrap" class="theme-dark">
-          <div id="geo-map"></div>
-          <div class="geo-tooltip" id="geo-tooltip"></div>
-          <div class="geo-legend" id="geo-legend">
-            <div class="geo-legend-row">
-              <span class="geo-legend-circle" style="width:18px;height:18px;background:#f85149;border:2px solid #da3633"></span>
-              Critique
-            </div>
-            <div class="geo-legend-row">
-              <span class="geo-legend-circle" style="width:14px;height:14px;background:#e3b341;border:2px solid #d29922;margin:2px"></span>
-              Moyen
-            </div>
-            <div class="geo-legend-row">
-              <span class="geo-legend-circle" style="width:10px;height:10px;background:#79c0ff;border:2px solid #388bfd;margin:4px"></span>
-              Faible
-            </div>
-            <div class="geo-legend-row" style="margin-top:6px;border-top:1px solid #30363d;padding-top:6px">
-              <span style="color:#22d3ee">⊕</span> Réseau cible (Paris)
-            </div>
+      <!-- Map -->
+      <div class="geo-map-wrap">
+        <div id="nw-map"></div>
+
+        <!-- Légende -->
+        <div class="geo-legend" id="nw-legend">
+          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#f85149"></span> Critique</div>
+          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#e3b341"></span> Moyen</div>
+          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#79c0ff"></span> Faible</div>
+          <div class="geo-legend-sep"></div>
+          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#3fb950;border:1.5px solid #fff;width:10px;height:10px;"></span> Paris (cible)</div>
+          <div class="geo-legend-row" style="margin-top:4px;font-size:.62rem;color:#6e7681;">
+            Scroll = zoom · Glisser = déplacer
           </div>
         </div>
-        {% else %}
-        <div class="empty-state py-5 text-center">
-          <i class="bi bi-globe display-4 text-muted d-block mb-3"></i>
-          <div>Aucune donnée GeoIP disponible.</div>
-          <small class="text-muted">Relancez <code>make sim</code> après <code>bash setup-geoip.sh</code>.</small>
-        </div>
-        {% endif %}
+      </div>
+
+      <!-- Status bar -->
+      <div class="geo-statusbar">
+        <div class="geo-live"><span class="geo-live-dot"></span> Live</div>
+        <span id="geo-update-time">—</span>
+        <span>Actualisation dans <span id="geo-countdown">30</span>s</span>
       </div>
     </div>
-  </div>
 
-  <!-- Top pays sidebar -->
-  <div class="col-lg-4">
-    <div class="card h-100 d-flex flex-column">
-      <div class="card-header fw-medium">
-        <i class="bi bi-bar-chart-steps me-2 text-info"></i>Top pays sources
+    <!-- Sidebar pays -->
+    <div class="geo-card geo-sidebar">
+      <div class="geo-sidebar-hdr">
+        <i class="bi bi-bar-chart-line me-1"></i> Top pays sources
+        <span class="badge bg-secondary ms-1" id="sidebar-count">0</span>
       </div>
-      <div class="card-body p-0 overflow-auto" style="max-height:520px">
-        {% if countries %}
-        {% set max_count = countries[0].count %}
-        <div class="list-group list-group-flush">
-          {% for c in countries[:15] %}
-          <div class="list-group-item list-group-item-action px-3 py-2"
-               style="background:transparent;border-color:var(--border);cursor:pointer"
-               onclick="focusCountry({{ c.lat }}, {{ c.lon }}, '{{ c.country }}')">
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="small fw-medium d-flex align-items-center gap-2">
-                <span style="font-size:1.1rem">{{ c.iso | geo_flag }}</span>
-                {{ c.country }}
-              </span>
-              <span class="badge rounded-pill"
-                    style="background:{% if c.critical %}rgba(207,34,46,.15);color:#f85149{% elif c.medium %}rgba(191,135,0,.15);color:#e3b341{% else %}rgba(59,130,246,.15);color:#79c0ff{% endif %}">
-                {{ c.count }}
-              </span>
-            </div>
-            <div class="country-bar mt-1">
-              <div class="country-bar-fill"
-                   style="width:{{ ((c.count / max_count) * 100) | int }}%;
-                          background:{% if c.critical %}#da3633{% elif c.medium %}#d29922{% else %}#388bfd{% endif %}">
-              </div>
-            </div>
-            {% if c.critical or c.medium %}
-            <div class="d-flex gap-3 mt-1" style="font-size:.72rem">
-              {% if c.critical %}<span style="color:#f85149"><i class="bi bi-exclamation-circle-fill me-1"></i>{{ c.critical }} crit.</span>{% endif %}
-              {% if c.medium  %}<span style="color:#e3b341">{{ c.medium }} moy.</span>{% endif %}
-              {% if c.low     %}<span style="color:#79c0ff">{{ c.low }} faible</span>{% endif %}
-            </div>
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="text-muted small p-3 text-center">Aucune donnée.</div>
-        {% endif %}
+      <div class="geo-sidebar-body" id="sidebar-list">
+        <div class="text-secondary text-center mt-4 small">Chargement…</div>
       </div>
     </div>
-  </div>
-</div>
 
-<p class="text-muted small mb-0">
-  <i class="bi bi-mouse me-1"></i>
-  Scroll = zoom · Glisser = déplacer · Clic marqueur = alertes filtrées · Clic pays dans la liste = centrer
-</p>
+  </div><!-- /geo-main -->
+</div><!-- /geo-page -->
 
-{% endblock %}
-
-{% block scripts %}
-{% if countries %}
-<script src="{{ url_for('static', filename='geo/d3.min.js') }}"></script>
-<script src="{{ url_for('static', filename='geo/topojson.min.js') }}"></script>
-<script>
-const GEO_DATA = {{ countries | tojson }};
-const TARGET   = { lat: 48.86, lon: 2.35 };
-
-/* ── Thèmes ── */
-const THEMES = {
-  dark: {
-    ocean:    '#0a0e16', graticule: '#1a2332',
-    arcOpacity: 0.55, arcWidth: 1.1,
-    targetColor: '#22d3ee',
-  },
-  light: {
-    ocean:    '#dce8f2', graticule: '#b8d4e8',
-    arcOpacity: 0.7, arcWidth: 1.3,
-    targetColor: '#0369a1',
-  },
-};
-let currentTheme = 'dark';
-
-function themeVal(key) { return THEMES[currentTheme][key]; }
-
-/* ── État ── */
-const filters   = { critical: true, medium: true, low: true };
-let arcsEnabled = true;
-let _proj, _zoom, _svg, _mapG, _ocean;
-
-/* ── Helpers ── */
-function flagEmoji(iso) {
-  if (!iso || iso.length !== 2) return '';
-  return String.fromCodePoint(...iso.toUpperCase().split('').map(c => c.charCodeAt(0) + 127397));
-}
-function sevClass(c)  { return c.critical > 0 ? 'critical' : c.medium > 0 ? 'medium' : 'low'; }
-function sevColor(c)  { return c.critical > 0 ? '#f85149' : c.medium > 0 ? '#e3b341' : '#79c0ff'; }
-function sevBorder(c) { return c.critical > 0 ? '#da3633' : c.medium > 0 ? '#d29922' : '#388bfd'; }
-function markerR(n)   { return Math.max(5, Math.min(32, Math.sqrt(n) * 3)); }
-
-const registry = {};
-const tooltip  = document.getElementById('geo-tooltip');
-const wrap     = document.getElementById('geo-wrap');
-
-/* ── Tooltip ── */
-function showTip(event, c) {
-  const flag = flagEmoji(c.iso);
-  const sevLabel = c.critical > 0 ? 'Critique' : c.medium > 0 ? 'Moyen' : 'Faible';
-  const sevBg    = c.critical > 0 ? 'rgba(218,54,51,.25)' : c.medium > 0 ? 'rgba(210,153,34,.25)' : 'rgba(56,139,253,.25)';
-  const sevFg    = sevColor(c);
-  tooltip.innerHTML = `
-    <div class="geo-tooltip-country">
-      <span style="font-size:1.3rem">${flag}</span>
-      <span>${c.country}</span>
-      <span class="geo-tooltip-badge ms-auto" style="background:${sevBg};color:${sevFg}">${sevLabel}</span>
-    </div>
-    <div class="geo-tooltip-row"><span class="text-muted">Total événements</span><strong>${c.count}</strong></div>
-    ${c.critical ? `<div class="geo-tooltip-row"><span style="color:#f85149">Critiques</span><strong>${c.critical}</strong></div>` : ''}
-    ${c.medium   ? `<div class="geo-tooltip-row"><span style="color:#e3b341">Moyens</span><strong>${c.medium}</strong></div>` : ''}
-    ${c.low      ? `<div class="geo-tooltip-row"><span style="color:#79c0ff">Faibles</span><strong>${c.low}</strong></div>` : ''}
-    <div class="geo-tooltip-link">
-      <a href="/alerts?q=${encodeURIComponent(c.country)}" style="color:#58a6ff">
-        <i class="bi bi-arrow-right-circle me-1"></i>Voir les alertes
-      </a>
-    </div>`;
-  const rect = wrap.getBoundingClientRect();
-  let tx = event.clientX - rect.left + 14;
-  let ty = event.clientY - rect.top  - 10;
-  const W = wrap.clientWidth;
-  if (tx + 210 > W) tx = tx - 225;
-  if (ty < 0) ty = 8;
-  tooltip.style.left    = tx + 'px';
-  tooltip.style.top     = ty + 'px';
-  tooltip.style.display = 'block';
-}
-function hideTip() { tooltip.style.display = 'none'; }
-
-/* ── Arc animé ── */
-function drawArc(layer, x1, y1, x2, y2, color) {
-  const dx = x2 - x1, dy = y2 - y1;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const mx   = (x1 + x2) / 2;
-  const my   = (y1 + y2) / 2 - dist * 0.4;
-  const arc  = layer.append('path').attr('class', 'geo-arc')
-    .attr('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`)
-    .attr('fill', 'none').attr('stroke', color)
-    .attr('stroke-width', themeVal('arcWidth'))
-    .attr('stroke-opacity', themeVal('arcOpacity'));
-  loopArc(arc);
-  return arc;
-}
-function loopArc(arc) {
-  const len = arc.node().getTotalLength();
-  arc.attr('stroke-dasharray', `${len * 0.25},${len * 0.75}`)
-     .attr('stroke-dashoffset', len)
-     .transition().duration(1400 + Math.random() * 600).ease(d3.easeLinear)
-     .attr('stroke-dashoffset', -len)
-     .on('end', () => loopArc(arc));
-}
-
-/* ── Filtres ── */
-function applyFilters() {
-  Object.values(registry).forEach(({ circle, arc, sev }) => {
-    const vis = filters[sev];
-    circle.style('display', vis ? null : 'none');
-    if (arc) arc.style('display', vis && arcsEnabled ? null : 'none');
-  });
-}
-function toggleFilter(sev) {
-  filters[sev] = !filters[sev];
-  const ids = { critical: 'btn-crit', medium: 'btn-med', low: 'btn-low' };
-  document.getElementById(ids[sev]).classList.toggle('active', filters[sev]);
-  applyFilters();
-}
-function toggleArcs() {
-  arcsEnabled = !arcsEnabled;
-  document.getElementById('btn-arc').classList.toggle('active', arcsEnabled);
-  applyFilters();
-}
-
-/* ── Thème ── */
-function toggleTheme() {
-  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  wrap.className = `theme-${currentTheme}`;
-  const btn  = document.getElementById('btn-theme');
-  const icon = document.getElementById('theme-icon');
-  if (currentTheme === 'light') {
-    icon.className = 'bi bi-moon'; btn.innerHTML = '<i class="bi bi-moon"></i> Sombre';
-  } else {
-    icon.className = 'bi bi-sun';  btn.innerHTML = '<i class="bi bi-sun"></i> Clair';
-  }
-  /* Mise à jour couleurs SVG */
-  if (_ocean)  _ocean.attr('fill', themeVal('ocean'));
-  _svg.selectAll('.geo-graticule').attr('stroke', themeVal('graticule'));
-  Object.values(registry).forEach(({ arc }) => {
-    if (arc) arc.attr('stroke-width', themeVal('arcWidth')).attr('stroke-opacity', themeVal('arcOpacity'));
-  });
-}
-
-/* ── Zoom ── */
-function resetZoom() {
-  _svg.transition().duration(600).call(_zoom.transform, d3.zoomIdentity);
-}
-function focusCountry(lat, lon, country) {
-  if (!_proj) return;
-  const [x, y] = _proj([lon, lat]);
-  const vb = _svg.attr('viewBox').split(' ');
-  const W = +vb[2], H = +vb[3];
-  const k = 4.5;
-  _svg.transition().duration(700)
-    .call(_zoom.transform, d3.zoomIdentity.translate(W / 2 - k * x, H / 2 - k * y).scale(k));
-  if (registry[country]) {
-    const { circle } = registry[country];
-    const r = +circle.attr('r');
-    circle.transition().duration(200).attr('r', r * 2.2)
-      .transition().duration(350).attr('r', r);
-  }
-}
-
-/* ── Init carte ── */
-window.addEventListener('load', () => {
-  const W = wrap.clientWidth || 800;
-  const H = Math.round(W * 0.52);
-  wrap.style.height = H + 'px';
-
-  _svg = d3.select('#geo-map').append('svg')
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .attr('preserveAspectRatio', 'xMidYMid meet');
-
-  _proj = d3.geoNaturalEarth1().scale(W / 6.3).translate([W / 2, H / 2]);
-  const path = d3.geoPath().projection(_proj);
-
-  /* Fond océan */
-  _ocean = _svg.append('rect').attr('width', W).attr('height', H)
-    .attr('fill', themeVal('ocean'));
-
-  /* Groupe zoomable */
-  _mapG = _svg.append('g');
-
-  /* Zoom + pan */
-  _zoom = d3.zoom().scaleExtent([1, 12])
-    .on('zoom', e => _mapG.attr('transform', e.transform));
-  _svg.call(_zoom).on('dblclick.zoom', null);
-
-  /* Graticule */
-  _mapG.append('path').datum(d3.geoGraticule()())
-    .attr('class', 'geo-graticule').attr('d', path)
-    .attr('fill', 'none').attr('stroke', themeVal('graticule')).attr('stroke-width', 0.3);
-
-  d3.json('/static/geo/countries-110m.json').then(world => {
-    /* Pays */
-    _mapG.append('g').selectAll('path')
-      .data(topojson.feature(world, world.objects.countries).features)
-      .join('path').attr('class', 'geo-country').attr('d', path);
-
-    /* Frontières */
-    _mapG.append('path')
-      .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
-      .attr('class', 'geo-border').attr('fill', 'none')
-      .attr('stroke', themeVal('graticule')).attr('stroke-width', 0.5).attr('d', path);
-
-    /* Cible Paris */
-    const [tx, ty] = _proj([TARGET.lon, TARGET.lat]);
-    const tg = _mapG.append('g');
-    function pulseTgt(c, r0) {
-      c.transition().duration(1300).attr('r', r0 + 9).attr('stroke-opacity', 0)
-        .on('end', () => { c.attr('r', r0).attr('stroke-opacity', .7); pulseTgt(c, r0); });
-    }
-    tg.append('circle').attr('cx', tx).attr('cy', ty).attr('r', 5)
-      .attr('fill', 'none').attr('stroke', '#22d3ee').attr('stroke-width', 1.5)
-      .attr('stroke-opacity', .7).call(c => pulseTgt(c, 5));
-    tg.append('circle').attr('cx', tx).attr('cy', ty).attr('r', 3.5)
-      .attr('fill', '#22d3ee').attr('fill-opacity', .95);
-    [[-9,0],[9,0],[0,-9],[0,9]].forEach(([dx, dy]) =>
-      tg.append('line').attr('x1', tx).attr('y1', ty)
-        .attr('x2', tx + dx).attr('y2', ty + dy)
-        .attr('stroke', '#22d3ee').attr('stroke-width', 1).attr('stroke-opacity', .5));
-
-    /* Couches arcs + marqueurs */
-    const arcLayer    = _mapG.append('g');
-    const markerLayer = _mapG.append('g');
-
-    GEO_DATA.forEach(c => {
-      if (!c.lat || (c.lat === 0 && c.lon === 0)) return;
-      const [mx, my] = _proj([c.lon, c.lat]);
-      if (!mx || !my) return;
-
-      const color  = sevColor(c);
-      const border = sevBorder(c);
-      const r      = markerR(c.count);
-      const sev    = sevClass(c);
-
-      const arc = drawArc(arcLayer, mx, my, tx, ty, color);
-
-      const circle = markerLayer.append('circle').attr('class', 'geo-marker')
-        .attr('cx', mx).attr('cy', my).attr('r', r)
-        .attr('fill', color).attr('fill-opacity', .55)
-        .attr('stroke', border).attr('stroke-width', 2)
-        .on('mousemove', ev => showTip(ev, c))
-        .on('mouseleave', hideTip)
-        .on('click', () => { window.location.href = `/alerts?q=${encodeURIComponent(c.country)}`; });
-
-      registry[c.country] = { circle, arc, data: c, sev };
-
-      /* Pulse pour les critiques */
-      if (c.critical > 0) {
-        (function pulse() {
-          markerLayer.insert('circle', '.geo-marker')
-            .attr('cx', mx).attr('cy', my).attr('r', r)
-            .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1.2)
-            .attr('stroke-opacity', .8).attr('pointer-events', 'none')
-            .transition().duration(1500).attr('r', r + 14).attr('stroke-opacity', 0)
-            .on('end', function() { d3.select(this).remove(); pulse(); });
-        })();
-      }
-    });
-
-    applyFilters();
-    document.getElementById('refresh-ts').textContent = new Date().toLocaleTimeString('fr-FR');
-
-  }).catch(() => {
-    _svg.append('text').attr('x', W / 2).attr('y', H / 2)
-      .attr('text-anchor', 'middle').attr('fill', '#8b949e').attr('font-size', 13)
-      .text('Carte indisponible — /static/geo/countries-110m.json introuvable');
-  });
-});
-
-/* ── Polling 30s ── */
-setInterval(() => {
-  fetch('/api/geo').then(r => r.json()).then(({ countries = [], total_geo = 0 }) => {
-    let crit = 0;
-    countries.forEach(c => {
-      crit += c.critical || 0;
-      if (!registry[c.country]) return;
-      registry[c.country].data = c;
-      registry[c.country].sev  = sevClass(c);
-      registry[c.country].circle
-        .transition().duration(700)
-        .attr('r', markerR(c.count))
-        .attr('fill', sevColor(c)).attr('stroke', sevBorder(c));
-    });
-    applyFilters();
-    ['kpi-total','hdr-total'].forEach(id => document.getElementById(id).textContent = total_geo);
-    ['kpi-countries','hdr-countries'].forEach(id => document.getElementById(id).textContent = countries.length);
-    document.getElementById('kpi-crit').textContent   = crit;
-    document.getElementById('refresh-ts').textContent = new Date().toLocaleTimeString('fr-FR');
-  }).catch(() => {});
-}, 30000);
+<!-- Data initiale depuis Jinja2 -->
+<script id="geo-init-data" type="application/json">
+{{ countries | tojson }}
 </script>
-{% endif %}
+
+<script src="{{ url_for('static', filename='geo/maplibre-gl.js') }}"></script>
+<script>
+'use strict';
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const PARIS      = [2.3522, 48.8566];
+const C_CRIT     = '#f85149';
+const C_MED      = '#e3b341';
+const C_LOW      = '#79c0ff';
+const C_TARGET   = '#3fb950';
+const EMPTY_FC   = { type:'FeatureCollection', features:[] };
+
+const CARTO_STYLES = {
+  dark : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+};
+
+// ─── État global ──────────────────────────────────────────────────────────────
+let MAP       = null;
+let THEME     = 'dark';
+let ARCS_ON   = true;
+let SEV_FILTER= { critical:true, medium:true, low:true };
+let GEO_DATA  = [];
+let TOTAL_GEO = 0;
+let ARC_PATHS = {};   // iso → [[lng,lat],…]
+let DOT_PHASE = {};   // iso → float offset 0-1
+let DOT_MKRS  = {};   // iso → maplibregl.Marker
+let PARIS_MKR = null;
+let ANIM_ID   = null;
+let COUNTDOWN = 30;
+let CDN_TIMER = null;
+
+// ─── Géométrie ────────────────────────────────────────────────────────────────
+function greatCircle(from, to, n=80) {
+  const R = Math.PI/180;
+  const [ln1,lt1] = [from[0]*R, from[1]*R];
+  const [ln2,lt2] = [to[0]*R,   to[1]*R  ];
+  const d = 2*Math.asin(Math.sqrt(
+    Math.sin((lt2-lt1)/2)**2 + Math.cos(lt1)*Math.cos(lt2)*Math.sin((ln2-ln1)/2)**2
+  ));
+  if (d < 1e-4) return [from, to];
+  const pts = [];
+  for (let i=0; i<=n; i++) {
+    const t=i/n, A=Math.sin((1-t)*d)/Math.sin(d), B=Math.sin(t*d)/Math.sin(d);
+    const x=A*Math.cos(lt1)*Math.cos(ln1)+B*Math.cos(lt2)*Math.cos(ln2);
+    const y=A*Math.cos(lt1)*Math.sin(ln1)+B*Math.cos(lt2)*Math.sin(ln2);
+    const z=A*Math.sin(lt1)+B*Math.sin(lt2);
+    pts.push([Math.atan2(y,x)/R, Math.atan2(z,Math.sqrt(x*x+y*y))/R]);
+  }
+  return pts;
+}
+
+function pathAt(pts, t) {
+  t = Math.max(0,Math.min(1,t));
+  const idx=(pts.length-1)*t, i=Math.floor(idx), f=idx-i;
+  if (i>=pts.length-1) return pts[pts.length-1];
+  return [pts[i][0]+(pts[i+1][0]-pts[i][0])*f, pts[i][1]+(pts[i+1][1]-pts[i][1])*f];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function sevLabel(d) {
+  return d.critical>0?'critical': d.medium>0?'medium':'low';
+}
+function sevColor(d) {
+  return d.critical>0?C_CRIT: d.medium>0?C_MED:C_LOW;
+}
+function flag(iso) {
+  if (!iso||iso.length!==2) return '🌐';
+  return [...iso.toUpperCase()].map(c=>String.fromCodePoint(0x1F1E6+c.charCodeAt(0)-65)).join('');
+}
+function numFmt(n) { return n!=null?n.toLocaleString('fr-FR'):'—'; }
+
+// ─── GeoJSON builders ─────────────────────────────────────────────────────────
+function buildArcs(data) {
+  ARC_PATHS = {};
+  return {
+    type:'FeatureCollection',
+    features: data.filter(d=>SEV_FILTER[sevLabel(d)]).map(d=>{
+      const coords = greatCircle([d.lon,d.lat], PARIS);
+      ARC_PATHS[d.iso] = coords;
+      return {
+        type:'Feature',
+        properties:{ iso:d.iso, color:sevColor(d), sev:sevLabel(d) },
+        geometry:{ type:'LineString', coordinates:coords }
+      };
+    })
+  };
+}
+
+function buildCircles(data) {
+  return {
+    type:'FeatureCollection',
+    features: data.filter(d=>SEV_FILTER[sevLabel(d)]).map(d=>({
+      type:'Feature',
+      properties:{
+        iso:d.iso, country:d.country,
+        count:d.count, critical:d.critical, medium:d.medium, low:d.low,
+        color:sevColor(d), sev:sevLabel(d)
+      },
+      geometry:{ type:'Point', coordinates:[d.lon,d.lat] }
+    }))
+  };
+}
+
+// ─── Couches MapLibre ─────────────────────────────────────────────────────────
+const LAYER_DEFS = [
+  // Arcs (glow)
+  {
+    id:'arcs-glow', type:'line', source:'arcs',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':['get','color'],'line-width':4,'line-opacity':0.12,'line-blur':3}
+  },
+  // Arcs principaux
+  {
+    id:'arcs', type:'line', source:'arcs',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':['get','color'],'line-width':1.3,'line-opacity':0.65,
+           'line-dasharray':[3,4]}
+  },
+  // Cercles pays (halo)
+  {
+    id:'circles-halo', type:'circle', source:'circles',
+    paint:{
+      'circle-radius':['interpolate',['linear'],['get','count'],1,10,100,22,500,30],
+      'circle-color':['get','color'],
+      'circle-opacity':0.12, 'circle-stroke-width':0
+    }
+  },
+  // Cercles pays
+  {
+    id:'circles', type:'circle', source:'circles',
+    paint:{
+      'circle-radius':['interpolate',['linear'],['get','count'],1,6,100,14,500,22],
+      'circle-color':['get','color'],
+      'circle-opacity':0.9,
+      'circle-stroke-color':'rgba(255,255,255,0.5)',
+      'circle-stroke-width':1.5
+    }
+  },
+];
+
+function initLayers() {
+  // Sources
+  if (!MAP.getSource('arcs')) {
+    MAP.addSource('arcs',    {type:'geojson', data:EMPTY_FC});
+    MAP.addSource('circles', {type:'geojson', data:EMPTY_FC});
+  }
+  // Couches
+  for (const def of LAYER_DEFS) {
+    if (!MAP.getLayer(def.id)) MAP.addLayer({...def});
+  }
+  // Paris marker (une seule fois)
+  if (!PARIS_MKR) {
+    const el = document.createElement('div');
+    el.className = 'paris-wrap';
+    el.innerHTML = '<div class="paris-pulse"></div><div class="paris-dot"></div>';
+    PARIS_MKR = new maplibregl.Marker({element:el, anchor:'center'})
+      .setLngLat(PARIS).addTo(MAP);
+  }
+  // Events
+  attachEvents();
+  // Render si on a des données
+  if (GEO_DATA.length) renderMap(GEO_DATA, TOTAL_GEO);
+}
+
+function attachEvents() {
+  const popup = new maplibregl.Popup({closeButton:false, closeOnClick:false, offset:12});
+
+  MAP.off('mouseenter','circles', onEnterCircle);
+  MAP.off('mouseleave','circles', onLeaveCircle);
+  MAP.off('click',     'circles', onClickCircle);
+
+  MAP.on('mouseenter','circles', onEnterCircle);
+  MAP.on('mouseleave','circles', onLeaveCircle);
+  MAP.on('click',     'circles', onClickCircle);
+
+  function onEnterCircle(e) {
+    MAP.getCanvas().style.cursor='pointer';
+    const p = e.features[0].properties;
+    popup.setLngLat(e.lngLat)
+      .setHTML(`
+        <div class="nw-popup-country">${flag(p.iso)} ${p.country}</div>
+        <div class="nw-popup-row"><span style="color:${C_CRIT}">● Critique</span><b>${numFmt(p.critical)}</b></div>
+        <div class="nw-popup-row"><span style="color:${C_MED}">● Moyen</span><b>${numFmt(p.medium)}</b></div>
+        <div class="nw-popup-row"><span style="color:${C_LOW}">● Faible</span><b>${numFmt(p.low)}</b></div>
+        <div class="nw-popup-hint"><i class="bi bi-box-arrow-up-right me-1"></i>Cliquer pour les alertes</div>
+      `)
+      .addTo(MAP);
+  }
+  function onLeaveCircle() {
+    MAP.getCanvas().style.cursor='';
+    popup.remove();
+  }
+  function onClickCircle(e) {
+    const country = e.features[0].properties.country;
+    window.location.href='/alerts?q='+encodeURIComponent(country);
+  }
+}
+
+// ─── Init carte ───────────────────────────────────────────────────────────────
+function initMap() {
+  MAP = new maplibregl.Map({
+    container:'nw-map',
+    style: CARTO_STYLES[THEME],
+    center:[20,25], zoom:1.5,
+    attributionControl:{compact:true}
+  });
+  MAP.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+
+  // Premier chargement
+  MAP.once('load', initLayers);
+
+  // Re-init après changement de thème (setStyle vide tout)
+  MAP.on('style.load', ()=>{
+    // Ne pas appeler au premier load (already handled by `once`)
+    if (_styleLoaded) initLayers();
+    _styleLoaded = true;
+  });
+}
+let _styleLoaded = false;
+
+// ─── Rendu données ────────────────────────────────────────────────────────────
+function renderMap(data, total) {
+  if (!MAP || !MAP.isStyleLoaded()) return;
+
+  const arcs    = buildArcs(data);
+  const circles = buildCircles(data);
+
+  if (MAP.getSource('arcs'))    MAP.getSource('arcs').setData(arcs);
+  if (MAP.getSource('circles')) MAP.getSource('circles').setData(circles);
+
+  // Visibilité arcs
+  const arcVis = ARCS_ON ? 'visible' : 'none';
+  ['arcs','arcs-glow'].forEach(id=> {
+    if (MAP.getLayer(id)) MAP.setLayoutProperty(id,'visibility',arcVis);
+  });
+
+  // Dots animés
+  syncDots(data);
+
+  // KPIs
+  const crit    = data.reduce((s,d)=>s+d.critical,0);
+  const top     = data[0];
+  document.getElementById('kpi-total').textContent    = numFmt(total||TOTAL_GEO);
+  document.getElementById('kpi-countries').textContent= data.length;
+  document.getElementById('kpi-critical').textContent = numFmt(crit);
+  document.getElementById('hdr-total').textContent    = numFmt(total||TOTAL_GEO);
+  document.getElementById('hdr-countries').textContent= data.length;
+  if (top) {
+    document.getElementById('kpi-top').innerHTML = flag(top.iso)+' '+top.country;
+    document.getElementById('kpi-top').style.fontSize='1.05rem';
+  }
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('geo-update-time').textContent =
+    now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  // Sidebar
+  renderSidebar(data);
+}
+
+// ─── Dots animés ─────────────────────────────────────────────────────────────
+function syncDots(data) {
+  const visible = new Set(
+    data.filter(d=>SEV_FILTER[sevLabel(d)]&&ARCS_ON).map(d=>d.iso)
+  );
+
+  // Supprimer les pays absents
+  for (const iso of Object.keys(DOT_MKRS)) {
+    if (!visible.has(iso)) {
+      DOT_MKRS[iso].remove();
+      delete DOT_MKRS[iso];
+      delete DOT_PHASE[iso];
+    }
+  }
+  // Ajouter les nouveaux
+  for (const d of data) {
+    if (!visible.has(d.iso)) {
+      // Masquer les dots filtrés
+      if (DOT_MKRS[d.iso]) {
+        DOT_MKRS[d.iso].getElement().style.opacity='0';
+      }
+      continue;
+    }
+    if (!DOT_MKRS[d.iso]) {
+      const el = document.createElement('div');
+      el.className = 'atk-dot';
+      el.style.cssText = `background:${sevColor(d)};color:${sevColor(d)}`;
+      DOT_MKRS[d.iso] = new maplibregl.Marker({element:el,anchor:'center'})
+        .setLngLat([d.lon,d.lat]).addTo(MAP);
+      DOT_PHASE[d.iso] = Math.random();
+    } else {
+      DOT_MKRS[d.iso].getElement().style.opacity='1';
+    }
+  }
+}
+
+function animateDots() {
+  const t = (Date.now()/4000) % 1;
+  for (const [iso, mkr] of Object.entries(DOT_MKRS)) {
+    const path = ARC_PATHS[iso];
+    if (!path||path.length<2) continue;
+    const phase = ((t + (DOT_PHASE[iso]||0)) % 1);
+    mkr.setLngLat(pathAt(path, phase));
+  }
+  ANIM_ID = requestAnimationFrame(animateDots);
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+function renderSidebar(data) {
+  const el = document.getElementById('sidebar-list');
+  const cnt = document.getElementById('sidebar-count');
+  cnt.textContent = data.length;
+
+  if (!data.length) {
+    el.innerHTML='<div class="text-secondary text-center mt-4 small">Aucune donnée géolocalisée</div>';
+    return;
+  }
+
+  const maxCount = data[0]?.count||1;
+  el.innerHTML = data.slice(0,25).map(d=>{
+    const color = sevColor(d);
+    const pct   = Math.round((d.count/maxCount)*100);
+    const bages = [];
+    if (d.critical) bages.push(`<span class="ctry-badge" style="color:${C_CRIT}">⬤ ${d.critical}</span>`);
+    if (d.medium)   bages.push(`<span class="ctry-badge" style="color:${C_MED}">⬤ ${d.medium}</span>`);
+    if (d.low)      bages.push(`<span class="ctry-badge" style="color:${C_LOW}">⬤ ${d.low}</span>`);
+    return `
+      <div class="ctry-item" data-lon="${d.lon}" data-lat="${d.lat}" onclick="flyTo(${d.lon},${d.lat})">
+        <span class="ctry-flag">${flag(d.iso)}</span>
+        <div class="ctry-info">
+          <div class="ctry-name">${d.country}</div>
+          <div class="ctry-sev">${bages.join('')}</div>
+          <div class="ctry-bar"><div class="ctry-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        </div>
+        <span class="ctry-count" style="background:${color}22;color:${color}">${numFmt(d.count)}</span>
+      </div>`;
+  }).join('');
+}
+
+// ─── Contrôles ────────────────────────────────────────────────────────────────
+function toggleSev(sev, btn) {
+  SEV_FILTER[sev] = !SEV_FILTER[sev];
+  btn.classList.toggle('active', SEV_FILTER[sev]);
+  renderMap(GEO_DATA, TOTAL_GEO);
+}
+
+function toggleArcs(btn) {
+  ARCS_ON = !ARCS_ON;
+  btn.classList.toggle('active', ARCS_ON);
+  renderMap(GEO_DATA, TOTAL_GEO);
+}
+
+function toggleTheme() {
+  THEME = THEME==='dark'?'light':'dark';
+  const isDark = THEME==='dark';
+  document.getElementById('theme-icon').className = isDark?'bi bi-moon-stars':'bi bi-sun';
+  document.getElementById('theme-label').textContent = isDark?'Sombre':'Clair';
+  document.getElementById('btn-theme').classList.toggle('active', true);
+  document.getElementById('nw-legend').classList.toggle('light', !isDark);
+  if (MAP) MAP.setStyle(CARTO_STYLES[THEME]);
+}
+
+function resetView() {
+  if (MAP) MAP.flyTo({center:[20,25],zoom:1.5,duration:900});
+}
+
+function flyTo(lon, lat) {
+  if (MAP) MAP.flyTo({center:[lon,lat],zoom:4,duration:1000});
+}
+
+// ─── Chargement données ───────────────────────────────────────────────────────
+async function loadGeoData() {
+  try {
+    const r = await fetch('/api/geo');
+    if (!r.ok) throw new Error(r.statusText);
+    const json = await r.json();
+    const countries = json.countries || [];
+    const total_geo = json.total || json.total_geo || 0;
+    GEO_DATA  = countries;
+    TOTAL_GEO = total_geo;
+    renderMap(countries, total_geo);
+  } catch(e) {
+    console.error('[NetWatch Geomap] fetch error:', e);
+  }
+}
+
+// ─── Countdown ────────────────────────────────────────────────────────────────
+function startCountdown() {
+  COUNTDOWN = 30;
+  if (CDN_TIMER) clearInterval(CDN_TIMER);
+  CDN_TIMER = setInterval(()=>{
+    COUNTDOWN--;
+    const el = document.getElementById('geo-countdown');
+    if (el) el.textContent = COUNTDOWN;
+    if (COUNTDOWN<=0) {
+      COUNTDOWN=30;
+      loadGeoData();
+    }
+  },1000);
+}
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+// Données initiales depuis Jinja2 (zéro requête au premier affichage)
+try {
+  const raw = JSON.parse(document.getElementById('geo-init-data').textContent);
+  GEO_DATA  = raw;
+  TOTAL_GEO = {{ total_geo }};
+} catch(e) {}
+
+initMap();
+animateDots();
+startCountdown();
+// Premier fetch async pour confirmer/actualiser les données
+loadGeoData();
+</script>
 {% endblock %}
