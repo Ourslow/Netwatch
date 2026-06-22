@@ -98,7 +98,7 @@
       </div>
       <div class="card-body p-2">
         {% if countries %}
-        <div id="geo-map"></div>
+        <div id="geo-map" style="height:500px;width:100%"></div>
         {% else %}
         <div class="empty-state py-5">
           <i class="bi bi-globe empty-icon"></i>
@@ -201,8 +201,11 @@ window.addEventListener('load', function () {
     maxZoom: 19,
   }).addTo(_map);
 
-  /* Recalcule les dimensions une fois le layout stable */
-  setTimeout(() => _map.invalidateSize(), 300);
+  /* Reset complet après que Bootstrap ait calculé les largeurs de colonnes */
+  setTimeout(() => {
+    _map.invalidateSize({ reset: true });
+    _map.setView([20, 10], 2);
+  }, 300);
 
   /* Marqueurs */
   GEO_DATA.forEach(c => {
