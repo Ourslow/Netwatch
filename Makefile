@@ -1,9 +1,53 @@
-.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip llm-pull help
+.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es help
 
 ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434
 MODEL  ?= mistral
 SVC    ?=
+
+# ============================================================
+# Stack
+# ============================================================
+
+# ============================================================
+# Installation système (à lancer une seule fois sur la VM)
+# ============================================================
+
+install:
+	@echo "=== Installation service systemd netwatch-portal ==="
+	cp systemd/netwatch-portal.service /etc/systemd/system/
+	systemctl daemon-reload
+	systemctl enable netwatch-portal
+	systemctl start netwatch-portal
+	@echo ""
+	@echo "Portail installé comme service systemd."
+	@echo "  make portal-log   → voir les logs"
+	@echo "  systemctl status netwatch-portal"
+
+setup-es:
+	bash setup-es.sh
+
+# ============================================================
+# Portail Flask (sans systemd, pour dev/debug)
+# ============================================================
+
+portal:
+	@mkdir -p logs
+	@echo "Démarrage portail Flask en arrière-plan..."
+	@cd portal && nohup python3 app.py >> ../logs/portal.log 2>&1 & echo $$! > ../logs/portal.pid
+	@sleep 2
+	@curl -sf http://localhost:5050/login > /dev/null && echo "Portail OK → http://localhost:5050" || echo "WARN: portail non joignable, voir logs/portal.log"
+
+portal-stop:
+	@if [ -f logs/portal.pid ]; then \
+	  kill $$(cat logs/portal.pid) 2>/dev/null && echo "Portail arrêté." || echo "Déjà arrêté."; \
+	  rm -f logs/portal.pid; \
+	else \
+	  echo "Aucun PID enregistré."; \
+	fi
+
+portal-log:
+	tail -f logs/portal.log
 
 # ============================================================
 # Stack
@@ -124,4 +168,11 @@ help:
 	@echo "  make llm-pull        Télécharger le modèle IA local (Ollama, défaut: mistral)"
 	@echo "  make health          Vérifier l'état du stack (ES + index + autoblock)"
 	@echo "  make clean           Supprimer le stack ET les données (irréversible)"
+	@echo ""
+	@echo "  make portal          Lancer le portail Flask en arrière-plan"
+	@echo "  make portal-stop     Arrêter le portail Flask"
+	@echo "  make portal-log      Suivre les logs du portail"
+	@echo ""
+	@echo "  make install         Installer le portail comme service systemd (root requis)"
+	@echo "  make setup-es        Configurer ES (réplicas 0, templates)"
 	@echo ""

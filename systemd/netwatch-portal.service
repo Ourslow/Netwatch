@@ -1,0 +1,21 @@
+[Unit]
+Description=NetWatch Portal (Flask)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=netwatch
+Group=netwatch
+WorkingDirectory=/home/netwatch/netwatch/portal
+EnvironmentFile=/home/netwatch/netwatch/.env
+ExecStartPre=/bin/mkdir -p /home/netwatch/netwatch/logs
+ExecStart=/usr/bin/python3 app.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/netwatch/netwatch/logs/portal.log
+StandardError=append:/home/netwatch/netwatch/logs/portal.log
+
+[Install]
+WantedBy=multi-user.target
