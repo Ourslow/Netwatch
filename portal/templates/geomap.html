@@ -5,24 +5,24 @@
 {% block topbar_actions %}
 <span class="text-muted small">
   <i class="bi bi-globe me-1"></i>
-  {{ unique_countries }} pays · {{ total_geo }} événements géolocalisés
+  <span id="hdr-countries">{{ unique_countries }}</span> pays ·
+  <span id="hdr-total">{{ total_geo }}</span> événements géolocalisés
 </span>
 {% endblock %}
 
 {% block head %}
 <style>
   #geo-map {
-    width: 100%;
-    background: #0d1117;
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative;
+    width: 100%; background: #0d1117;
+    border-radius: 0 0 8px 8px; overflow: hidden; position: relative;
   }
-  #geo-map svg { display: block; width: 100%; height: auto; }
+  #geo-map svg { display: block; width: 100%; height: auto; cursor: grab; }
+  #geo-map svg:active { cursor: grabbing; }
   .geo-country { fill: #1a2332; stroke: #2d3748; stroke-width: 0.4; transition: fill .15s; }
   .geo-country:hover { fill: #243044; }
-  .geo-marker { cursor: pointer; transition: r .15s; }
-  .geo-marker:hover { stroke-width: 2.5; }
+  .geo-marker { cursor: pointer; }
+  .geo-marker:hover { stroke-width: 2.5 !important; }
+  .geo-arc { pointer-events: none; }
   .geo-tooltip {
     position: absolute; pointer-events: none; display: none;
     background: #161b22; border: 1px solid #30363d; border-radius: 8px;
@@ -30,9 +30,37 @@
     min-width: 170px; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,.5);
   }
   .geo-tooltip-title { font-weight: 700; font-size: .92rem; margin-bottom: 5px; }
-  .geo-tooltip-row { display: flex; justify-content: space-between; gap: 16px; }
+  .geo-tooltip-row { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 2px; }
   .country-bar { height: 4px; border-radius: 2px; background: #30363d; margin-top: 4px; }
   .country-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* Contrôles carte */
+  .geo-controls {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 12px; background: #0d1117; border-top: 1px solid var(--border);
+    font-size: .78rem;
+  }
+  .geo-btn {
+    padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: #8b949e; cursor: pointer; font-size: .75rem;
+    transition: all .15s;
+  }
+  .geo-btn.active { color: #fff; border-color: currentColor; }
+  .geo-btn.crit.active  { background: rgba(207,34,46,.15);  color: #cf222e; border-color: #cf222e; }
+  .geo-btn.med.active   { background: rgba(191,135,0,.15);  color: #bf8700; border-color: #bf8700; }
+  .geo-btn.low.active   { background: rgba(59,130,246,.15); color: #3b82f6; border-color: #3b82f6; }
+  .geo-btn.arc.active   { background: rgba(34,211,238,.1);  color: #22d3ee; border-color: #22d3ee; }
+  .geo-btn.reset        { margin-left: auto; }
+
+  /* Indicateur live */
+  .geo-live { display: flex; align-items: center; gap: 5px; color: #3fb950; font-size: .72rem; }
+  .geo-live-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #3fb950;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
 </style>
 {% endblock %}
 
@@ -52,7 +80,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Événements géolocalisés</p>
-        <h2 class="stat-value text-info">{{ total_geo }}</h2>
+        <h2 class="stat-value text-info" id="kpi-total">{{ total_geo }}</h2>
       </div>
     </div>
   </div>
@@ -60,7 +88,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Pays sources</p>
-        <h2 class="stat-value">{{ unique_countries }}</h2>
+        <h2 class="stat-value" id="kpi-countries">{{ unique_countries }}</h2>
       </div>
     </div>
   </div>
@@ -68,7 +96,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Alertes critiques</p>
-        <h2 class="stat-value text-danger">{{ total_crit }}</h2>
+        <h2 class="stat-value text-danger" id="kpi-crit">{{ total_crit }}</h2>
       </div>
     </div>
   </div>
@@ -76,7 +104,7 @@
     <div class="card stat-card text-center">
       <div class="card-body py-3">
         <p class="stat-label">Pays #1 menace</p>
-        <h2 class="stat-value" style="font-size:1rem">
+        <h2 class="stat-value" style="font-size:1rem" id="kpi-top">
           {% if countries %}{{ countries[0].iso }} {{ countries[0].country }}{% else %}—{% endif %}
         </h2>
       </div>
@@ -90,14 +118,34 @@
   <!-- Carte D3 -->
   <div class="col-lg-8">
     <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span><i class="bi bi-globe me-2"></i>Origines géographiques des événements</span>
-        <div class="d-flex gap-2 align-items-center small text-muted">
-          <span style="width:10px;height:10px;border-radius:50%;background:#cf222e;display:inline-block"></span>Critique
-          <span style="width:10px;height:10px;border-radius:50%;background:#bf8700;display:inline-block"></span>Moyen
-          <span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Faible
+        <div class="geo-live">
+          <div class="geo-live-dot"></div>
+          Live · <span id="refresh-ts">--:--:--</span>
         </div>
       </div>
+      <!-- Contrôles filtres -->
+      {% if countries %}
+      <div class="geo-controls">
+        <span class="text-muted" style="font-size:.72rem">Filtres :</span>
+        <button class="geo-btn crit active" id="btn-crit" onclick="toggleFilter('critical')">
+          ● Critique
+        </button>
+        <button class="geo-btn med active" id="btn-med" onclick="toggleFilter('medium')">
+          ● Moyen
+        </button>
+        <button class="geo-btn low active" id="btn-low" onclick="toggleFilter('low')">
+          ● Faible
+        </button>
+        <button class="geo-btn arc active" id="btn-arc" onclick="toggleArcs()">
+          ⤳ Arcs
+        </button>
+        <button class="geo-btn reset" onclick="resetZoom()" title="Réinitialiser le zoom">
+          <i class="bi bi-arrow-counterclockwise"></i> Zoom
+        </button>
+      </div>
+      {% endif %}
       <div class="card-body p-0">
         {% if countries %}
         <div id="geo-map">
@@ -121,7 +169,7 @@
       <div class="card-body p-0">
         {% if countries %}
         {% set max_count = countries[0].count %}
-        <div class="list-group list-group-flush">
+        <div class="list-group list-group-flush" id="country-list">
           {% for c in countries[:15] %}
           <div class="list-group-item list-group-item-action px-3 py-2"
                style="background:transparent;border-color:var(--border);cursor:pointer"
@@ -158,8 +206,8 @@
 
 <p class="text-muted small mb-0">
   <i class="bi bi-info-circle me-1"></i>
-  Géolocalisation basée sur les coordonnées embarquées dans le simulateur (MaxMind GeoLite2 en production).
-  Les IPs privées (RFC1918) ne sont pas géolocalisées.
+  Cible monitored : réseau Axians (Paris). Cliquez sur un marqueur pour filtrer les alertes.
+  Scroll pour zoomer · Clic+glisser pour déplacer.
 </p>
 
 {% endblock %}
@@ -169,11 +217,22 @@
 <script src="{{ url_for('static', filename='geo/d3.min.js') }}"></script>
 <script src="{{ url_for('static', filename='geo/topojson.min.js') }}"></script>
 <script>
+/* ── Données et config ── */
 const GEO_DATA = {{ countries | tojson }};
+const TARGET   = { lat: 48.86, lon: 2.35, name: 'Paris — réseau cible' };
 
+/* ── État filtres ── */
+const filters = { critical: true, medium: true, low: true };
+let arcsEnabled = true;
+let _projection, _zoom, _svg, _mapG;
+
+/* ── Helpers ── */
 function flagEmoji(iso) {
   if (!iso || iso.length !== 2) return '';
   return String.fromCodePoint(...iso.toUpperCase().split('').map(c => c.charCodeAt(0) + 127397));
+}
+function severityClass(c) {
+  return c.critical > 0 ? 'critical' : c.medium > 0 ? 'medium' : 'low';
 }
 function severityColor(c) {
   return c.critical > 0 ? '#cf222e' : c.medium > 0 ? '#bf8700' : '#3b82f6';
@@ -182,134 +241,257 @@ function markerR(count) {
   return Math.max(5, Math.min(28, Math.sqrt(count) * 2.8));
 }
 
+/* ── Stockage des éléments par pays ── */
+const registry = {}; // country -> { circle, arc, data, sev }
+
+/* ── Tooltip ── */
+const tooltip   = document.getElementById('geo-tooltip');
 const container = document.getElementById('geo-map');
-const W = container.clientWidth || 800;
-const H = Math.round(W * 0.52);
-container.style.height = H + 'px';
 
-const svg = d3.select('#geo-map').append('svg')
-  .attr('viewBox', `0 0 ${W} ${H}`)
-  .attr('preserveAspectRatio', 'xMidYMid meet');
+function showTip(event, c) {
+  const flag = flagEmoji(c.iso);
+  tooltip.innerHTML = `
+    <div class="geo-tooltip-title">${flag} ${c.country}</div>
+    <div class="geo-tooltip-row"><span>Total</span><strong>${c.count}</strong></div>
+    ${c.critical ? `<div class="geo-tooltip-row"><span style="color:#cf222e">Critiques</span><strong>${c.critical}</strong></div>` : ''}
+    ${c.medium   ? `<div class="geo-tooltip-row"><span style="color:#bf8700">Moyens</span><strong>${c.medium}</strong></div>` : ''}
+    ${c.low      ? `<div class="geo-tooltip-row"><span style="color:#3b82f6">Faibles</span><strong>${c.low}</strong></div>` : ''}
+    <div style="margin-top:6px;font-size:.75rem;color:#8b949e">Clic → alertes filtrées</div>`;
+  const rect = container.getBoundingClientRect();
+  let tx = event.clientX - rect.left + 14;
+  let ty = event.clientY - rect.top  - 10;
+  if (tx + 195 > container.clientWidth) tx -= 210;
+  if (ty + 140 > container.clientHeight) ty -= 150;
+  tooltip.style.left    = tx + 'px';
+  tooltip.style.top     = ty + 'px';
+  tooltip.style.display = 'block';
+}
+function hideTip() { tooltip.style.display = 'none'; }
 
-const projection = d3.geoNaturalEarth1()
-  .scale(W / 6.4)
-  .translate([W / 2, H / 2]);
+/* ── Arc animé ── */
+function drawArc(g, x1, y1, x2, y2, color) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2 - dist * 0.38;
+  const d  = `M${x1},${y1} Q${mx},${my} ${x2},${y2}`;
 
-const path = d3.geoPath().projection(projection);
-const tooltip = document.getElementById('geo-tooltip');
+  const arc = g.append('path')
+    .attr('class', 'geo-arc')
+    .attr('d', d).attr('fill', 'none')
+    .attr('stroke', color).attr('stroke-width', 0.9)
+    .attr('stroke-opacity', 0.45);
 
-/* Fond océan */
-svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#0d1117');
+  animateArc(arc);
+  return arc;
+}
 
-/* Graticule */
-svg.append('path')
-  .datum(d3.geoGraticule()())
-  .attr('d', path)
-  .attr('fill', 'none')
-  .attr('stroke', '#1a2332')
-  .attr('stroke-width', 0.3);
-
-/* Pays + marqueurs chargés depuis world-atlas */
-d3.json('/static/geo/countries-110m.json').then(world => {
-  svg.append('g')
-    .selectAll('path')
-    .data(topojson.feature(world, world.objects.countries).features)
-    .join('path')
-    .attr('class', 'geo-country')
-    .attr('d', path);
-
-  /* Frontières */
-  svg.append('path')
-    .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
-    .attr('fill', 'none')
-    .attr('stroke', '#2d3748')
-    .attr('stroke-width', 0.4)
-    .attr('d', path);
-
-  /* Marqueurs */
-  const markers = svg.append('g').attr('class', 'markers');
-
-  GEO_DATA.forEach(c => {
-    if (!c.lat || (c.lat === 0 && c.lon === 0)) return;
-    const [x, y] = projection([c.lon, c.lat]);
-    if (!x || !y) return;
-    const color = severityColor(c);
-    const r = markerR(c.count);
-
-    markers.append('circle')
-      .attr('class', 'geo-marker')
-      .attr('cx', x).attr('cy', y).attr('r', r)
-      .attr('fill', color).attr('fill-opacity', 0.5)
-      .attr('stroke', color).attr('stroke-width', 1.5)
-      .on('mousemove', function(event) {
-        const flag = flagEmoji(c.iso);
-        tooltip.innerHTML = `
-          <div class="geo-tooltip-title">${flag} ${c.country}</div>
-          <div class="geo-tooltip-row"><span>Total</span><strong>${c.count}</strong></div>
-          ${c.critical ? `<div class="geo-tooltip-row"><span style="color:#cf222e">Critiques</span><strong>${c.critical}</strong></div>` : ''}
-          ${c.medium   ? `<div class="geo-tooltip-row"><span style="color:#bf8700">Moyens</span><strong>${c.medium}</strong></div>` : ''}
-          ${c.low      ? `<div class="geo-tooltip-row"><span style="color:#3b82f6">Faibles</span><strong>${c.low}</strong></div>` : ''}
-          <div style="margin-top:6px;font-size:.75rem">
-            <a href="/alerts?q=${encodeURIComponent(c.country)}" style="color:var(--accent)">Voir les alertes →</a>
-          </div>`;
-        const rect = container.getBoundingClientRect();
-        let tx = event.clientX - rect.left + 12;
-        let ty = event.clientY - rect.top - 10;
-        if (tx + 200 > W) tx -= 210;
-        tooltip.style.left = tx + 'px';
-        tooltip.style.top  = ty + 'px';
-        tooltip.style.display = 'block';
-      })
-      .on('mouseleave', () => { tooltip.style.display = 'none'; });
-  });
-
-  /* Pulse sur les critiques */
-  markers.selectAll('circle').filter(function() {
-    const cx = +d3.select(this).attr('cx');
-    const cy = +d3.select(this).attr('cy');
-    const match = GEO_DATA.find(c => {
-      if (!c.lat || !c.critical) return false;
-      const [px, py] = projection([c.lon, c.lat]);
-      return Math.abs(px - cx) < 1 && Math.abs(py - cy) < 1;
-    });
-    return !!match;
-  }).each(function() {
-    const self = d3.select(this);
-    const r = +self.attr('r');
-    const cx = self.attr('cx'), cy = self.attr('cy');
-    svg.insert('circle', '.markers')
-      .attr('cx', cx).attr('cy', cy).attr('r', r)
-      .attr('fill', 'none').attr('stroke', '#cf222e').attr('stroke-width', 1)
-      .attr('stroke-opacity', 0.7)
-      .call(pulse);
-    function pulse(circle) {
-      circle.transition().duration(1400)
-        .attr('r', r + 10).attr('stroke-opacity', 0)
+function animateArc(arc) {
+  const len = arc.node().getTotalLength();
+  arc.attr('stroke-dasharray', len).attr('stroke-dashoffset', len)
+    .transition().duration(1000 + Math.random() * 800).ease(d3.easeLinear)
+    .attr('stroke-dashoffset', 0)
+    .on('end', () => {
+      /* Boucle infinie : efface et repart */
+      arc.transition().delay(800).duration(400).attr('stroke-opacity', 0)
         .on('end', () => {
-          circle.attr('r', r).attr('stroke-opacity', 0.7).call(pulse);
+          arc.attr('stroke-dashoffset', len).attr('stroke-opacity', 0.45);
+          animateArc(arc);
         });
-    }
-  });
+    });
+}
 
-}).catch(() => {
-  svg.append('text').attr('x', W/2).attr('y', H/2)
-    .attr('text-anchor', 'middle').attr('fill', '#8b949e')
-    .text('Carte indisponible — vérifier la connexion réseau');
-});
-
-/* Focus depuis la sidebar */
-function focusCountry(lat, lon, country) {
-  const [x, y] = projection([lon, lat]);
-  /* Pulse temporaire sur le marqueur ciblé */
-  svg.selectAll('.geo-marker').each(function() {
-    const cx = +d3.select(this).attr('cx');
-    const cy = +d3.select(this).attr('cy');
-    if (Math.abs(cx - x) < 2 && Math.abs(cy - y) < 2) {
-      d3.select(this).transition().duration(200).attr('r', +d3.select(this).attr('r') * 1.8)
-        .transition().duration(300).attr('r', +d3.select(this).attr('r') / 1.8);
-    }
+/* ── Filtre ── */
+function applyFilters() {
+  Object.values(registry).forEach(({ circle, arc, sev }) => {
+    const vis = filters[sev];
+    circle.style('display', vis ? null : 'none');
+    if (arc) arc.style('display', vis && arcsEnabled ? null : 'none');
   });
 }
+
+function toggleFilter(sev) {
+  filters[sev] = !filters[sev];
+  const ids = { critical: 'btn-crit', medium: 'btn-med', low: 'btn-low' };
+  document.getElementById(ids[sev]).classList.toggle('active', filters[sev]);
+  applyFilters();
+}
+
+function toggleArcs() {
+  arcsEnabled = !arcsEnabled;
+  document.getElementById('btn-arc').classList.toggle('active', arcsEnabled);
+  applyFilters();
+}
+
+/* ── Zoom ── */
+function resetZoom() {
+  _svg.transition().duration(500).call(_zoom.transform, d3.zoomIdentity);
+}
+
+function focusCountry(lat, lon, country) {
+  if (!_projection) return;
+  const [x, y] = _projection([lon, lat]);
+  const W = container.clientWidth;
+  const H = parseFloat(_svg.attr('viewBox').split(' ')[3]);
+  const scale  = 4;
+  const tx     = W / 2 - scale * x;
+  const ty     = H / 2 - scale * y;
+  _svg.transition().duration(600)
+    .call(_zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+
+  /* Pulse sur le marqueur */
+  if (registry[country]) {
+    const { circle } = registry[country];
+    const r = +circle.attr('r');
+    circle.transition().duration(200).attr('r', r * 2)
+      .transition().duration(300).attr('r', r);
+  }
+}
+
+/* ── Construction de la carte ── */
+window.addEventListener('load', function () {
+  const W = container.clientWidth || 800;
+  const H = Math.round(W * 0.52);
+  container.style.height = H + 'px';
+
+  _svg = d3.select('#geo-map').append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  _projection = d3.geoNaturalEarth1().scale(W / 6.4).translate([W / 2, H / 2]);
+  const path  = d3.geoPath().projection(_projection);
+
+  /* Fond */
+  _svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#0d1117');
+
+  /* Graticule */
+  _svg.append('path').datum(d3.geoGraticule()()).attr('d', path)
+    .attr('fill', 'none').attr('stroke', '#1a2332').attr('stroke-width', 0.3);
+
+  /* Groupe zoomable */
+  _mapG = _svg.append('g').attr('id', 'map-g');
+
+  /* Zoom + pan */
+  _zoom = d3.zoom().scaleExtent([1, 10])
+    .on('zoom', (event) => { _mapG.attr('transform', event.transform); });
+  _svg.call(_zoom).on('dblclick.zoom', null);
+
+  /* Pays + marqueurs */
+  d3.json('/static/geo/countries-110m.json').then(world => {
+    /* Pays */
+    _mapG.append('g').selectAll('path')
+      .data(topojson.feature(world, world.objects.countries).features)
+      .join('path').attr('class', 'geo-country').attr('d', path);
+
+    /* Frontières */
+    _mapG.append('path')
+      .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
+      .attr('fill', 'none').attr('stroke', '#2d3748').attr('stroke-width', 0.4)
+      .attr('d', path);
+
+    /* Cible (Paris) */
+    const [tx, ty] = _projection([TARGET.lon, TARGET.lat]);
+    const targetG  = _mapG.append('g').attr('class', 'geo-target');
+    /* Pulse cible */
+    function pulseCible(circle, baseR) {
+      circle.transition().duration(1200).attr('r', baseR + 8).attr('stroke-opacity', 0)
+        .on('end', () => { circle.attr('r', baseR).attr('stroke-opacity', 0.6); pulseCible(circle, baseR); });
+    }
+    targetG.append('circle').attr('cx', tx).attr('cy', ty).attr('r', 5)
+      .attr('fill', 'none').attr('stroke', '#22d3ee').attr('stroke-width', 1.2)
+      .attr('stroke-opacity', 0.6).call(c => pulseCible(c, 5));
+    targetG.append('circle').attr('cx', tx).attr('cy', ty).attr('r', 3)
+      .attr('fill', '#22d3ee').attr('fill-opacity', 0.9);
+    targetG.append('line').attr('x1', tx - 8).attr('x2', tx + 8).attr('y1', ty).attr('y2', ty)
+      .attr('stroke', '#22d3ee').attr('stroke-width', 0.8).attr('stroke-opacity', 0.5);
+    targetG.append('line').attr('x1', tx).attr('x2', tx).attr('y1', ty - 8).attr('y2', ty + 8)
+      .attr('stroke', '#22d3ee').attr('stroke-width', 0.8).attr('stroke-opacity', 0.5);
+
+    /* Couche arcs (derrière les marqueurs) */
+    const arcLayer    = _mapG.append('g').attr('id', 'arc-layer');
+    const markerLayer = _mapG.append('g').attr('id', 'marker-layer');
+
+    GEO_DATA.forEach(c => {
+      if (!c.lat || (c.lat === 0 && c.lon === 0)) return;
+      const [mx, my] = _projection([c.lon, c.lat]);
+      if (!mx || !my) return;
+
+      const color = severityColor(c);
+      const r     = markerR(c.count);
+      const sev   = severityClass(c);
+
+      /* Arc */
+      const arc = drawArc(arcLayer, mx, my, tx, ty, color);
+
+      /* Marqueur */
+      const circle = markerLayer.append('circle')
+        .attr('class', 'geo-marker')
+        .attr('cx', mx).attr('cy', my).attr('r', r)
+        .attr('fill', color).attr('fill-opacity', 0.55)
+        .attr('stroke', color).attr('stroke-width', 1.5)
+        .on('mousemove', (event) => showTip(event, c))
+        .on('mouseleave', hideTip)
+        .on('click', () => { window.location.href = `/alerts?q=${encodeURIComponent(c.country)}`; });
+
+      registry[c.country] = { circle, arc, data: c, sev };
+
+      /* Pulse critique */
+      if (c.critical > 0) {
+        function pulseMark() {
+          markerLayer.insert('circle', '.geo-marker')
+            .attr('cx', mx).attr('cy', my).attr('r', r)
+            .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1)
+            .attr('stroke-opacity', 0.7).attr('pointer-events', 'none')
+            .transition().duration(1400).attr('r', r + 12).attr('stroke-opacity', 0)
+            .on('end', function() { d3.select(this).remove(); pulseMark(); });
+        }
+        setTimeout(pulseMark, Math.random() * 1000);
+      }
+    });
+
+    applyFilters();
+    document.getElementById('refresh-ts').textContent = new Date().toLocaleTimeString('fr-FR');
+
+  }).catch(() => {
+    _svg.append('text').attr('x', W / 2).attr('y', H / 2)
+      .attr('text-anchor', 'middle').attr('fill', '#8b949e')
+      .text('Carte indisponible — vérifier /static/geo/countries-110m.json');
+  });
+});
+
+/* ── Polling temps réel (30s) ── */
+setInterval(() => {
+  fetch('/api/geo')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.countries) return;
+      let totalGeo = data.total_geo || 0;
+      let totalCrit = 0;
+
+      data.countries.forEach(c => {
+        totalCrit += c.critical || 0;
+        if (!registry[c.country]) return;
+        const { circle } = registry[c.country];
+        registry[c.country].data = c;
+        registry[c.country].sev  = severityClass(c);
+        const newR     = markerR(c.count);
+        const newColor = severityColor(c);
+        circle.transition().duration(600)
+          .attr('r', newR).attr('fill', newColor).attr('stroke', newColor);
+      });
+
+      applyFilters();
+
+      /* Mise à jour KPIs */
+      document.getElementById('kpi-total').textContent    = totalGeo;
+      document.getElementById('kpi-crit').textContent     = totalCrit;
+      document.getElementById('kpi-countries').textContent = data.countries.length;
+      document.getElementById('hdr-total').textContent    = totalGeo;
+      document.getElementById('hdr-countries').textContent = data.countries.length;
+      document.getElementById('refresh-ts').textContent   = new Date().toLocaleTimeString('fr-FR');
+    })
+    .catch(() => {});
+}, 30000);
 </script>
 {% endif %}
 {% endblock %}
