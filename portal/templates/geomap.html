@@ -169,8 +169,9 @@
 <script>
 const GEO_DATA = {{ countries | tojson }};
 
-/* Carte Leaflet — tuiles dark CartoDB */
-const map = L.map('geo-map', {
+/* Carte Leaflet — initialisation après que le layout Bootstrap soit prêt */
+const mapEl = document.getElementById('geo-map');
+const map = L.map(mapEl, {
   center: [20, 10],
   zoom: 2,
   zoomControl: true,
@@ -181,6 +182,9 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 19,
 }).addTo(map);
+
+/* Forcer le recalcul des dimensions après rendu complet */
+setTimeout(() => map.invalidateSize(), 250);
 
 /* Marqueurs circulaires par pays */
 const markers = {};
