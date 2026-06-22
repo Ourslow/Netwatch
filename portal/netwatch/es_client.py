@@ -230,6 +230,93 @@ def get_alert_timeseries(hours=24, interval="1h"):
         return [], str(e)[:80]
 
 
+def get_geo_data():
+    """
+    Agrège tous les événements géolocalisés (alertes + Zeek) par pays.
+    Retourne (countries: list, total_geolocated: int, error: str|None).
+    """
+    body = {
+        "size": 0,
+        "query": {"exists": {"field": "source.geo.country_name"}},
+        "aggs": {
+            "total_geo": {
+                "value_count": {"field": "source.geo.country_name.keyword"}
+            },
+            "by_country": {
+                "terms": {
+                    "field": "source.geo.country_name.keyword",
+                    "size": 100,
+                },
+                "aggs": {
+                    "centroid": {"geo_centroid": {"field": "source.geo.location"}},
+                    "iso": {
+                        "terms": {
+                            "field": "source.geo.country_iso_code.keyword",
+                            "size": 1,
+                        }
+                    },
+                    "critical": {
+                        "filter": {
+                            "bool": {
+                                "should": [
+                                    {"term": {"alert.severity": 1}},
+                                    {"term": {"priority": 1}},
+                                ],
+                                "minimum_should_match": 1,
+                            }
+                        }
+                    },
+                    "medium": {
+                        "filter": {
+                            "bool": {
+                                "should": [
+                                    {"term": {"alert.severity": 2}},
+                                    {"term": {"priority": 2}},
+                                ],
+                                "minimum_should_match": 1,
+                            }
+                        }
+                    },
+                },
+            },
+        },
+    }
+
+    try:
+        r = _es("/zeek-*,suricata-*,snort-*/_search", body)
+        r.raise_for_status()
+        data = r.json()
+        aggs  = data.get("aggregations", {})
+        total = int(aggs.get("total_geo", {}).get("value", 0))
+
+        countries = []
+        for b in aggs.get("by_country", {}).get("buckets", []):
+            centroid    = b.get("centroid", {}).get("location", {})
+            iso_buckets = b.get("iso",      {}).get("buckets", [])
+            iso         = iso_buckets[0]["key"] if iso_buckets else ""
+            critical    = b.get("critical", {}).get("doc_count", 0)
+            medium      = b.get("medium",   {}).get("doc_count", 0)
+            count       = b.get("doc_count", 0)
+            countries.append({
+                "country":  b["key"],
+                "iso":      iso,
+                "lat":      centroid.get("lat", 0),
+                "lon":      centroid.get("lon", 0),
+                "count":    count,
+                "critical": critical,
+                "medium":   medium,
+                "low":      max(0, count - critical - medium),
+            })
+
+        countries.sort(key=lambda x: x["count"], reverse=True)
+        return countries, total, None
+
+    except requests.exceptions.ConnectionError:
+        return [], 0, "Elasticsearch non joignable"
+    except Exception as e:
+        return [], 0, str(e)[:80]
+
+
 def get_ip_events(ip, size=200):
     """
     Agrège toutes les alertes + stats Zeek pour une IP donnée.

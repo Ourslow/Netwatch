@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}Carte GeoIP — NetWatch Portal{% endblock %}
+{% block page_title %}Carte géographique des menaces{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small">
+  <i class="bi bi-globe me-1"></i>
+  {{ unique_countries }} pays · {{ total_geo }} événements géolocalisés
+</span>
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  #geo-map {
+    height: 500px;
+    border-radius: 8px;
+    background: #0d1117;
+  }
+  .leaflet-popup-content-wrapper {
+    background: #161b22;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+  }
+  .leaflet-popup-tip { background: #161b22; }
+  .leaflet-popup-content { margin: 12px 16px; min-width: 180px; }
+  .geo-popup-country { font-weight: 700; font-size: .95rem; margin-bottom: 6px; }
+  .geo-popup-row { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: 2px; }
+  .geo-popup-label { color: #8b949e; }
+  .geo-flag { font-size: 1.2rem; margin-right: 6px; }
+  .country-bar { height: 4px; border-radius: 2px; background: #30363d; margin-top: 4px; }
+  .country-bar-fill { height: 100%; border-radius: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-exclamation-triangle-fill"></i><div>{{ error }}</div>
+</div>
+{% endif %}
+
+<!-- KPIs -->
+{% set total_crit = countries | sum(attribute='critical') %}
+{% set total_med  = countries | sum(attribute='medium') %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Événements géolocalisés</p>
+        <h2 class="stat-value text-info">{{ total_geo }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Pays sources</p>
+        <h2 class="stat-value">{{ unique_countries }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Alertes critiques</p>
+        <h2 class="stat-value text-danger">{{ total_crit }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label">Pays #1 menace</p>
+        <h2 class="stat-value" style="font-size:1rem">
+          {% if countries %}{{ countries[0].iso }} {{ countries[0].country }}{% else %}—{% endif %}
+        </h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Carte + sidebar -->
+<div class="row g-3 mb-4">
+
+  <!-- Carte Leaflet -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-globe me-2"></i>Origines géographiques des événements</span>
+        <div class="d-flex gap-2 align-items-center small text-muted">
+          <span style="width:10px;height:10px;border-radius:50%;background:#cf222e;display:inline-block"></span>Critique
+          <span style="width:10px;height:10px;border-radius:50%;background:#bf8700;display:inline-block"></span>Moyen
+          <span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Faible
+        </div>
+      </div>
+      <div class="card-body p-2">
+        {% if countries %}
+        <div id="geo-map"></div>
+        {% else %}
+        <div class="empty-state py-5">
+          <i class="bi bi-globe empty-icon"></i>
+          <div>Aucune donnée GeoIP disponible.</div>
+          <small class="text-muted">
+            Vérifiez que le pipeline GeoIP est actif (<code>bash setup-geoip.sh</code>)
+            puis relancez <code>make sim</code>.
+          </small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top pays -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-bar-chart-steps me-2"></i>Top pays sources</div>
+      <div class="card-body p-0">
+        {% if countries %}
+        {% set max_count = countries[0].count %}
+        <div class="list-group list-group-flush">
+          {% for c in countries[:15] %}
+          <div class="list-group-item list-group-item-action px-3 py-2"
+               style="background:transparent;border-color:var(--border);cursor:pointer"
+               onclick="focusCountry({{ c.lat }}, {{ c.lon }}, '{{ c.country }}')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="small fw-medium">
+                <span class="geo-flag">{{ c.iso | geo_flag }}</span>{{ c.country }}
+              </span>
+              <span class="fw-mono small text-muted">{{ c.count }}</span>
+            </div>
+            <div class="country-bar mt-1">
+              <div class="country-bar-fill"
+                   style="width:{{ ((c.count / max_count) * 100) | int }}%;
+                          background:{% if c.critical %}#cf222e{% elif c.medium %}#bf8700{% else %}#3b82f6{% endif %}">
+              </div>
+            </div>
+            {% if c.critical %}
+            <div class="d-flex gap-2 mt-1" style="font-size:.72rem">
+              {% if c.critical %}<span style="color:#cf222e">{{ c.critical }} crit.</span>{% endif %}
+              {% if c.medium %}<span style="color:#bf8700">{{ c.medium }} moy.</span>{% endif %}
+              {% if c.low %}<span style="color:#3b82f6">{{ c.low }} faible</span>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-muted small p-3">Aucune donnée.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="text-muted small mb-0">
+  <i class="bi bi-info-circle me-1"></i>
+  Géolocalisation basée sur la base GeoIP Elasticsearch (MaxMind GeoLite2).
+  Les IPs privées (RFC1918) ne sont pas géolocalisées. Cliquez sur un pays dans la liste pour centrer la carte.
+</p>
+
+{% endblock %}
+
+{% block scripts %}
+{% if countries %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const GEO_DATA = {{ countries | tojson }};
+
+/* Carte Leaflet — tuiles dark CartoDB */
+const map = L.map('geo-map', {
+  center: [20, 10],
+  zoom: 2,
+  zoomControl: true,
+  attributionControl: true,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+/* Marqueurs circulaires par pays */
+const markers = {};
+
+function severityColor(c) {
+  if (c.critical > 0) return '#cf222e';
+  if (c.medium   > 0) return '#bf8700';
+  return '#3b82f6';
+}
+
+function markerRadius(count) {
+  return Math.max(6, Math.min(40, Math.sqrt(count) * 3.5));
+}
+
+function flagEmoji(iso) {
+  if (!iso || iso.length !== 2) return '';
+  return String.fromCodePoint(
+    ...iso.toUpperCase().split('').map(c => c.charCodeAt(0) + 127397)
+  );
+}
+
+GEO_DATA.forEach(c => {
+  if (!c.lat && !c.lon) return;
+  const color  = severityColor(c);
+  const radius = markerRadius(c.count);
+
+  const circle = L.circleMarker([c.lat, c.lon], {
+    radius,
+    fillColor:   color,
+    color:       color,
+    weight:      1.5,
+    opacity:     0.9,
+    fillOpacity: 0.35,
+  });
+
+  const flag = flagEmoji(c.iso);
+  circle.bindPopup(`
+    <div class="geo-popup-country">${flag} ${c.country}</div>
+    <div class="geo-popup-row">
+      <span class="geo-popup-label">Total événements</span>
+      <strong>${c.count}</strong>
+    </div>
+    ${c.critical ? `<div class="geo-popup-row">
+      <span class="geo-popup-label">Critiques</span>
+      <strong style="color:#cf222e">${c.critical}</strong>
+    </div>` : ''}
+    ${c.medium ? `<div class="geo-popup-row">
+      <span class="geo-popup-label">Moyens</span>
+      <strong style="color:#bf8700">${c.medium}</strong>
+    </div>` : ''}
+    ${c.low ? `<div class="geo-popup-row">
+      <span class="geo-popup-label">Faibles</span>
+      <strong style="color:#3b82f6">${c.low}</strong>
+    </div>` : ''}
+    <div style="margin-top:8px;font-size:.78rem">
+      <a href="/alerts?q=${encodeURIComponent(c.country)}"
+         style="color:var(--accent)">Voir les alertes →</a>
+    </div>
+  `);
+
+  circle.addTo(map);
+  markers[c.country] = circle;
+});
+
+/* Focus depuis la sidebar */
+function focusCountry(lat, lon, country) {
+  map.setView([lat, lon], 5, {animate: true});
+  if (markers[country]) markers[country].openPopup();
+}
+</script>
+{% endif %}
+{% endblock %}

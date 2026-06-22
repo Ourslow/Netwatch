@@ -434,6 +434,15 @@ def browser_url(url):
 
 app.jinja_env.filters["browser_url"] = browser_url
 
+
+def geo_flag(iso):
+    """Convertit un code ISO 2 lettres en emoji drapeau (ex: FR → 🇫🇷)."""
+    if not iso or len(iso) != 2:
+        return ""
+    return "".join(chr(ord(c) + 127397) for c in iso.upper())
+
+app.jinja_env.filters["geo_flag"] = geo_flag
+
 # ============================================================
 # Routes — Auth
 # ============================================================
@@ -812,6 +821,26 @@ def api_alerts_series():
     if error:
         return jsonify({"error": error}), 503
     return jsonify(series)
+
+
+@app.route("/geomap")
+@login_required
+def geomap():
+    countries, total_geo, error = es_client.get_geo_data()
+    return render_template("geomap.html",
+                           countries=countries,
+                           total_geo=total_geo,
+                           unique_countries=len(countries),
+                           error=error)
+
+
+@app.route("/api/geo")
+@login_required
+def api_geo():
+    countries, total_geo, error = es_client.get_geo_data()
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify({"countries": countries, "total": total_geo})
 
 
 @app.route("/incidents")
