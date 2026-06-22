@@ -46,7 +46,7 @@ echo " OK"
 echo "[1/3] Réplicas → 0 sur les index existants..."
 es_ok "$(es_put "/_settings" -d '{"index":{"number_of_replicas":0}}')"
 
-# 2. Templates d'index (prio 500, réplicas 0 par défaut pour les nouveaux index)
+# 2. Templates d'index (prio 500, réplicas 0, pipeline GeoIP par défaut)
 echo "[2/3] Templates zeek-* / snort-* / suricata-*..."
 for engine in zeek snort suricata; do
   body=$(es_put "/_index_template/netwatch-$engine" -d "{
@@ -55,7 +55,8 @@ for engine in zeek snort suricata; do
     \"template\": {
       \"settings\": {
         \"number_of_shards\": 1,
-        \"number_of_replicas\": 0
+        \"number_of_replicas\": 0,
+        \"default_pipeline\": \"netwatch-geoip\"
       }
     }
   }")

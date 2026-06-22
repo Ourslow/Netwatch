@@ -26,14 +26,40 @@ INTERNAL_IPS = [
     "172.31.250.188", "172.31.250.50", "172.31.250.100"
 ]
 
-# IPs externes simulées
+# IPs externes simulées — trafic légitime (CDN, DNS publics)
 EXTERNAL_IPS = [
     "8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1",
     "104.18.27.120", "151.101.1.140", "140.82.121.4",
     "172.217.22.110", "93.184.216.34", "13.107.42.14",
     "34.120.177.193", "52.85.132.99", "54.230.10.42",
     "23.45.67.89", "185.199.108.153", "199.232.69.194",
-    "157.240.1.35", "31.13.65.36", "69.171.250.35"
+    "157.240.1.35", "31.13.65.36", "69.171.250.35",
+]
+
+# IPs sources d'attaque — géographiquement diversifiées (géolocalisables)
+ATTACK_IPS = [
+    # Russie
+    "5.8.8.180", "5.45.208.10", "194.165.16.42", "91.108.4.15",
+    # Chine
+    "1.180.0.12", "58.30.8.21", "114.114.114.114", "219.76.15.8",
+    # Corée du Nord
+    "175.45.176.5", "175.45.179.12",
+    # Iran
+    "5.160.0.48", "78.38.30.7", "94.182.195.3",
+    # Roumanie
+    "79.112.0.60", "79.115.12.88",
+    # Pays-Bas (hébergement bulletproof)
+    "31.3.96.45", "188.165.200.12", "185.220.101.5",
+    # Brésil
+    "177.71.0.82", "200.147.55.3",
+    # Inde
+    "117.18.0.55", "49.206.12.8",
+    # Allemagne
+    "46.23.0.82", "85.214.55.3",
+    # France
+    "217.70.184.38", "88.190.16.12",
+    # États-Unis (infrastructure malveillante)
+    "23.45.67.89", "104.21.48.3", "198.199.64.12",
 ]
 
 # Domaines normaux
@@ -406,7 +432,7 @@ def gen_notice_log(ts, notice_type=None):
 
 def gen_snort_alert(ts):
     sig_msg, classtype, priority, proto = random.choice(SNORT_SIGS)
-    src = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
+    src = random.choice(ATTACK_IPS)   # attaque toujours depuis une IP externe géolocalisable
     dst = random.choice(INTERNAL_IPS)
     if proto == "icmp":
         src_port, dst_port, service = 0, 0, "unknown"
@@ -432,7 +458,7 @@ def gen_snort_alert(ts):
 
 def gen_suricata_alert(ts):
     sid, sig_msg, category, severity, mitre_tactic, mitre_technique = random.choice(SURICATA_SIGS_MITRE)
-    src = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
+    src = random.choice(ATTACK_IPS)   # attaque toujours depuis une IP externe géolocalisable
     dst = random.choice(INTERNAL_IPS)
     proto = random.choices(["TCP", "UDP", "ICMP"], weights=[60, 30, 10])[0]
     dst_port = random.choice([22, 53, 80, 443, 8080, 3389]) if proto != "ICMP" else 0
