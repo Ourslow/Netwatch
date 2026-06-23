@@ -1,78 +1,216 @@
-# NetWatch v2 — Stack NPM Open-Source Multi-Moteurs
+<div align="center">
 
-> Observabilité réseau avec **Zeek + Snort 3 + Suricata 7 + Elasticsearch + Grafana + Prometheus**
-> Trois moteurs d'analyse en parallèle · Pipeline unifié · 11 dashboards · Détection comportementale · Réponse automatique
+# 🔭 NetWatch v2
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](docker-compose.yml)
-[![Zeek](https://img.shields.io/badge/Zeek-6.2-orange.svg)](https://zeek.org)
-[![Snort](https://img.shields.io/badge/Snort-3.3.5-red.svg)](https://snort.org)
-[![Suricata](https://img.shields.io/badge/Suricata-7.0-blue.svg)](https://suricata.io)
-[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.13-005571.svg)](https://www.elastic.co)
-[![Grafana](https://img.shields.io/badge/Grafana-10.4-F46800.svg)](https://grafana.com)
+**Stack d'observabilité réseau open-source multi-moteurs**
+
+*Reproduire les fonctionnalités clés d'un outil NPM commercial avec des briques 100% open-source*
 
 ---
 
-## Présentation
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blueviolet.svg?style=for-the-badge)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker_Compose-10_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
+[![École 2600](https://img.shields.io/badge/École_2600-SideQuest_MVP-22D3EE.svg?style=for-the-badge)](https://www.ecole2600.com)
+[![Axians](https://img.shields.io/badge/Axians-Vinci_Energies-E30613.svg?style=for-the-badge)](https://www.axians.fr)
 
-**NetWatch** est un stack d'observabilité réseau open-source qui reproduit les fonctionnalités clés d'un outil NPM commercial (Netscout nGeniusONE, Corelight, Riverbed) avec des briques 100% libres.
+---
 
-La v2 passe de 4 à **10 services** et étend les capacités de détection :
+[![Zeek](https://img.shields.io/badge/Zeek-6.2-E07B39.svg?style=flat-square)](https://zeek.org)
+[![Snort](https://img.shields.io/badge/Snort-3.3.5-CC1111.svg?style=flat-square)](https://snort.org)
+[![Suricata](https://img.shields.io/badge/Suricata-7.0-EF7D00.svg?style=flat-square)](https://suricata.io)
+[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.13-005571.svg?style=flat-square&logo=elasticsearch)](https://elastic.co)
+[![Grafana](https://img.shields.io/badge/Grafana-10.4-F46800.svg?style=flat-square&logo=grafana&logoColor=white)](https://grafana.com)
+[![Prometheus](https://img.shields.io/badge/Prometheus-2.51-E6522C.svg?style=flat-square&logo=prometheus&logoColor=white)](https://prometheus.io)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://python.org)
 
-| Moteur | Rôle | Format de sortie |
-|--------|------|-----------------|
-| **Zeek 6.2** | Analyse protocolaire, logs JSON, JA3/HASSH, Intel Framework | conn/dns/http/ssl/ssh/intel/notice.log |
-| **Snort 3.3.5** | IDS par signatures, règles community + custom NETWATCH | alert_json.txt |
-| **Suricata 7** | IDS/IPS, règles ET Open (auto-mise à jour), Community ID | EVE JSON (eve.json) |
-| **beacon-detect** | Détection comportementale RITA-lite (beaconing C2, DNS tunneling, longues connexions) | netwatch-beacons-* |
-| **autoblock** | Réponse automatique iptables via webhook Grafana (DRY_RUN=true par défaut) | netwatch-autoblock-* |
-| **Prometheus + node-exporter** | Métriques système VM (CPU, RAM, disque, réseau) | — |
+---
 
-> **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — France — École 2600
-> SideQuest MVP (S2 2025-2026)
+<table>
+<tr>
+<td align="center" width="33%"><a href="https://zeek.org"><img src="docs/logos/zeek.webp" height="60" alt="Zeek"/></a></td>
+<td align="center" width="33%"><a href="https://snort.org"><img src="docs/logos/snort.png" height="60" alt="Snort"/></a></td>
+<td align="center" width="33%"><a href="https://suricata.io"><img src="docs/logos/suricata.png" height="60" alt="Suricata"/></a></td>
+</tr>
+</table>
+
+</div>
+
+---
+
+## Screenshots
+
+<div align="center">
+
+<table>
+<tr>
+<td align="center">
+<img src="docs/screenshots/portal-status.png" alt="Portail — Services Status" width="100%"/>
+<br/><em>Services Status — supervision temps réel des services Docker (Elasticsearch, Grafana, Prometheus, AutoBlock, IA locale)</em>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/screenshots/portal-dashboard.png" alt="Portail — Dashboard" width="100%"/>
+<br/><em>Dashboard — vue générale avec alertes IDS récentes, KPIs et accès rapide</em>
+</td>
+</tr>
+</table>
+
+</div>
+
+---
+
+## Vue d'ensemble
+
+**NetWatch** est un NDR *(Network Detection & Response)* open-source qui reproduit les fonctionnalités clés d'outils commerciaux comme **Netscout nGeniusONE**, **Corelight** ou **Riverbed** — déployable en moins de 30 minutes sur n'importe quelle VM.
+
+La v2 passe de 4 à **10 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, et une couverture de 4 référentiels de conformité.
+
+> Projet réalisé par **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — [École 2600](https://www.ecole2600.com), promo 2024-2027 — SideQuest MVP (S2 2025-2026)
+
+---
+
+## Fonctionnalités
+
+| | Fonctionnalité | Détail |
+|---|---|---|
+| 🔍 | **3 moteurs IDS en parallèle** | Zeek 6.2 · Snort 3.3.5 · Suricata 7 — même trafic, 3 perspectives |
+| 🧠 | **Détection comportementale** | RITA-lite : beaconing C2, connexions longues, DNS tunneling |
+| 🚫 | **Réponse automatique** | AutoBlock webhook → iptables (déclenché par Grafana) |
+| 🌐 | **Threat Intelligence** | Zeek Intel Framework — Feodo Tracker + URLhaus (auto-update) |
+| 📊 | **11 dashboards Grafana** | Réseau, DNS, HTTP/TLS, JA3/HASSH, MITRE ATT&CK, Beacon, VM health |
+| 🖥️ | **Portail web Flask** | Alertes · Audit · Compliance · Rapport PDF · IA locale (Ollama/Mistral) |
+| 📋 | **Conformité réglementaire** | NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001 — matrices couvert/partiel |
+| 🤖 | **IA locale on-prem** | Explication des alertes via Ollama/Mistral — zéro fuite de données |
+| 🔐 | **Fingerprinting TLS/SSH** | JA3 · JA3S · HASSH via Zeek |
+| ⚡ | **Métriques système** | Prometheus + node-exporter — CPU, RAM, disque, réseau |
+
+---
+
+## Les 3 moteurs
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+### 🔍 Zeek 6.2
+**Analyse protocolaire**
+
+Logs JSON natifs (conn, dns, http, ssl, ssh)  
+JA3 / HASSH fingerprinting  
+Scripts custom : port-scan, entropie DNS (Shannon)  
+Intel Framework : watchlists IP + domaines  
+Logs intel.log + notice.log → Filebeat
+
+</td>
+<td align="center" width="33%">
+
+### 🛡️ Snort 3.3.5
+**IDS par signatures**
+
+Build from source (libdaq + tcmalloc)  
+17 règles custom SID 1000001–1000017  
+Métadonnées MITRE ATT&CK intégrées  
+detection_filter anti-flood  
+alert_json → Filebeat → ES
+
+</td>
+<td align="center" width="33%">
+
+### ⚡ Suricata 7
+**IDS + NSM**
+
+Emerging Threats Open (suricata-update auto)  
+EVE JSON + Community ID  
+Threading multi-cœur (af-packet)  
+Auto-reload règles via SIGUSR2 quotidien  
+SID custom 2000001–2000999
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    A["🌐 Trafic réseau\nSPAN / PCAP"] --> B
+
+    subgraph SENSORS ["Moteurs d'analyse (en parallèle)"]
+        B["🔍 Zeek 6.2\nProto · JA3/HASSH · Intel"]
+        C["🛡️ Snort 3.3.5\nSigs · MITRE · custom"]
+        D["⚡ Suricata 7\nET Open · EVE JSON · CID"]
+    end
+
+    A --> C
+    A --> D
+
+    B --> E
+    C --> E
+    D --> E
+
+    E["📦 Filebeat 8.13\nCollecte unifiée"] --> F
+
+    subgraph STORAGE ["Stockage"]
+        F["🗄️ Elasticsearch 8.13\nzeek-* · snort-* · suricata-*"]
+        G["🔭 beacon-detect\nnetwatch-beacons-*"]
+        H["🚫 autoblock\nnetwatch-autoblock-*"]
+    end
+
+    G --> F
+    H --> F
+
+    F --> I
+    F --> J
+
+    subgraph VIZ ["Visualisation & Alertes"]
+        I["📊 Grafana 10.4\n11 dashboards · Alertes"]
+        J["🖥️ Portail Flask :5050\nAlerts · Audit · Compliance · IA"]
+        K["📈 Prometheus\n+ node-exporter"]
+    end
+
+    K --> I
+    I -->|"webhook alerte"| H
 ```
-        Trafic réseau (SPAN / PCAP)
-                    │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-  ┌──────────┐ ┌─────────┐ ┌────────────┐
-  │ Zeek 6.2 │ │ Snort 3 │ │ Suricata 7 │
-  │ proto    │ │ sigs    │ │ EVE JSON   │
-  │ JA3/HASSH│ │ MITRE   │ │ ET Open    │
-  │ Intel    │ │ custom  │ │ MITRE      │
-  └────┬─────┘ └────┬────┘ └─────┬──────┘
-       └────────────┼────────────┘
-                    ▼
-          ┌──────────────────┐
-          │  Filebeat 8.13   │
-          │  collecte 3 logs │
-          └────────┬─────────┘
-                   ▼
-          ┌──────────────────┐
-          │ Elasticsearch    │    ◄── beacon-detect (netwatch-beacons-*)
-          │  zeek-*          │    ◄── autoblock    (netwatch-autoblock-*)
-          │  snort-*         │
-          │  suricata-*      │
-          └────────┬─────────┘
-                   ▼
-          ┌──────────────────┐        ┌────────────────┐
-          │   Grafana 10.4   │        │   Prometheus   │
-          │  11 dashboards   │◄───────│  node-exporter │
-          │  alertes + webhook│        │  métriques VM  │
-          └────────┬─────────┘        └────────────────┘
-                   │ webhook
-                   ▼
-          ┌──────────────────┐
-          │   autoblock      │
-          │  iptables block  │
-          │  DRY_RUN=true    │
-          └──────────────────┘
+
+---
+
+## Pipeline de données
+
 ```
+Trafic réseau (SPAN / PCAP)
+        │
+    ┌───┼───┐
+    ▼   ▼   ▼
+  Zeek Snort Suricata        ← 3 moteurs, même interface
+  JSON  JSON  EVE JSON
+    └───┬───┘
+        ▼
+    Filebeat                  ← collecte unifiée
+        ▼
+ Elasticsearch                ← zeek-*  snort-*  suricata-*
+        ▼
+ Grafana  +  Portail Flask    ← dashboards + IA locale + PDF
+```
+
+---
+
+## Portail web
+
+Le portail Flask (`:5050`) centralise toutes les données en une interface unifiée :
+
+| Page | Description |
+|------|-------------|
+| `/alerts` | Alertes temps réel, sparklines, auto-refresh 30s, filtres moteur/sévérité |
+| `/audit` | Constats priorisés automatiquement, score de posture /100, recommandations |
+| `/compliance` | Matrices NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001/27002 (couvert/partiel/hors-périmètre) |
+| `/report` | Rapport de conseil PDF : bandeau couverture, KPI cards, sections numérotées |
+| `/status` | Santé des 10 services Docker en temps réel |
+| `✨ IA` | Explication des alertes via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
+
+> Interface disponible en **FR / EN** (switch côté client, localStorage)
 
 ---
 
@@ -80,24 +218,16 @@ La v2 passe de 4 à **10 services** et étend les capacités de détection :
 
 ### Prérequis
 
-- **VM Ubuntu 22.04 LTS** — recommandé : 6 vCPU, 8 Go RAM, 60 Go disque
+- VM **Ubuntu 22.04 LTS** — recommandé : 6 vCPU · 8 Go RAM · 60 Go disque
 - **Docker & Docker Compose v2**
-- Hyperviseur : Proxmox VE (recommandé), VMware ESXi, ou VirtualBox
+- Hyperviseur : Proxmox VE (recommandé) · VMware ESXi · VirtualBox
 
-### 1. Préparer la VM
+### 1. Installer Docker
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER
-exit   # déconnexion nécessaire pour que le groupe docker prenne effet
-```
-
-Reconnectez-vous, puis :
-
-```bash
-docker --version
-docker compose version
+sudo usermod -aG docker $USER && exit
 ```
 
 ### 2. Cloner le dépôt
@@ -110,33 +240,21 @@ cd netwatch
 ### 3. Configurer l'environnement
 
 ```bash
-# Copier le fichier d'exemple et l'éditer
 cp .env.example .env
 nano .env
 ```
 
-Variables à renseigner dans `.env` :
+Variables essentielles :
 
 ```bash
-# Interface réseau de capture (vérifier avec: ip a)
-IFACE=ens18
-
-# IP du serveur à surveiller (règles Snort custom)
-SNORT_MONITORED_SERVER=192.168.1.10
-
-# Mot de passe admin Grafana (ne pas laisser "changeme")
-GRAFANA_ADMIN_PASSWORD=MonMotDePasse!
-
-# Webhook Slack pour les alertes (optionnel)
-SLACK_WEBHOOK_URL=
-
-# AutoBlock — laisser DRY_RUN=true pour tester sans bloquer réellement
-AUTOBLOCK_DRY_RUN=true
-BLOCK_DURATION_MIN=60
-AUTOBLOCK_ALLOWLIST=192.168.1.1,192.168.1.254
+IFACE=ens18                                    # Interface de capture (ip a)
+SNORT_MONITORED_SERVER=192.168.1.10            # IP serveur à surveiller
+GRAFANA_ADMIN_PASSWORD=MonMotDePasse!          # Ne pas laisser "changeme"
+AUTOBLOCK_DRY_RUN=true                         # Laisser true pour commencer
+SLACK_WEBHOOK_URL=                             # Optionnel
 ```
 
-### 4. Fixer les permissions Filebeat
+### 4. Permissions Filebeat
 
 ```bash
 sudo chown root:root filebeat/filebeat.yml
@@ -147,78 +265,144 @@ sudo chmod 644 filebeat/filebeat.yml
 
 ```bash
 docker compose up -d
-
-# Vérifier les 10 conteneurs
-docker compose ps
+docker compose ps   # 10 conteneurs attendus
 ```
 
-Les 10 conteneurs attendus :
+> ⚠️ Le build de **Snort** prend 10-15 min la première fois (compilation depuis les sources).
 
-| Conteneur | Démarrage |
-|-----------|-----------|
-| `netwatch-elasticsearch` | Healthy après ~30 secondes |
-| `netwatch-filebeat` | — |
-| `netwatch-zeek` | — |
-| `netwatch-snort` | Build long ~10-15 min la première fois (compilation depuis les sources) |
-| `netwatch-suricata` | Lance `suricata-update` au démarrage (télécharge les règles ET Open) |
-| `netwatch-grafana` | — |
-| `netwatch-prometheus` | — |
-| `netwatch-node-exporter` | — |
+| Conteneur | Note |
+|-----------|------|
+| `netwatch-elasticsearch` | Healthy après ~30s |
+| `netwatch-snort` | Build long ~15 min (compilation) |
+| `netwatch-suricata` | Télécharge ET Open au démarrage |
 | `netwatch-beacon-detect` | Analyse toutes les 15 minutes |
-| `netwatch-autoblock` | Écoute le webhook Grafana sur :5001 |
+| `netwatch-autoblock` | Webhook Grafana sur `:5001` |
 
-### 6. Initialiser le pipeline GeoIP (optionnel)
+### 6. Accéder aux interfaces
+
+| Interface | URL | Credentials |
+|-----------|-----|-------------|
+| **Grafana** | `http://<IP_VM>:3000` | `admin` / `<GRAFANA_ADMIN_PASSWORD>` |
+| **Portail Flask** | `http://<IP_VM>:5050` | `admin` / `netwatch` |
+| **Elasticsearch** | `http://<IP_VM>:9200` | — |
+
+### 7. Initialiser GeoIP & Threat Intel (optionnel)
 
 ```bash
-# Crée le pipeline ingest ES + les index templates
-bash setup-geoip.sh
+bash setup-geoip.sh     # Pipeline ingest GeoIP Elasticsearch
+bash update-intel.sh    # Watchlists Zeek : Feodo Tracker + URLhaus
 ```
 
-### 7. Mettre à jour la threat intelligence Zeek
+### 8. Tester avec du trafic
 
 ```bash
-# Télécharge Feodo Tracker + URLhaus → formats Zeek Intel TSV
-bash update-intel.sh
-```
-
-### 8. Vérifier le stack
-
-```bash
-# Elasticsearch
-curl http://localhost:9200/_cluster/health?pretty
-
-# Index créés (après capture ou simulation)
-curl "http://localhost:9200/_cat/indices?v&s=index"
-```
-
-Grafana : `http://<IP_VM>:3000` — login `admin` / `<GRAFANA_ADMIN_PASSWORD>`
-Les 11 dashboards sont auto-provisionnés, aucune manipulation nécessaire.
-
-### 9. Rejouer un PCAP sur les 3 moteurs
-
-```bash
-# Copier un PCAP dans pcap/
-cp /path/to/sample.pcap pcap/
-
-# Replay sur Zeek, Snort et Suricata simultanément
-./replay-pcap.sh pcap/sample.pcap
-
-# Vérifier les données dans ES
-sleep 20
-curl "http://localhost:9200/_cat/indices?v&s=index"
-```
-
-### 10. Simuler du trafic (sans PCAP)
-
-```bash
-# 24h de trafic, intensité moyenne, avec scénarios d'attaque
+# Simuler 24h de trafic avec scénarios d'attaque
 python3 simulate-traffic.py --hours 24 --intensity medium --attack
 
-# Vérifier les 3 index
-curl 'http://localhost:9200/zeek-*/_count?pretty'
-curl 'http://localhost:9200/snort-*/_count?pretty'
-curl 'http://localhost:9200/suricata-*/_count?pretty'
+# Ou rejouer un PCAP sur les 3 moteurs
+./replay-pcap.sh pcap/sample.pcap
+
+# Vérifier les index créés
+curl "http://localhost:9200/_cat/indices?v&s=index"
 ```
+
+---
+
+## Détection
+
+### Scripts Zeek custom
+
+| Script | Seuil | Description |
+|--------|-------|-------------|
+| `port-scan-detect.zeek` | > 50 ports / 60s | Détection reconnaissance réseau |
+| `dns-entropy.zeek` | Entropie Shannon > 3.5 | Détection domaines DGA / C2 |
+
+### Règles Snort custom — MITRE ATT&CK
+
+| SID | Description | ATT&CK |
+|-----|-------------|--------|
+| 1000001 | ICMP Ping Sweep (10 pings / 60s) | T1595 |
+| 1000002 | SSH Brute Force (5 tentatives / 60s) | T1110 |
+| 1000003–06 | DNS vers TLD suspects (.xyz, .info, .top, .biz) | T1568 |
+| 1000007 | Credentials en clair sur HTTP POST | T1552 |
+| 1000008 | Exfiltration potentielle (gros upload) | T1048 |
+| 1000009 | Connexion vers port non standard | T1571 |
+| 1000010 | User-Agent curl suspect | T1059 |
+| 1000011–12 | ICMP Reply flood · SYN Flood HTTP | T1498 |
+| 1000013–16 | Accès serveur surveillé (HTTP/HTTPS/SSH/FTP) | T1190 · T1021 |
+| 1000017 | Scan de ports vers serveur surveillé | T1046 |
+
+### Détection comportementale — beacon-detect (RITA-lite)
+
+| Détection | Logique | Indicateur |
+|-----------|---------|------------|
+| **Beaconing C2** | Coefficient de variation < 0.25 (intervalles trop réguliers) | `beacon_score` 0–1 |
+| **Longues connexions** | Connexion ouverte > 1h (reverse shell, tunnel, exfiltration lente) | `duration_h` |
+| **DNS Tunneling** | Sous-domaine > 40 chars OU > 100 requêtes vers même domaine | `subdomain_length` |
+
+### Conformité réglementaire
+
+| Référentiel | Couverture | Détail |
+|-------------|-----------|--------|
+| **NIS2** (Art. 21.2) | ✅ Couvert | Surveillance réseau, détection, réponse aux incidents |
+| **NIST CSF 2.0** | ✅ Couvert | Fort sur DE (Detect) et RS (Respond) |
+| **ANSSI** | 🟡 Partiel | Hygiène informatique + PA-022 supervision réseau |
+| **ISO 27001:2022** | ✅ Couvert | A.8.15 (logs) · A.8.16 (surveillance) · A.8.23 (filtrage) |
+
+---
+
+## Dashboards Grafana
+
+| Dashboard | Datasource | Contenu |
+|-----------|-----------|---------|
+| Vue Réseau | Zeek | Connexions, protocoles, top IPs, conn_state |
+| Analyse DNS | Zeek | Requêtes, NXDOMAIN, DGA, types, clients |
+| HTTP / TLS | Zeek | Méthodes, statuts, versions TLS, hôtes |
+| Alertes Sécurité | Zeek | Port scans, DGA, Intel hits, alertes SSL |
+| Alertes Snort 3 | Snort | Signatures, priorités, classes, top sources, MITRE |
+| Alertes Suricata 7 | Suricata | ET Open, sévérités, catégories, MITRE ATT&CK |
+| Corrélation Multi-Moteurs | Mixed | Zeek + Snort + Suricata sur le même axe temporel |
+| Santé VM | Prometheus | CPU, RAM, disque, charge système |
+| Top Talkers | Zeek | Top IPs/ports par volume, protocoles, bytes |
+| JA3 / HASSH | Zeek | Fingerprints TLS (JA3/JA3S) et SSH (HASSH) |
+| Beacon Detector | Beacons | Beaconing C2, longues connexions, DNS tunneling |
+
+---
+
+## Stack technique
+
+| Composant | Outil | Version |
+|-----------|-------|---------|
+| Analyse protocolaire | Zeek | 6.2 |
+| IDS signatures | Snort | 3.3.5 |
+| IDS/NSM | Suricata | 7.0 |
+| Détection comportementale | beacon-detect (Python) | — |
+| Réponse automatique | autoblock (Flask + iptables) | — |
+| Transport | Filebeat | 8.13 |
+| Indexation | Elasticsearch | 8.13 |
+| Visualisation | Grafana | 10.4 |
+| Métriques système | Prometheus + node-exporter | 2.51 / 1.7 |
+| Portail web | Flask | 3.x |
+| IA locale | Ollama / Mistral | — |
+| Orchestration | Docker Compose | v2 |
+| OS cible | Ubuntu | 22.04 LTS |
+
+---
+
+## Comparaison open-source vs commercial
+
+| Fonctionnalité | NetWatch v2 | Outils commerciaux |
+|----------------|-------------|---------------------|
+| Capture & analyse réseau | Zeek (analyse proto) | Corelight · nGenius Probe |
+| IDS signatures | Snort 3 + Suricata 7 (ET Open) | Suricata OEM · Snort Enterprise |
+| Fingerprinting TLS/SSH | JA3 · HASSH · JA3S (Zeek) | DPI natif (ExtraHop, Corelight) |
+| Détection comportementale | RITA-lite (beacon-detect) | Darktrace AI · ExtraHop Reveal(x) |
+| Réponse automatique | AutoBlock → iptables | Cisco Stealthwatch + NAC · Palo Alto XSOAR |
+| MITRE ATT&CK | EVE JSON Suricata + Snort metadata | Darktrace · Vectra AI |
+| Threat Intelligence | Zeek Intel (Feodo + URLhaus) | Anomali · ThreatConnect · MISP |
+| Corrélation multi-sources | Dashboard multi-moteurs | nGeniusONE Service Triage |
+| Rapport conformité | PDF automatique (Flask) | SIEM intégré |
+| Coût | **Gratuit** | 10 000 – 100 000+ €/an |
 
 ---
 
@@ -227,360 +411,188 @@ curl 'http://localhost:9200/suricata-*/_count?pretty'
 ```
 netwatch/
 ├── docker-compose.yml              # Orchestration 10 services
-├── .env.example                    # Template de configuration (copier en .env)
+├── .env.example                    # Template de configuration
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
-├── simulate-traffic.py             # Simulateur de trafic (injecte dans ES)
-├── setup-geoip.sh                  # Initialise le pipeline GeoIP Elasticsearch
-├── update-intel.sh                 # Met à jour les listes de menaces Zeek Intel
-├── zeek/
-│   ├── Dockerfile                  # Zeek 6.2 + JA3/HASSH (zkg) + Community ID
-│   ├── local.zeek                  # Config Zeek (JSON, protocoles, scripts, Intel)
+├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch
+├── setup-geoip.sh                  # Pipeline ingest GeoIP
+├── update-intel.sh                 # Mise à jour watchlists Zeek Intel
+│
+├── zeek/                           # Analyse protocolaire
+│   ├── Dockerfile                  # Zeek 6.2 + JA3/HASSH + Community ID
+│   ├── local.zeek                  # Config JSON, protocoles, Intel
 │   ├── scripts/
-│   │   ├── port-scan-detect.zeek   # Détection scan de ports (entropie seuil)
-│   │   └── dns-entropy.zeek        # Détection DGA par entropie de Shannon
+│   │   ├── port-scan-detect.zeek
+│   │   └── dns-entropy.zeek
 │   └── intel/
 │       ├── ip_watchlist.dat        # IPs malveillantes (Feodo Tracker)
 │       └── domain_watchlist.dat    # Domaines malveillants (URLhaus)
-├── snort/
-│   ├── Dockerfile                  # Build Snort 3 depuis les sources + libdaq + tcmalloc
-│   ├── snort.lua                   # Config Snort 3 (alert_json, SNORT_MONITORED_SERVER)
-│   └── local.rules                 # Règles custom NETWATCH (SID 1000001-1000999) + MITRE
-├── suricata/
-│   ├── Dockerfile                  # jasonish/suricata:7.0 + entrypoint suricata-update
-│   ├── entrypoint.sh               # Lance suricata-update puis recharge les règles quotidiennement
-│   ├── suricata.yaml               # Config Suricata (EVE JSON, Community ID, threading)
-│   └── local.rules                 # Règles custom NETWATCH (SID 2000001-2000999)
-├── beacon-detect/
-│   ├── Dockerfile                  # Python 3.12-slim
-│   └── beacon_detect.py            # Détection RITA-lite : beaconing, longues connexions, DNS tunneling
-├── autoblock/
-│   ├── Dockerfile                  # Python 3.12-slim + iptables + iproute2
-│   └── autoblock.py                # Webhook Flask → iptables (DRY_RUN=true par défaut)
+│
+├── snort/                          # IDS signatures MITRE
+│   ├── Dockerfile                  # Build from source + libdaq + tcmalloc
+│   ├── snort.lua
+│   └── local.rules                 # SID 1000001-1000999 + MITRE ATT&CK
+│
+├── suricata/                       # IDS + NSM
+│   ├── Dockerfile                  # suricata-update au démarrage
+│   ├── entrypoint.sh
+│   ├── suricata.yaml               # EVE JSON, Community ID, af-packet
+│   └── local.rules                 # SID 2000001-2000999
+│
+├── beacon-detect/                  # Détection comportementale RITA-lite
+│   ├── Dockerfile
+│   └── beacon_detect.py
+│
+├── autoblock/                      # Réponse automatique
+│   ├── Dockerfile
+│   └── autoblock.py                # Webhook Flask → iptables
+│
 ├── filebeat/
-│   └── filebeat.yml                # Collecte 3 sources → index zeek-*/snort-*/suricata-*
+│   └── filebeat.yml                # 3 sources → zeek-*/snort-*/suricata-*
+│
 ├── elasticsearch/
-│   ├── elasticsearch.yml           # Config ES (single node, lab)
+│   ├── elasticsearch.yml
 │   └── pipelines/
-│       └── netwatch-geoip.json     # Pipeline ingest GeoIP
+│       └── netwatch-geoip.json
+│
 ├── prometheus/
-│   └── prometheus.yml              # Scrape node-exporter
-└── grafana/
-    ├── provisioning/
-    │   ├── datasources/
-    │   │   └── elasticsearch.yml   # 5 datasources (Zeek, Snort, Suricata, Beacons, AutoBlock, Prometheus)
-    │   ├── dashboards/
-    │   │   └── dashboards.yml
-    │   └── alerting/
-    │       ├── rules.yaml          # Règles d'alerte (CPU, RAM, Disk, spikes Suricata, anomalie volume)
-    │       └── contact_points.yaml # Slack + AutoBlock webhook
-    └── dashboards/
-        ├── network-overview.json   # Vue générale réseau (Zeek)
-        ├── dns-analysis.json       # Analyse DNS + DGA (Zeek)
-        ├── http-tls-analysis.json  # HTTP/TLS + JA3/JA3S (Zeek)
-        ├── security-alerts.json    # Alertes Zeek (port scans, DGA, Intel hits)
-        ├── snort-alerts.json       # Alertes Snort 3 + MITRE ATT&CK
-        ├── suricata-alerts.json    # Alertes Suricata 7 + MITRE ATT&CK
-        ├── correlation.json        # Corrélation multi-moteurs
-        ├── vm-health.json          # Santé VM (Prometheus : CPU, RAM, disque)
-        ├── top-talkers.json        # Top IPs par volume, protocoles, ports
-        ├── ja3-hassh.json          # Fingerprints TLS (JA3/JA3S) et SSH (HASSH)
-        └── beacon-detect.json      # Détections comportementales RITA-lite
+│   └── prometheus.yml
+│
+├── grafana/
+│   ├── provisioning/
+│   │   ├── datasources/
+│   │   ├── dashboards/
+│   │   └── alerting/
+│   └── dashboards/                 # 11 fichiers JSON auto-provisionnés
+│
+└── netwatch/                       # Portail web Flask
+    ├── app.py
+    ├── llm_client.py               # IA locale Ollama/Mistral
+    └── templates/
+        ├── alerts.html
+        ├── audit.html
+        ├── compliance.html
+        ├── report.html
+        └── status.html
 ```
-
----
-
-## Dashboards
-
-| Dashboard | Datasource | Contenu |
-|-----------|-----------|---------|
-| Vue Réseau | Zeek-ES | Connexions, protocoles, top IPs, conn_state |
-| Analyse DNS | Zeek-ES | Requêtes, NXDOMAIN, DGA, types, clients |
-| HTTP / TLS | Zeek-ES | Méthodes, statuts, versions TLS, hôtes |
-| Alertes Sécurité | Zeek-ES | Port scans, DGA, Intel hits, alertes SSL |
-| **Alertes Snort 3** | Snort-ES | Signatures, priorités, classes, top sources, MITRE |
-| **Alertes Suricata 7** | Suricata-ES | Signatures ET Open, sévérités, catégories, MITRE |
-| **Corrélation Multi-Moteurs** | Mixed | Zeek + Snort + Suricata sur le même axe temporel |
-| **Santé VM** | Prometheus | CPU, RAM, disque, charge système (node-exporter) |
-| **Top Talkers** | Zeek-ES | Top IPs/ports par volume, protocoles, bytes transférés |
-| **JA3 / HASSH** | Zeek-ES | Fingerprints TLS (JA3/JA3S) et SSH (HASSH) |
-| **Beacon Detector** | Beacons-ES | Beaconing C2, longues connexions, DNS tunneling |
-
----
-
-## Détection et alertes
-
-### Scripts Zeek custom
-
-| Script | Seuil par défaut | Description |
-|--------|-----------------|-------------|
-| `port-scan-detect.zeek` | > 50 ports / 60s | Détection reconnaissance réseau |
-| `dns-entropy.zeek` | Entropie Shannon > 3.5 | Détection domaines DGA / C2 |
-
-### Zeek Intel Framework
-
-Zeek charge automatiquement deux listes de menaces mises à jour par `update-intel.sh` :
-
-| Liste | Source | Contenu |
-|-------|--------|---------|
-| `ip_watchlist.dat` | Feodo Tracker | IPs de botnets (Emotet, QakBot, Dridex…) |
-| `domain_watchlist.dat` | URLhaus | Domaines distribuant des malwares |
-
-Les hits apparaissent dans `intel.log` et génèrent des notices Zeek visibles dans le dashboard Alertes Sécurité.
-
-### Règles Snort 3 custom (SID 1000001–1000999)
-
-| SID | Description | MITRE |
-|-----|-------------|-------|
-| 1000001 | ICMP Ping Sweep (10 pings / 60s) | T1595 |
-| 1000002 | SSH Brute Force (5 tentatives / 60s) | T1110 |
-| 1000003–06 | DNS vers TLD suspects (.xyz, .info, .top, .biz) | T1568 |
-| 1000007 | Credentials en clair sur HTTP POST | T1552 |
-| 1000008 | Exfiltration potentielle (gros upload) | T1048 |
-| 1000009 | Connexion vers port non standard | T1571 |
-| 1000010 | User-Agent curl suspect | T1059 |
-| 1000011 | ICMP Reply volume (flood) | T1498 |
-| 1000012 | SYN Flood HTTP (DoS) | T1498 |
-| 1000013–14 | Accès serveur surveillé — HTTP/HTTPS | T1190 |
-| 1000015–16 | Accès serveur surveillé — SSH/FTP | T1021 |
-| 1000017 | Scan de ports vers serveur surveillé | T1046 |
-
-### Règles Suricata custom (SID 2000001–2000999)
-
-| SID | Description |
-|-----|-------------|
-| 2000001 | ICMP Ping Sweep |
-| 2000002 | SSH Brute Force |
-| 2000003 | DNS Tunneling (requête longue) |
-| 2000004–05 | TLS obsolète (TLSv1.0, TLSv1.1) |
-| 2000006 | Mot de passe en clair HTTP |
-| 2000007 | Transfert sortant massif |
-
-### Détection comportementale — RITA-lite (beacon-detect)
-
-Le service `beacon-detect` tourne toutes les 15 minutes et analyse les logs Zeek pour détecter trois catégories de comportements suspects :
-
-| Détection | Logique | Indicateur |
-|-----------|---------|------------|
-| **Beaconing C2** | Coefficient de variation des intervalles < 0.25 (connexions trop régulières) | `beacon_score` 0-1 |
-| **Longues connexions** | Connexion ouverte > 1h (reverse shell, tunnel SSH, exfiltration lente) | `duration_h` |
-| **DNS Tunneling** | Sous-domaine > 40 chars OU > 100 requêtes vers le même domaine | `subdomain_length`, `query_count` |
-
-Les résultats sont écrits dans l'index `netwatch-beacons-YYYY.MM.DD` et visualisés dans le dashboard **Beacon Detector**.
-
-### Réponse automatique — AutoBlock
-
-Le service `autoblock` expose un webhook Flask sur le port 5001. Grafana lui envoie les alertes critiques et autoblock applique un blocage iptables temporaire.
-
-```
-Grafana Alert → POST /webhook/alert → autoblock → iptables -I INPUT -s {ip} -j DROP
-```
-
-| Paramètre | Défaut | Description |
-|-----------|--------|-------------|
-| `AUTOBLOCK_DRY_RUN` | `true` | Simule sans appliquer iptables — à passer en `false` après validation |
-| `BLOCK_DURATION_MIN` | `60` | Durée du blocage en minutes (expiration automatique) |
-| `MAX_BLOCKS_PER_HOUR` | `20` | Limite de taux pour éviter les blocages en masse |
-| `AUTOBLOCK_ALLOWLIST` | `192.168.1.1,192.168.1.254` | IPs jamais bloquées (gateway, DNS, serveurs critiques) |
-
-> **Important :** ne passer `DRY_RUN=false` qu'après avoir validé le comportement en mode simulation. Un faux positif en production peut couper un serveur critique.
-
----
-
-## Stack technique
-
-| Composant | Outil | Version | Rôle |
-|-----------|-------|---------|------|
-| Analyse protocolaire | Zeek | 6.2 | Logs JSON, JA3/HASSH, Intel Framework, scripts custom |
-| IDS signatures | Snort | 3.3.5 | Règles community + NETWATCH + MITRE, alert_json |
-| IDS/IPS | Suricata | 7.0 | Règles ET Open (auto-update) + NETWATCH, EVE JSON |
-| Détection comportementale | beacon-detect (Python) | — | RITA-lite : beaconing, longues connexions, DNS tunneling |
-| Réponse automatique | autoblock (Flask) | — | Webhook Grafana → iptables (DRY_RUN=true par défaut) |
-| Transport | Filebeat | 8.13 | Collecte unifiée → 3 index ES |
-| Indexation | Elasticsearch | 8.13 | Stockage, index zeek-*/snort-*/suricata-*/beacons-* |
-| Visualisation | Grafana | 10.4 | 11 dashboards, alertes, 5 datasources auto-provisionnées |
-| Métriques système | Prometheus + node-exporter | 2.51 / 1.7 | CPU, RAM, disque, charge VM |
-| Orchestration | Docker Compose | v2 | 10 services |
-| OS cible | Ubuntu | 22.04 LTS | VM sur Proxmox VE |
-
----
-
-## Proxmox VE vs VMware ESXi — Comparatif pour un lab réseau
-
-> **Contexte :** choisir un hyperviseur pour héberger NetWatch et des outils réseau / sécurité sur un serveur physique (Shuttle, mini-PC, rack 1U).
-
-| Critère | **Proxmox VE** | **VMware ESXi (free)** |
-|---------|---------------|----------------------|
-| **Licence** | Open-source (AGPL), gratuit | Gratuit mais bridé — la version free a perdu la plupart des fonctionnalités en 2024 après le rachat par Broadcom |
-| **Interface** | Web UI intégrée (Proxmox) | Web UI + vSphere Client (plus lourd) |
-| **vSwitch promiscuous** | Activable en 2 clics dans l'UI | Possible mais nécessite SSH + commandes `esxcli` |
-| **API** | API REST native complète (`pvesh`) | API REST limitée en version gratuite |
-| **Snapshots** | Oui (LVM, ZFS, QEMU) — gratuit | Oui, mais requiert datastore compatible |
-| **Clustering** | Proxmox Cluster (HA, migration live) — gratuit | vMotion / HA → réservé à vSphere payant |
-| **NIC passthrough (PCI)** | Oui, natif | Oui, mais complexe à configurer |
-| **Stockage** | ZFS natif, LVM, Ceph, NFS, iSCSI | VMFS, NFS, iSCSI — ZFS absent |
-| **Containers LXC** | Oui (en plus des VMs) | Non |
-| **Communauté FR** | Très active (forum, wiki détaillé) | Bonne mais surtout anglophone |
-| **Mises à jour** | Dépôt Debian stable, prévisible | Cycle de releases Broadcom, moins prévisible |
-| **Backup intégré** | `vzdump` natif, Proxmox Backup Server | Nécessite veeam ou solution tierce |
-| **Usage pour NetWatch** | Recommandé — vSwitch promiscuous simple, API pour le portail v3 | Fonctionne, mais plus de friction pour la capture réseau |
-
-**Verdict pour ce projet :** Proxmox est le meilleur choix pour un lab réseau. Le vSwitch en mode promiscuous est trivial à configurer (case à cocher dans l'UI), l'API REST permettra d'automatiser la création de VMs depuis le portail web prévu en v3, et ZFS apporte de la résilience sans surcoût.
-
-ESXi reste pertinent si le matériel est déjà en production sur VMware ou si l'objectif est d'apprendre l'environnement Broadcom/VMware (compétence très demandée chez les clients Axians).
-
----
-
-## Parallèle avec les outils commerciaux
-
-| Fonctionnalité | NetWatch v2 (open-source) | Outils commerciaux |
-|----------------|--------------------------|---------------------|
-| Capture trafic | Zeek (analyse proto) + SPAN | InfiniStream / nGenius Probe, Corelight |
-| IDS signatures | Snort 3 + Suricata 7 (ET Open) | Suricata OEM, Snort Enterprise |
-| Fingerprinting TLS/SSH | JA3 / HASSH / JA3S (Zeek) | DPI natif (ExtraHop, Corelight) |
-| Détection comportementale | RITA-lite (beacon-detect) | Darktrace AI, ExtraHop Reveal(x) |
-| Réponse automatique | AutoBlock webhook → iptables | Cisco Stealthwatch + NAC, Palo Alto XSOAR |
-| MITRE ATT&CK | Suricata EVE JSON + Snort metadata | Darktrace, Vectra AI |
-| Threat Intel | Zeek Intel Framework (Feodo + URLhaus) | Anomali, ThreatConnect, MISP |
-| Corrélation multi-sources | Dashboard multi-moteurs | nGeniusONE Service Triage |
-| Visibilité réseau | Grafana 11 dashboards | nGeniusONE portail |
-| Alertes | Grafana alerting → Slack / webhook | Service Triage + SIEM |
-| Stockage | Elasticsearch | nGenius Collector, Splunk |
-| Métriques système | Prometheus + node-exporter | Datadog, Zabbix |
-| Transport | Filebeat | Gigamon / TAP, Corelight Sensor |
 
 ---
 
 ## Troubleshooting
 
-### Les capteurs redémarrent en boucle
+<details>
+<summary><strong>Les capteurs redémarrent en boucle</strong></summary>
 
-Interface réseau incorrecte. Vérifier dans `.env` :
+Interface réseau incorrecte dans `.env` :
 
 ```bash
-# Lister les interfaces disponibles
-ip link show
-
-# Corriger dans .env
-IFACE=ens18
-
+ip link show          # Lister les interfaces disponibles
+# Corriger IFACE= dans .env
 docker compose up -d zeek snort suricata
 ```
+</details>
 
-### Le build Snort échoue
+<details>
+<summary><strong>Le build Snort échoue</strong></summary>
 
-Snort 3 compile depuis les sources — connexion internet requise. En cas d'erreur réseau :
+Connexion internet requise (compilation depuis les sources) :
 
 ```bash
 docker compose build snort --no-cache
 ```
+</details>
 
-### Filebeat ne démarre pas
-
-```
-error loading config file: config file must be owned by root
-```
+<details>
+<summary><strong>Filebeat ne démarre pas — "must be owned by root"</strong></summary>
 
 ```bash
-sudo chown root:root filebeat/filebeat.yml && sudo chmod 644 filebeat/filebeat.yml
+sudo chown root:root filebeat/filebeat.yml
+sudo chmod 644 filebeat/filebeat.yml
 docker compose restart filebeat
 ```
+</details>
 
-### Les dashboards affichent "No data"
+<details>
+<summary><strong>Les dashboards affichent "No data"</strong></summary>
 
-1. Vérifier la plage horaire dans Grafana ("Last 6 hours" ou "Last 24 hours")
+1. Vérifier la plage horaire Grafana (Last 6h ou Last 24h)
 2. Vérifier les index ES :
 ```bash
 curl "http://localhost:9200/_cat/indices?v&s=index"
-# Attendu : zeek-*, snort-*, suricata-*, netwatch-beacons-*
 ```
-3. Si les index sont vides, lancer la simulation :
+3. Si vide, lancer la simulation :
 ```bash
 python3 simulate-traffic.py --hours 6 --intensity medium --attack
 ```
+</details>
 
-### Filebeat n'ingère pas les nouveaux logs (après replay PCAP)
+<details>
+<summary><strong>AutoBlock ne bloque rien</strong></summary>
 
-```bash
-docker compose rm -sf filebeat
-docker compose up -d filebeat
-```
-
-### Suricata ne démarre pas (af-packet / tpacket-v3)
-
-Si Suricata logue une erreur liée à af-packet, tenter en mode pcap :
-
-```bash
-# Dans docker-compose.yml, ajouter à la CMD suricata :
-# ... -i ${IFACE:-eth0} --pcap
-```
-
-### AutoBlock ne bloque rien (DRY_RUN)
-
-C'est le comportement attendu par défaut. Pour activer les vrais blocages iptables :
+C'est le comportement attendu par défaut (`DRY_RUN=true`). Pour activer les vrais blocages :
 
 ```bash
 # Dans .env
 AUTOBLOCK_DRY_RUN=false
-
 docker compose up -d autoblock
 ```
 
-> **Attention :** tester d'abord en DRY_RUN. Un faux positif peut bloquer votre propre accès SSH.
+> ⚠️ Tester d'abord en DRY_RUN — un faux positif peut couper votre accès SSH.
+</details>
 
-### Le beacon-detect ne détecte rien
+<details>
+<summary><strong>beacon-detect ne détecte rien</strong></summary>
 
-Le service a besoin d'au moins 8 connexions entre une même paire src/dst (paramètre `MIN_CONNECTIONS`). Lancer la simulation avec l'option `--attack` pour générer du trafic C2 synthétique.
+Le service nécessite au minimum 8 connexions entre une même paire src/dst. Générer du trafic C2 synthétique :
+
+```bash
+python3 simulate-traffic.py --hours 6 --intensity medium --attack
+```
+</details>
 
 ---
 
 ## Commandes utiles
 
 ```bash
-# Lancer le stack complet
-docker compose up -d
+# Stack
+docker compose up -d                                              # Démarrer
+docker compose ps                                                 # Vérifier les 10 conteneurs
+docker compose logs -f beacon-detect                             # Logs d'un service
+docker compose build snort --no-cache && docker compose up -d snort  # Rebuild
 
-# Vérifier les 10 conteneurs
-docker compose ps
+# Trafic
+./replay-pcap.sh pcap/sample.pcap                                # Replay PCAP
+python3 simulate-traffic.py --hours 24 --intensity medium --attack   # Simulation
+bash update-intel.sh                                             # Mise à jour threat intel
 
-# Logs d'un service
-docker compose logs -f beacon-detect
-docker compose logs -f autoblock
-
-# Rebuild un service
-docker compose build snort --no-cache
-docker compose up -d snort
-
-# Replay PCAP sur les 3 moteurs
-./replay-pcap.sh pcap/sample.pcap
-
-# Mise à jour threat intel Zeek
-bash update-intel.sh
-
-# Simuler du trafic (24h, intensité moyenne, avec attaques)
-python3 simulate-traffic.py --hours 24 --intensity medium --attack
-
-# Vérifier les index ES
-curl "http://localhost:9200/_cat/indices?v&s=index"
-
-# Voir les détections beacon
-curl "http://localhost:9200/netwatch-beacons-*/_search?pretty&size=5"
-
-# Voir les blocages autoblock
-curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5"
+# Elasticsearch
+curl "http://localhost:9200/_cat/indices?v&s=index"              # Index créés
+curl "http://localhost:9200/netwatch-beacons-*/_search?pretty&size=5"   # Détections beacon
+curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocages
 ```
+
+---
+
+## Roadmap
+
+| Version | Statut | Contenu |
+|---------|--------|---------|
+| **v1** | ✅ Mars 2026 | Stack Docker 4 services · 4 dashboards Grafana · Scripts Zeek · Simulateur trafic |
+| **v2** | 🟢 Juin 2026 | 10 services · 11 dashboards · Portail Flask · IA locale · Validé ESXi lab Axians |
+| **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
 
 ---
 
 ## Auteur
 
-**Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — France — École 2600
-
-Projet réalisé dans le cadre de la SideQuest MVP (S2 2025-2026).
+**Nicolas Malok**  
+Analyste Observabilité NPM @ [Axians / Vinci Energies](https://www.axians.fr) · [École 2600](https://www.ecole2600.com), promo 2024-2027  
+SideQuest MVP — S2 2025-2026
 
 ---
 
-## Licence
+<div align="center">
 
-[GNU Affero General Public License v3.0](LICENSE) — voir [LICENSE](LICENSE)
+[GNU Affero General Public License v3.0](LICENSE) — Toute modification déployée en production doit être rendue publique sous la même licence.
 
-Toute modification déployée en production (y compris en SaaS) doit être rendue publique sous la même licence. Conçu pour rester ouvert.
+</div>
