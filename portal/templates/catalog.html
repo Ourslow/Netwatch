@@ -2,24 +2,26 @@
 {% block title %}Catalogue — NetWatch Portal{% endblock %}
 {% block page_title %}Catalogue outils{% endblock %}
 
-{% block topbar_actions %}
-<div class="btn-group btn-group-sm">
-  <a href="{{ url_for('catalog') }}"
-     class="btn {% if type_filter == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-    Tous
-  </a>
-  <a href="{{ url_for('catalog') }}?type=open-source"
-     class="btn {% if type_filter == 'open-source' %}btn-info{% else %}btn-outline-secondary{% endif %}">
-    Open-source
-  </a>
-  <a href="{{ url_for('catalog') }}?type=commercial"
-     class="btn {% if type_filter == 'commercial' %}btn-warning{% else %}btn-outline-secondary{% endif %}">
-    Commercial
-  </a>
-</div>
-{% endblock %}
-
 {% block content %}
+
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  <div class="btn-group btn-group-sm">
+    <a href="{{ url_for('catalog') }}"
+       class="btn {% if type_filter == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+      <i class="bi bi-grid me-1"></i>Tous ({{ tools | length }})
+    </a>
+    <a href="{{ url_for('catalog') }}?type=open-source"
+       class="btn {% if type_filter == 'open-source' %}btn-info{% else %}btn-outline-secondary{% endif %}">
+      <i class="bi bi-code-slash me-1"></i>Open-source
+    </a>
+    <a href="{{ url_for('catalog') }}?type=commercial"
+       class="btn {% if type_filter == 'commercial' %}btn-warning{% else %}btn-outline-secondary{% endif %}">
+      <i class="bi bi-building me-1"></i>Commercial
+    </a>
+  </div>
+  <span class="text-muted small ms-auto">{{ tools | length }} outil{{ 's' if tools | length > 1 }}</span>
+</div>
+
 <div class="row g-3">
   {% for tool in tools %}
   <div class="col-md-6 col-xl-4">

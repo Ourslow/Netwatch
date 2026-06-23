@@ -116,15 +116,15 @@
       </a>
       <a href="{{ url_for('alerts', engine=engine, severity=1, q=search) }}"
          class="btn {% if severity == '1' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
-        🔴 <span data-i18n="sev_critical">Critique</span>
+        <span data-i18n="sev_critical">Critique</span>
       </a>
       <a href="{{ url_for('alerts', engine=engine, severity=2, q=search) }}"
          class="btn {% if severity == '2' %}btn-warning{% else %}btn-outline-secondary{% endif %}">
-        🟡 <span data-i18n="sev_medium">Moyen</span>
+        <span data-i18n="sev_medium">Moyen</span>
       </a>
       <a href="{{ url_for('alerts', engine=engine, severity=3, q=search) }}"
          class="btn {% if severity == '3' %}btn-outline-secondary active{% else %}btn-outline-secondary{% endif %}">
-        🔵 <span data-i18n="sev_low">Faible</span>
+        <span data-i18n="sev_low">Faible</span>
       </a>
     </div>
 

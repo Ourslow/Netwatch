@@ -60,9 +60,46 @@
   --mitre-soft: rgba(167, 139, 250, .15);
 
   /* Rayons */
-  --r-sm: 6px;
-  --r:    9px;
-  --r-lg: 13px;
+  --r-sm:   6px;
+  --r:      9px;
+  --r-lg:   13px;
+  --r-pill: 99px;
+
+  /* Espacement */
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Layout */
+  --content-max: 1500px;
+  --bw: 1px;
+
+  /* Ombres & lueurs */
+  --shadow-card:         0 8px 28px -12px rgba(0,0,0,.4);
+  --shadow-glow:         0 0 18px -6px var(--accent-glow);
+  --shadow-glow-strong:  0 0 22px -4px var(--accent-glow);
+  --focus-shadow:        0 0 0 3px var(--accent-soft);
+
+  /* Transitions */
+  --t-fast: .15s;
+  --t-med:  .2s;
+
+  /* Aliases sémantiques (compatibilité design system) */
+  --surface-app:    var(--bg-base);
+  --surface-chrome: var(--bg-elev-1);
+  --surface-card:   var(--bg-elev-2);
+  --surface-hover:  var(--bg-elev-3);
+  --surface-inset:  var(--bg-inset);
+  --text-body:      var(--text);
+  --text-heading:   var(--text-strong);
+  --text-subtle:    var(--text-muted);
+  --text-faint:     var(--text-dim);
+  --link:           var(--accent);
+  --link-hover:     var(--accent-bright);
+  --focus-ring:     var(--accent-soft);
 
   /* Typo */
   --font-ui:   "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -393,6 +430,70 @@ hr { border-color: var(--border); opacity: 1; }
   --bs-btn-hover-bg: var(--accent-soft);
   --bs-btn-hover-border-color: var(--accent);
   --bs-btn-hover-color: var(--accent-bright);
+}
+
+.btn-info {
+  --bs-btn-bg: rgba(56,189,248,.18);
+  --bs-btn-border-color: rgba(56,189,248,.4);
+  --bs-btn-color: var(--suricata);
+  --bs-btn-hover-bg: rgba(56,189,248,.28);
+  --bs-btn-hover-border-color: rgba(56,189,248,.65);
+  --bs-btn-hover-color: var(--suricata);
+  --bs-btn-active-bg: rgba(56,189,248,.22);
+  --bs-btn-active-color: var(--suricata);
+}
+.btn-warning {
+  --bs-btn-bg: var(--med-soft);
+  --bs-btn-border-color: rgba(245,165,36,.4);
+  --bs-btn-color: var(--med);
+  --bs-btn-hover-bg: rgba(245,165,36,.22);
+  --bs-btn-hover-border-color: rgba(245,165,36,.65);
+  --bs-btn-hover-color: var(--med);
+  --bs-btn-active-bg: var(--med-soft);
+  --bs-btn-active-color: var(--med);
+}
+.btn-danger {
+  --bs-btn-bg: var(--crit-soft);
+  --bs-btn-border-color: rgba(255,77,94,.4);
+  --bs-btn-color: var(--crit);
+  --bs-btn-hover-bg: rgba(255,77,94,.22);
+  --bs-btn-hover-border-color: rgba(255,77,94,.65);
+  --bs-btn-hover-color: var(--crit);
+  --bs-btn-active-bg: var(--crit-soft);
+  --bs-btn-active-color: var(--crit);
+}
+.btn-secondary {
+  --bs-btn-bg: var(--bg-elev-3);
+  --bs-btn-border-color: var(--border-strong);
+  --bs-btn-color: var(--text-muted);
+  --bs-btn-hover-bg: var(--bg-elev-3);
+  --bs-btn-hover-border-color: var(--border-strong);
+  --bs-btn-hover-color: var(--text-strong);
+  --bs-btn-active-bg: var(--bg-elev-3);
+}
+.btn-outline-success {
+  --bs-btn-color: var(--ok);
+  --bs-btn-border-color: rgba(46,230,166,.35);
+  --bs-btn-hover-bg: var(--ok-soft);
+  --bs-btn-hover-border-color: rgba(46,230,166,.6);
+  --bs-btn-hover-color: var(--ok);
+  --bs-btn-active-bg: var(--ok-soft);
+}
+.btn-outline-warning {
+  --bs-btn-color: var(--med);
+  --bs-btn-border-color: rgba(245,165,36,.35);
+  --bs-btn-hover-bg: var(--med-soft);
+  --bs-btn-hover-border-color: rgba(245,165,36,.6);
+  --bs-btn-hover-color: var(--med);
+  --bs-btn-active-bg: var(--med-soft);
+}
+.btn-outline-danger {
+  --bs-btn-color: var(--crit);
+  --bs-btn-border-color: rgba(255,77,94,.35);
+  --bs-btn-hover-bg: var(--crit-soft);
+  --bs-btn-hover-border-color: rgba(255,77,94,.6);
+  --bs-btn-hover-color: var(--crit);
+  --bs-btn-active-bg: var(--crit-soft);
 }
 
 /* ---- Bouton signature : « Expliquer par l'IA » ---- */
