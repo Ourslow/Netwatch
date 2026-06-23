@@ -5,6 +5,8 @@
 @load base/protocols/http
 @load base/protocols/ssl
 @load base/frameworks/notice
+@load base/frameworks/files
+@load base/files/x509
 @load policy/protocols/conn/known-hosts
 @load policy/protocols/conn/known-services
 @load policy/protocols/ssl/expiring-certs

@@ -13,6 +13,9 @@ filebeat.inputs:
       - /zeek/logs/current/ssh.log
       - /zeek/logs/current/notice.log
       - /zeek/logs/current/intel.log
+      - /zeek/logs/current/weird.log
+      - /zeek/logs/current/files.log
+      - /zeek/logs/current/x509.log
     json.keys_under_root: true
     json.add_error_key: true
     json.ignore_decoding_error: true
