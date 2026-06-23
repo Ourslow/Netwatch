@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Carte GeoIP — NetWatch Portal{% endblock %}
+{% block title %}Carte GeoIP — NetWatch{% endblock %}
 {% block page_title %}Carte géographique des menaces{% endblock %}
 
 {% block topbar_actions %}
@@ -11,647 +11,678 @@
 {% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='geo/maplibre-gl.css') }}">
 <style>
-/* ── Layout page ── */
-.geo-page { display:flex; flex-direction:column; gap:.75rem; }
-.geo-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
-.geo-main  { display:grid; grid-template-columns:1fr 270px; gap:.75rem;
-             height:calc(100vh - var(--topbar-height) - 145px); min-height:420px; }
-
-/* ── KPI cards ── */
-.kpi-card { background:var(--card-bg); border:1px solid var(--border);
-            border-radius:10px; padding:.75rem 1rem; text-align:center; }
-.kpi-lbl  { font-size:.65rem; text-transform:uppercase; letter-spacing:.07em;
-            color:#8b949e; margin-bottom:.25rem; }
-.kpi-val  { font-size:1.75rem; font-weight:700; line-height:1; }
-
-/* ── Map card ── */
-.geo-card { background:var(--card-bg); border:1px solid var(--border);
-            border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
-
-/* ── Toolbar ── */
-.geo-toolbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-               padding:8px 12px; border-bottom:1px solid var(--border);
-               background:var(--card-bg); flex-shrink:0; }
-.geo-sep { width:1px; height:18px; background:var(--border); margin:0 4px; }
-.geo-lbl { font-size:.7rem; color:#8b949e; white-space:nowrap; }
-
-.geo-btn { display:inline-flex; align-items:center; gap:5px;
-           padding:3px 11px; border-radius:6px; border:1px solid #30363d;
-           background:#161b22; color:#8b949e; cursor:pointer;
-           font-size:.73rem; font-family:inherit; transition:all .15s; white-space:nowrap; }
-.geo-btn:hover { border-color:#58a6ff; color:#c9d1d9; }
-.geo-btn.active { background:#1f2a3a; color:#e6edf3; border-color:#388bfd; }
-.geo-btn.active.crit { background:rgba(207,34,46,.18); color:#f85149; border-color:#da3633; }
-.geo-btn.active.med  { background:rgba(191,135,0,.18);  color:#e3b341; border-color:#d29922; }
-.geo-btn.active.low  { background:rgba(59,130,246,.18); color:#79c0ff; border-color:#388bfd; }
-.geo-btn.active.arc  { background:rgba(34,211,238,.12); color:#22d3ee; border-color:#22d3ee; }
-.geo-btn-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-
-/* ── Map container ── */
-.geo-map-wrap { flex:1; min-height:0; position:relative; }
-#nw-map { width:100%; height:100%; }
-
-/* ── Legend overlay ── */
-.geo-legend { position:absolute; bottom:40px; left:12px; z-index:10;
-              background:rgba(13,17,23,.88); border:1px solid #30363d;
-              border-radius:8px; padding:8px 12px; font-size:.7rem;
-              color:#8b949e; backdrop-filter:blur(6px); pointer-events:none; }
-.geo-legend.light { background:rgba(245,247,250,.92); border-color:#cdd5df; color:#556070; }
-.geo-legend-row { display:flex; align-items:center; gap:7px; margin-bottom:3px; }
-.geo-legend-row:last-child { margin-bottom:0; }
-.geo-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.geo-legend-sep { height:1px; background:#30363d; margin:5px 0; }
-.geo-legend.light .geo-legend-sep { background:#cdd5df; }
-
-/* ── Status bar ── */
-.geo-statusbar { display:flex; align-items:center; justify-content:space-between;
-                 padding:4px 12px; border-top:1px solid var(--border);
-                 font-size:.67rem; color:#8b949e; flex-shrink:0; }
-.geo-live { display:flex; align-items:center; gap:5px; color:#3fb950; }
-.geo-live-dot { width:6px; height:6px; border-radius:50%; background:#3fb950;
-                animation:livepulse 2s infinite; }
-@keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.25} }
-
-/* ── Paris marker ── */
-.paris-wrap { position:relative; width:24px; height:24px; }
-.paris-pulse { position:absolute; inset:-4px; border-radius:50%;
-               background:rgba(63,185,80,.25); animation:ppulse 2s ease-out infinite; }
-.paris-dot   { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-               width:10px; height:10px; border-radius:50%;
-               background:#3fb950; border:2px solid #fff;
-               box-shadow:0 0 8px rgba(63,185,80,.7); z-index:2; }
-@keyframes ppulse { 0%{transform:scale(.5);opacity:.8} 100%{transform:scale(2.5);opacity:0} }
-
-/* ── Attack dot ── */
-.atk-dot { width:8px; height:8px; border-radius:50%;
-           box-shadow:0 0 8px currentColor; transition:opacity .3s; }
-
-/* ── Sidebar ── */
-.geo-sidebar { display:flex; flex-direction:column; overflow:hidden; }
-.geo-sidebar-hdr { padding:.5rem .75rem; border-bottom:1px solid var(--border);
-                   font-size:.78rem; font-weight:600; flex-shrink:0; }
-.geo-sidebar-body { flex:1; overflow-y:auto; padding:.4rem; }
-.ctry-item { display:flex; align-items:center; padding:.35rem .5rem;
-             border-radius:6px; cursor:pointer; gap:.5rem; transition:background .1s; }
-.ctry-item:hover { background:rgba(255,255,255,.05); }
-.ctry-flag  { font-size:1.05rem; line-height:1; flex-shrink:0; }
-.ctry-info  { flex:1; min-width:0; }
-.ctry-name  { font-size:.75rem; font-weight:500; white-space:nowrap;
-              overflow:hidden; text-overflow:ellipsis; }
-.ctry-sev   { display:flex; gap:6px; margin-top:2px; }
-.ctry-badge { font-size:.62rem; white-space:nowrap; }
-.ctry-count { font-size:.73rem; font-weight:700; padding:.1rem .45rem;
-              border-radius:5px; flex-shrink:0; }
-.ctry-bar   { height:3px; border-radius:2px; background:#21262d; margin-top:4px; }
-.ctry-bar-fill { height:100%; border-radius:2px; transition:width .4s ease; }
-
-/* ── MapLibre popup override ── */
-.maplibregl-popup-content {
-  background:#0d1117 !important; color:#c9d1d9 !important;
-  border:1px solid #30363d !important; border-radius:10px !important;
-  padding:10px 14px !important; box-shadow:0 6px 20px rgba(0,0,0,.5) !important;
-  font-size:.8rem; font-family:inherit; min-width:170px;
+/* ─── Layout ──────────────────────────────────────────────────── */
+.nw-geo {
+  display:flex; flex-direction:column; gap:.75rem;
+  height:calc(100vh - var(--topbar-height) - 3rem);   /* 3rem = p-4 top+bottom */
+  min-height:520px; overflow:hidden;
 }
-.maplibregl-popup-tip { display:none !important; }
-.nw-popup-country { font-weight:700; font-size:.9rem; margin-bottom:6px;
-                    display:flex; align-items:center; gap:6px; }
-.nw-popup-row { display:flex; justify-content:space-between; padding:2px 0;
-                border-bottom:1px solid #21262d; }
-.nw-popup-row:last-of-type { border:none; }
-.nw-popup-hint { margin-top:6px; font-size:.68rem; color:#8b949e; }
+.nw-kpis {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; flex-shrink:0;
+}
+.nw-kpi {
+  background:var(--card-bg); border:1px solid var(--border);
+  border-radius:10px; padding:.6rem 1rem; text-align:center;
+}
+.nw-kpi-lbl { font-size:.62rem; text-transform:uppercase; letter-spacing:.07em;
+               color:#8b949e; margin-bottom:.25rem; }
+.nw-kpi-val { font-size:1.65rem; font-weight:700; line-height:1; }
+
+.nw-main {
+  display:flex; gap:.75rem; flex:1; min-height:0;
+}
+
+/* ─── Map card ────────────────────────────────────────────────── */
+.nw-map-card {
+  flex:1; min-width:0; display:flex; flex-direction:column;
+  background:#0d1117; border:1px solid #21262d; border-radius:10px; overflow:hidden;
+}
+
+/* ─── Toolbar (pill buttons like shadcn) ──────────────────────── */
+.nw-bar {
+  display:flex; align-items:center; gap:5px; flex-wrap:nowrap;
+  padding:7px 12px; background:#0d1117; border-bottom:1px solid #21262d;
+  flex-shrink:0;
+}
+.nw-bar-lbl { font-size:.67rem; color:#6e7681; white-space:nowrap; }
+.nw-sep  { width:1px; height:14px; background:#30363d; flex-shrink:0; margin:0 3px; }
+.nw-pill {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:20px;
+  border:1px solid #30363d; background:transparent; color:#8b949e;
+  font-size:.7rem; font-family:inherit; cursor:pointer; white-space:nowrap;
+  transition:all .15s; line-height:1.5; user-select:none;
+}
+.nw-pill:hover { border-color:#58a6ff; color:#c9d1d9; }
+.nw-pill.on    { color:#e6edf3; border-color:#388bfd; background:rgba(56,139,253,.1); }
+.nw-pill.on.c  { color:#f85149; border-color:#f85149; background:rgba(248,81,73,.1); }
+.nw-pill.on.m  { color:#e3b341; border-color:#d29922; background:rgba(227,179,65,.1); }
+.nw-pill.on.l  { color:#79c0ff; border-color:#388bfd; background:rgba(121,192,255,.1); }
+.nw-pill.on.a  { color:#22d3ee; border-color:#22d3ee; background:rgba(34,211,238,.08); }
+.nw-dot-ind { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.nw-bar-push { margin-left:auto; display:flex; gap:5px; align-items:center; }
+
+/* ─── SVG map area ────────────────────────────────────────────── */
+.nw-map-body { flex:1; min-height:0; position:relative; background:#0a0e16; overflow:hidden; }
+#nw-svg { width:100%; height:100%; display:block; }
+
+/* ─── Legend ──────────────────────────────────────────────────── */
+.nw-legend {
+  position:absolute; bottom:32px; left:12px; z-index:5;
+  background:rgba(13,17,23,.9); border:1px solid #30363d;
+  border-radius:8px; padding:6px 10px; font-size:.66rem; color:#8b949e;
+  backdrop-filter:blur(4px); pointer-events:none;
+}
+.nw-legend.light { background:rgba(240,244,248,.92); border-color:#cdd5df; color:#556070; }
+.nw-lgr { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+.nw-lgr:last-child { margin-bottom:0; }
+.nw-lgd { width:7px; height:7px; border-radius:50%; }
+.nw-lgs { height:1px; background:#30363d; margin:4px 0; }
+.nw-legend.light .nw-lgs { background:#cdd5df; }
+
+/* ─── Status bar ──────────────────────────────────────────────── */
+.nw-statusbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:3px 12px; border-top:1px solid #21262d;
+  font-size:.64rem; color:#6e7681; flex-shrink:0;
+}
+.nw-live { display:flex; align-items:center; gap:4px; color:#3fb950; }
+.nw-ldot { width:6px; height:6px; border-radius:50%; background:#3fb950;
+            animation:lp 2s infinite; }
+@keyframes lp { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ─── Tooltip ─────────────────────────────────────────────────── */
+.nw-tip {
+  position:fixed; display:none; z-index:999;
+  background:#0d1117; border:1px solid #30363d;
+  border-radius:10px; padding:9px 13px; color:#c9d1d9;
+  font-size:.79rem; min-width:155px; pointer-events:none;
+  box-shadow:0 6px 24px rgba(0,0,0,.55);
+}
+.nw-tip.light { background:#fff; border-color:#cdd5df; color:#333; }
+.nw-tip-h { font-weight:700; font-size:.86rem; margin-bottom:5px;
+             display:flex; align-items:center; gap:5px; }
+.nw-tip-r { display:flex; justify-content:space-between;
+             padding:2px 0; border-bottom:1px solid #21262d; }
+.nw-tip-r:last-of-type { border:none; }
+.nw-tip-hint { margin-top:5px; font-size:.65rem; color:#6e7681; }
+
+/* ─── Sidebar ─────────────────────────────────────────────────── */
+.nw-sidebar {
+  width:252px; flex-shrink:0; display:flex; flex-direction:column;
+  background:var(--card-bg); border:1px solid var(--border);
+  border-radius:10px; overflow:hidden;
+}
+.nw-sb-hdr {
+  padding:.5rem .75rem; border-bottom:1px solid var(--border);
+  font-size:.76rem; font-weight:600; flex-shrink:0;
+}
+.nw-sb-body { flex:1; overflow-y:auto; padding:.35rem; }
+.nw-sb-item {
+  display:flex; align-items:center; padding:.32rem .45rem;
+  border-radius:6px; cursor:pointer; gap:.42rem; transition:background .1s;
+}
+.nw-sb-item:hover { background:rgba(255,255,255,.05); }
+.nw-sb-flag { font-size:.98rem; line-height:1; }
+.nw-sb-info { flex:1; min-width:0; }
+.nw-sb-name { font-size:.72rem; font-weight:500;
+               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nw-sb-sev  { display:flex; gap:5px; margin-top:1px; }
+.nw-sb-bg   { font-size:.59rem; white-space:nowrap; }
+.nw-sb-cnt  { font-size:.69rem; font-weight:700; padding:.1rem .38rem;
+               border-radius:4px; flex-shrink:0; }
+.nw-sb-bar  { height:3px; background:#21262d; border-radius:2px; margin-top:3px; }
+.nw-sb-fill { height:100%; border-radius:2px; transition:width .4s; }
 </style>
 {% endblock %}
 
 {% block content %}
-
 {% if error %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
   <i class="bi bi-exclamation-triangle-fill"></i><div>{{ error }}</div>
 </div>
 {% endif %}
 
-<div class="geo-page">
+<div class="nw-geo">
 
   <!-- KPIs -->
-  {% set total_crit = countries | sum(attribute='critical') %}
-  <div class="geo-kpis">
-    <div class="kpi-card">
-      <p class="kpi-lbl">Événements géolocalisés</p>
-      <h2 class="kpi-val text-info" id="kpi-total">{{ total_geo }}</h2>
+  {% set tc = countries | sum(attribute='critical') %}
+  <div class="nw-kpis">
+    <div class="nw-kpi">
+      <p class="nw-kpi-lbl">Événements géolocalisés</p>
+      <h2 class="nw-kpi-val text-info" id="kv-total">{{ total_geo }}</h2>
     </div>
-    <div class="kpi-card">
-      <p class="kpi-lbl">Pays sources</p>
-      <h2 class="kpi-val text-primary" id="kpi-countries">{{ unique_countries }}</h2>
+    <div class="nw-kpi">
+      <p class="nw-kpi-lbl">Pays sources</p>
+      <h2 class="nw-kpi-val" style="color:#58a6ff" id="kv-ctries">{{ unique_countries }}</h2>
     </div>
-    <div class="kpi-card">
-      <p class="kpi-lbl">Alertes critiques</p>
-      <h2 class="kpi-val text-danger" id="kpi-critical">{{ total_crit }}</h2>
+    <div class="nw-kpi">
+      <p class="nw-kpi-lbl">Alertes critiques</p>
+      <h2 class="nw-kpi-val text-danger" id="kv-crit">{{ tc }}</h2>
     </div>
-    <div class="kpi-card">
-      <p class="kpi-lbl" id="kpi-top-lbl">Pays #1 menace</p>
-      <h2 class="kpi-val text-warning" id="kpi-top"
-          style="font-size:{% if countries %}1.1rem{% else %}1.75rem{% endif %};">
+    <div class="nw-kpi">
+      <p class="nw-kpi-lbl">Menace #1</p>
+      <h2 class="nw-kpi-val" style="color:#e3b341;{% if countries %}font-size:1rem;{% endif %}" id="kv-top">
         {% if countries %}{{ countries[0].country }}{% else %}—{% endif %}
       </h2>
     </div>
   </div>
 
   <!-- Map + Sidebar -->
-  <div class="geo-main">
+  <div class="nw-main">
 
-    <!-- Map card -->
-    <div class="geo-card">
+    <!-- MAP CARD -->
+    <div class="nw-map-card">
 
-      <!-- Toolbar -->
-      <div class="geo-toolbar">
-        <span class="geo-lbl">Sévérité :</span>
-        <button class="geo-btn active crit" id="btn-crit" onclick="toggleSev('critical',this)">
-          <span class="geo-btn-dot" style="background:#f85149"></span> Critique
+      <!-- Toolbar pill buttons -->
+      <div class="nw-bar">
+        <span class="nw-bar-lbl">Sévérité</span>
+        <button class="nw-pill on c" id="p-crit" onclick="togSev('critical',this)">
+          <span class="nw-dot-ind" style="background:#f85149"></span>Critique
         </button>
-        <button class="geo-btn active med" id="btn-med" onclick="toggleSev('medium',this)">
-          <span class="geo-btn-dot" style="background:#e3b341"></span> Moyen
+        <button class="nw-pill on m" id="p-med"  onclick="togSev('medium',this)">
+          <span class="nw-dot-ind" style="background:#e3b341"></span>Moyen
         </button>
-        <button class="geo-btn active low" id="btn-low" onclick="toggleSev('low',this)">
-          <span class="geo-btn-dot" style="background:#79c0ff"></span> Faible
+        <button class="nw-pill on l" id="p-low"  onclick="togSev('low',this)">
+          <span class="nw-dot-ind" style="background:#79c0ff"></span>Faible
         </button>
-
-        <div class="geo-sep"></div>
-
-        <button class="geo-btn active arc" id="btn-arcs" onclick="toggleArcs(this)">
-          <i class="bi bi-share"></i> Arcs
+        <div class="nw-sep"></div>
+        <button class="nw-pill on a" id="p-arcs" onclick="togArcs(this)">
+          <i class="bi bi-share" style="font-size:.7rem"></i>Arcs
         </button>
-
-        <div class="geo-sep"></div>
-
-        <button class="geo-btn active" id="btn-theme" onclick="toggleTheme()">
-          <i class="bi bi-moon-stars" id="theme-icon"></i>
-          <span id="theme-label">Sombre</span>
-        </button>
-        <button class="geo-btn" onclick="resetView()">
-          <i class="bi bi-arrows-fullscreen"></i> Reset
-        </button>
+        <div class="nw-bar-push">
+          <button class="nw-pill on" id="p-theme" onclick="togTheme()">
+            <i class="bi bi-moon-stars" id="thm-ic" style="font-size:.7rem"></i>
+            <span id="thm-lbl">Sombre</span>
+          </button>
+          <button class="nw-pill" onclick="resetFlash()" title="Reset vue">
+            <i class="bi bi-arrows-fullscreen" style="font-size:.7rem"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Map -->
-      <div class="geo-map-wrap">
-        <div id="nw-map"></div>
+      <!-- SVG map -->
+      <div class="nw-map-body">
+        <svg id="nw-svg" viewBox="0 0 800 400"
+             preserveAspectRatio="xMidYMid slice"
+             xmlns="http://www.w3.org/2000/svg">
 
-        <!-- Légende -->
-        <div class="geo-legend" id="nw-legend">
-          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#f85149"></span> Critique</div>
-          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#e3b341"></span> Moyen</div>
-          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#79c0ff"></span> Faible</div>
-          <div class="geo-legend-sep"></div>
-          <div class="geo-legend-row"><span class="geo-legend-dot" style="background:#3fb950;border:1.5px solid #fff;width:10px;height:10px;"></span> Paris (cible)</div>
-          <div class="geo-legend-row" style="margin-top:4px;font-size:.62rem;color:#6e7681;">
-            Scroll = zoom · Glisser = déplacer
+          <defs>
+            <!-- Per-severity arc gradients (horizontal, WorldMap component style) -->
+            <linearGradient id="gd-c" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-color="#f85149" stop-opacity="0"/>
+              <stop offset="12%"  stop-color="#f85149" stop-opacity=".85"/>
+              <stop offset="88%"  stop-color="#f85149" stop-opacity=".85"/>
+              <stop offset="100%" stop-color="#f85149" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="gd-m" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-color="#e3b341" stop-opacity="0"/>
+              <stop offset="12%"  stop-color="#e3b341" stop-opacity=".85"/>
+              <stop offset="88%"  stop-color="#e3b341" stop-opacity=".85"/>
+              <stop offset="100%" stop-color="#e3b341" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="gd-l" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-color="#79c0ff" stop-opacity="0"/>
+              <stop offset="12%"  stop-color="#79c0ff" stop-opacity=".85"/>
+              <stop offset="88%"  stop-color="#79c0ff" stop-opacity=".85"/>
+              <stop offset="100%" stop-color="#79c0ff" stop-opacity="0"/>
+            </linearGradient>
+            <!-- Dot fade mask (WorldMap top/bottom fade) -->
+            <linearGradient id="mask-y" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%"   stop-color="white" stop-opacity="0"/>
+              <stop offset="10%"  stop-color="white" stop-opacity="1"/>
+              <stop offset="90%"  stop-color="white" stop-opacity="1"/>
+              <stop offset="100%" stop-color="white" stop-opacity="0"/>
+            </linearGradient>
+            <mask id="edge-mask">
+              <rect width="800" height="400" fill="url(#mask-y)"/>
+            </mask>
+            <!-- Glow filters -->
+            <filter id="glow-sm" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="1.5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glow-lg" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Background rectangle -->
+          <rect id="nw-bg" width="800" height="400" fill="#0a0e16"/>
+
+          <!-- Layers (populated by JS in order) -->
+          <g id="lyr-dots"  mask="url(#edge-mask)"></g>
+          <g id="lyr-arcs"></g>
+          <g id="lyr-halos"></g>
+          <g id="lyr-mkrs"></g>
+          <g id="lyr-adots"></g>
+          <g id="lyr-paris"></g>
+        </svg>
+
+        <!-- Floating legend -->
+        <div class="nw-legend" id="nw-legend">
+          <div class="nw-lgr"><span class="nw-lgd" style="background:#f85149"></span> Critique</div>
+          <div class="nw-lgr"><span class="nw-lgd" style="background:#e3b341"></span> Moyen</div>
+          <div class="nw-lgr"><span class="nw-lgd" style="background:#79c0ff"></span> Faible</div>
+          <div class="nw-lgs"></div>
+          <div class="nw-lgr">
+            <span class="nw-lgd" style="background:#3fb950;border:1.5px solid rgba(255,255,255,.35)"></span>
+            Paris (cible)
           </div>
         </div>
       </div>
 
       <!-- Status bar -->
-      <div class="geo-statusbar">
-        <div class="geo-live"><span class="geo-live-dot"></span> Live</div>
-        <span id="geo-update-time">—</span>
-        <span>Actualisation dans <span id="geo-countdown">30</span>s</span>
+      <div class="nw-statusbar">
+        <div class="nw-live"><span class="nw-ldot"></span> Live</div>
+        <span id="nw-ts">—</span>
+        <span>Actualisation dans <span id="nw-cd">30</span>s</span>
       </div>
-    </div>
+    </div><!-- /map card -->
 
-    <!-- Sidebar pays -->
-    <div class="geo-card geo-sidebar">
-      <div class="geo-sidebar-hdr">
+    <!-- SIDEBAR -->
+    <div class="nw-sidebar">
+      <div class="nw-sb-hdr">
         <i class="bi bi-bar-chart-line me-1"></i> Top pays sources
-        <span class="badge bg-secondary ms-1" id="sidebar-count">0</span>
+        <span class="badge bg-secondary ms-1" id="sb-badge">0</span>
       </div>
-      <div class="geo-sidebar-body" id="sidebar-list">
+      <div class="nw-sb-body" id="sb-list">
         <div class="text-secondary text-center mt-4 small">Chargement…</div>
       </div>
     </div>
 
-  </div><!-- /geo-main -->
-</div><!-- /geo-page -->
+  </div><!-- /nw-main -->
+</div><!-- /nw-geo -->
 
-<!-- Data initiale depuis Jinja2 -->
-<script id="geo-init-data" type="application/json">
-{{ countries | tojson }}
-</script>
+<div class="nw-tip" id="nw-tip"></div>
 
-<script src="{{ url_for('static', filename='geo/maplibre-gl.js') }}"></script>
+<!-- Server-side initial data (zero-wait first render) -->
+<script id="geo-data" type="application/json">{{ countries | tojson }}</script>
+
+<script src="{{ url_for('static', filename='geo/d3.min.js') }}"></script>
+<script src="{{ url_for('static', filename='geo/topojson.min.js') }}"></script>
 <script>
 'use strict';
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const PARIS      = [2.3522, 48.8566];
-const C_CRIT     = '#f85149';
-const C_MED      = '#e3b341';
-const C_LOW      = '#79c0ff';
-const C_TARGET   = '#3fb950';
-const EMPTY_FC   = { type:'FeatureCollection', features:[] };
+// ─── SVG viewBox size & projection ────────────────────────────────────────────
+// Exact same projection as the WorldMap React component
+const VW = 800, VH = 400;
+const proj = (lat, lon) => ({
+  x: (lon + 180) * (VW / 360),
+  y: (90 - lat)  * (VH / 180)
+});
+const PARIS_PT = proj(48.8566, 2.3522);
 
-const CARTO_STYLES = {
-  dark : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
-};
+// ─── Severity colors ──────────────────────────────────────────────────────────
+const CC = '#f85149', CM = '#e3b341', CL = '#79c0ff', CT = '#3fb950';
+const GRADS = { critical:'gd-c', medium:'gd-m', low:'gd-l' };
 
-// ─── État global ──────────────────────────────────────────────────────────────
-let MAP       = null;
-let THEME     = 'dark';
-let ARCS_ON   = true;
-let SEV_FILTER= { critical:true, medium:true, low:true };
-let GEO_DATA  = [];
-let TOTAL_GEO = 0;
-let ARC_PATHS = {};   // iso → [[lng,lat],…]
-let DOT_PHASE = {};   // iso → float offset 0-1
-let DOT_MKRS  = {};   // iso → maplibregl.Marker
-let PARIS_MKR = null;
-let ANIM_ID   = null;
-let COUNTDOWN = 30;
-let CDN_TIMER = null;
-
-// ─── Géométrie ────────────────────────────────────────────────────────────────
-function greatCircle(from, to, n=80) {
-  const R = Math.PI/180;
-  const [ln1,lt1] = [from[0]*R, from[1]*R];
-  const [ln2,lt2] = [to[0]*R,   to[1]*R  ];
-  const d = 2*Math.asin(Math.sqrt(
-    Math.sin((lt2-lt1)/2)**2 + Math.cos(lt1)*Math.cos(lt2)*Math.sin((ln2-ln1)/2)**2
-  ));
-  if (d < 1e-4) return [from, to];
-  const pts = [];
-  for (let i=0; i<=n; i++) {
-    const t=i/n, A=Math.sin((1-t)*d)/Math.sin(d), B=Math.sin(t*d)/Math.sin(d);
-    const x=A*Math.cos(lt1)*Math.cos(ln1)+B*Math.cos(lt2)*Math.cos(ln2);
-    const y=A*Math.cos(lt1)*Math.sin(ln1)+B*Math.cos(lt2)*Math.sin(ln2);
-    const z=A*Math.sin(lt1)+B*Math.sin(lt2);
-    pts.push([Math.atan2(y,x)/R, Math.atan2(z,Math.sqrt(x*x+y*y))/R]);
-  }
-  return pts;
-}
-
-function pathAt(pts, t) {
-  t = Math.max(0,Math.min(1,t));
-  const idx=(pts.length-1)*t, i=Math.floor(idx), f=idx-i;
-  if (i>=pts.length-1) return pts[pts.length-1];
-  return [pts[i][0]+(pts[i+1][0]-pts[i][0])*f, pts[i][1]+(pts[i+1][1]-pts[i][1])*f];
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function sevLabel(d) {
-  return d.critical>0?'critical': d.medium>0?'medium':'low';
-}
-function sevColor(d) {
-  return d.critical>0?C_CRIT: d.medium>0?C_MED:C_LOW;
-}
+function sevKey(d)   { return d.critical > 0 ? 'critical' : d.medium > 0 ? 'medium' : 'low'; }
+function sevColor(d) { return d.critical > 0 ? CC : d.medium > 0 ? CM : CL; }
 function flag(iso) {
-  if (!iso||iso.length!==2) return '🌐';
-  return [...iso.toUpperCase()].map(c=>String.fromCodePoint(0x1F1E6+c.charCodeAt(0)-65)).join('');
+  if (!iso || iso.length !== 2) return '🌐';
+  return [...iso.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('');
 }
-function numFmt(n) { return n!=null?n.toLocaleString('fr-FR'):'—'; }
+function fmt(n) { return n != null ? (+n).toLocaleString('fr-FR') : '—'; }
 
-// ─── GeoJSON builders ─────────────────────────────────────────────────────────
-function buildArcs(data) {
-  ARC_PATHS = {};
+// ─── State ────────────────────────────────────────────────────────────────────
+let GEO_DATA = [], TOTAL_GEO = {{ total_geo }};
+let SEV = { critical: true, medium: true, low: true };
+let ARCS_ON = true, DARK = true;
+let ANIM_DOTS = [];
+let _cd = 30, _cdTimer = null;
+
+// ─── SVG element factory ──────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs = {}) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+// ─── Layer references ─────────────────────────────────────────────────────────
+const lDots   = document.getElementById('lyr-dots');
+const lArcs   = document.getElementById('lyr-arcs');
+const lHalos  = document.getElementById('lyr-halos');
+const lMkrs   = document.getElementById('lyr-mkrs');
+const lADots  = document.getElementById('lyr-adots');
+const lParis  = document.getElementById('lyr-paris');
+
+// ─── Bezier arc geometry ──────────────────────────────────────────────────────
+function ctrlPt(p0, p2) {
+  return { x: (p0.x + p2.x) / 2, y: Math.min(p0.y, p2.y) - 55 };
+}
+function arcD(p0, p2) {
+  const c = ctrlPt(p0, p2);
+  return `M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} Q ${c.x.toFixed(1)} ${c.y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+}
+function bezierAt(p0, cp, p2, t) {
+  const mt = 1 - t;
   return {
-    type:'FeatureCollection',
-    features: data.filter(d=>SEV_FILTER[sevLabel(d)]).map(d=>{
-      const coords = greatCircle([d.lon,d.lat], PARIS);
-      ARC_PATHS[d.iso] = coords;
-      return {
-        type:'Feature',
-        properties:{ iso:d.iso, color:sevColor(d), sev:sevLabel(d) },
-        geometry:{ type:'LineString', coordinates:coords }
-      };
-    })
+    x: mt * mt * p0.x + 2 * mt * t * cp.x + t * t * p2.x,
+    y: mt * mt * p0.y + 2 * mt * t * cp.y + t * t * p2.y
   };
 }
 
-function buildCircles(data) {
-  return {
-    type:'FeatureCollection',
-    features: data.filter(d=>SEV_FILTER[sevLabel(d)]).map(d=>({
-      type:'Feature',
-      properties:{
-        iso:d.iso, country:d.country,
-        count:d.count, critical:d.critical, medium:d.medium, low:d.low,
-        color:sevColor(d), sev:sevLabel(d)
-      },
-      geometry:{ type:'Point', coordinates:[d.lon,d.lat] }
-    }))
-  };
-}
+// ─── Dotted world map (WorldMap component technique) ─────────────────────────
+async function buildDottedMap() {
+  try {
+    const world    = await d3.json('/static/geo/countries-110m.json');
+    const features = topojson.feature(world, world.objects.countries);
 
-// ─── Couches MapLibre ─────────────────────────────────────────────────────────
-const LAYER_DEFS = [
-  // Arcs (glow)
-  {
-    id:'arcs-glow', type:'line', source:'arcs',
-    layout:{'line-join':'round','line-cap':'round'},
-    paint:{'line-color':['get','color'],'line-width':4,'line-opacity':0.12,'line-blur':3}
-  },
-  // Arcs principaux
-  {
-    id:'arcs', type:'line', source:'arcs',
-    layout:{'line-join':'round','line-cap':'round'},
-    paint:{'line-color':['get','color'],'line-width':1.3,'line-opacity':0.65,
-           'line-dasharray':[3,4]}
-  },
-  // Cercles pays (halo)
-  {
-    id:'circles-halo', type:'circle', source:'circles',
-    paint:{
-      'circle-radius':['interpolate',['linear'],['get','count'],1,10,100,22,500,30],
-      'circle-color':['get','color'],
-      'circle-opacity':0.12, 'circle-stroke-width':0
-    }
-  },
-  // Cercles pays
-  {
-    id:'circles', type:'circle', source:'circles',
-    paint:{
-      'circle-radius':['interpolate',['linear'],['get','count'],1,6,100,14,500,22],
-      'circle-color':['get','color'],
-      'circle-opacity':0.9,
-      'circle-stroke-color':'rgba(255,255,255,0.5)',
-      'circle-stroke-width':1.5
-    }
-  },
-];
+    // Render countries to off-screen canvas to identify land pixels
+    const canvas = Object.assign(document.createElement('canvas'), { width: VW, height: VH });
+    const ctx    = canvas.getContext('2d');
 
-function initLayers() {
-  // Sources
-  if (!MAP.getSource('arcs')) {
-    MAP.addSource('arcs',    {type:'geojson', data:EMPTY_FC});
-    MAP.addSource('circles', {type:'geojson', data:EMPTY_FC});
-  }
-  // Couches
-  for (const def of LAYER_DEFS) {
-    if (!MAP.getLayer(def.id)) MAP.addLayer({...def});
-  }
-  // Paris marker (une seule fois)
-  if (!PARIS_MKR) {
-    const el = document.createElement('div');
-    el.className = 'paris-wrap';
-    el.innerHTML = '<div class="paris-pulse"></div><div class="paris-dot"></div>';
-    PARIS_MKR = new maplibregl.Marker({element:el, anchor:'center'})
-      .setLngLat(PARIS).addTo(MAP);
-  }
-  // Events
-  attachEvents();
-  // Render si on a des données
-  if (GEO_DATA.length) renderMap(GEO_DATA, TOTAL_GEO);
-}
+    // D3 equirectangular matching our manual proj: scale=400/π, translate=[VW/2,VH/2]
+    const d3proj = d3.geoEquirectangular().scale(400 / Math.PI).translate([VW / 2, VH / 2]);
+    const pathFn = d3.geoPath().projection(d3proj).context(ctx);
 
-function attachEvents() {
-  const popup = new maplibregl.Popup({closeButton:false, closeOnClick:false, offset:12});
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
+    ctx.fillStyle = '#fff';
+    features.features.forEach(f => { ctx.beginPath(); pathFn(f); ctx.fill(); });
 
-  MAP.off('mouseenter','circles', onEnterCircle);
-  MAP.off('mouseleave','circles', onLeaveCircle);
-  MAP.off('click',     'circles', onClickCircle);
+    const img = ctx.getImageData(0, 0, VW, VH).data;
 
-  MAP.on('mouseenter','circles', onEnterCircle);
-  MAP.on('mouseleave','circles', onLeaveCircle);
-  MAP.on('click',     'circles', onClickCircle);
-
-  function onEnterCircle(e) {
-    MAP.getCanvas().style.cursor='pointer';
-    const p = e.features[0].properties;
-    popup.setLngLat(e.lngLat)
-      .setHTML(`
-        <div class="nw-popup-country">${flag(p.iso)} ${p.country}</div>
-        <div class="nw-popup-row"><span style="color:${C_CRIT}">● Critique</span><b>${numFmt(p.critical)}</b></div>
-        <div class="nw-popup-row"><span style="color:${C_MED}">● Moyen</span><b>${numFmt(p.medium)}</b></div>
-        <div class="nw-popup-row"><span style="color:${C_LOW}">● Faible</span><b>${numFmt(p.low)}</b></div>
-        <div class="nw-popup-hint"><i class="bi bi-box-arrow-up-right me-1"></i>Cliquer pour les alertes</div>
-      `)
-      .addTo(MAP);
-  }
-  function onLeaveCircle() {
-    MAP.getCanvas().style.cursor='';
-    popup.remove();
-  }
-  function onClickCircle(e) {
-    const country = e.features[0].properties.country;
-    window.location.href='/alerts?q='+encodeURIComponent(country);
-  }
-}
-
-// ─── Init carte ───────────────────────────────────────────────────────────────
-function initMap() {
-  MAP = new maplibregl.Map({
-    container:'nw-map',
-    style: CARTO_STYLES[THEME],
-    center:[20,25], zoom:1.5,
-    attributionControl:{compact:true}
-  });
-  MAP.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
-
-  // Premier chargement
-  MAP.once('load', initLayers);
-
-  // Re-init après changement de thème (setStyle vide tout)
-  MAP.on('style.load', ()=>{
-    // Ne pas appeler au premier load (already handled by `once`)
-    if (_styleLoaded) initLayers();
-    _styleLoaded = true;
-  });
-}
-let _styleLoaded = false;
-
-// ─── Rendu données ────────────────────────────────────────────────────────────
-function renderMap(data, total) {
-  if (!MAP || !MAP.isStyleLoaded()) return;
-
-  const arcs    = buildArcs(data);
-  const circles = buildCircles(data);
-
-  if (MAP.getSource('arcs'))    MAP.getSource('arcs').setData(arcs);
-  if (MAP.getSource('circles')) MAP.getSource('circles').setData(circles);
-
-  // Visibilité arcs
-  const arcVis = ARCS_ON ? 'visible' : 'none';
-  ['arcs','arcs-glow'].forEach(id=> {
-    if (MAP.getLayer(id)) MAP.setLayoutProperty(id,'visibility',arcVis);
-  });
-
-  // Dots animés
-  syncDots(data);
-
-  // KPIs
-  const crit    = data.reduce((s,d)=>s+d.critical,0);
-  const top     = data[0];
-  document.getElementById('kpi-total').textContent    = numFmt(total||TOTAL_GEO);
-  document.getElementById('kpi-countries').textContent= data.length;
-  document.getElementById('kpi-critical').textContent = numFmt(crit);
-  document.getElementById('hdr-total').textContent    = numFmt(total||TOTAL_GEO);
-  document.getElementById('hdr-countries').textContent= data.length;
-  if (top) {
-    document.getElementById('kpi-top').innerHTML = flag(top.iso)+' '+top.country;
-    document.getElementById('kpi-top').style.fontSize='1.05rem';
-  }
-
-  // Timestamp
-  const now = new Date();
-  document.getElementById('geo-update-time').textContent =
-    now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
-  // Sidebar
-  renderSidebar(data);
-}
-
-// ─── Dots animés ─────────────────────────────────────────────────────────────
-function syncDots(data) {
-  const visible = new Set(
-    data.filter(d=>SEV_FILTER[sevLabel(d)]&&ARCS_ON).map(d=>d.iso)
-  );
-
-  // Supprimer les pays absents
-  for (const iso of Object.keys(DOT_MKRS)) {
-    if (!visible.has(iso)) {
-      DOT_MKRS[iso].remove();
-      delete DOT_MKRS[iso];
-      delete DOT_PHASE[iso];
-    }
-  }
-  // Ajouter les nouveaux
-  for (const d of data) {
-    if (!visible.has(d.iso)) {
-      // Masquer les dots filtrés
-      if (DOT_MKRS[d.iso]) {
-        DOT_MKRS[d.iso].getElement().style.opacity='0';
+    // Diagonal dot grid (same grid style as dotted-map library)
+    const SP = 7;   // spacing between dots in px
+    const frag = document.createDocumentFragment();
+    for (let row = 0; row * SP < VH; row++) {
+      const y  = row * SP + SP / 2;
+      const xo = (row % 2) * (SP / 2);   // diagonal stagger
+      for (let col = 0; col * SP < VW; col++) {
+        const x  = col * SP + xo + SP / 2;
+        if (x >= VW) continue;
+        const px = Math.min(Math.round(x), VW - 1);
+        const py = Math.min(Math.round(y), VH - 1);
+        if (img[(py * VW + px) * 4] > 128) {  // land pixel
+          frag.appendChild(svgEl('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: '1.7' }));
+        }
       }
-      continue;
     }
-    if (!DOT_MKRS[d.iso]) {
-      const el = document.createElement('div');
-      el.className = 'atk-dot';
-      el.style.cssText = `background:${sevColor(d)};color:${sevColor(d)}`;
-      DOT_MKRS[d.iso] = new maplibregl.Marker({element:el,anchor:'center'})
-        .setLngLat([d.lon,d.lat]).addTo(MAP);
-      DOT_PHASE[d.iso] = Math.random();
-    } else {
-      DOT_MKRS[d.iso].getElement().style.opacity='1';
-    }
+    lDots.setAttribute('fill', DARK ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.2)');
+    lDots.appendChild(frag);
+  } catch (e) {
+    console.warn('[Geomap] dots:', e);
   }
 }
 
-function animateDots() {
-  const t = (Date.now()/4000) % 1;
-  for (const [iso, mkr] of Object.entries(DOT_MKRS)) {
-    const path = ARC_PATHS[iso];
-    if (!path||path.length<2) continue;
-    const phase = ((t + (DOT_PHASE[iso]||0)) % 1);
-    mkr.setLngLat(pathAt(path, phase));
-  }
-  ANIM_ID = requestAnimationFrame(animateDots);
+// ─── Paris target ─────────────────────────────────────────────────────────────
+function buildParis() {
+  lParis.innerHTML = '';
+  const { x, y } = PARIS_PT;
+
+  // Expanding rings (two offset rings like WorldMap pulsing circles)
+  [[20, '3s', '0s'], [14, '3s', '1.2s']].forEach(([maxR, dur, begin]) => {
+    const ring = svgEl('circle', { cx: x, cy: y, r: '3', fill: CT, opacity: '.5' });
+    ring.innerHTML = `
+      <animate attributeName="r" from="3" to="${maxR}" dur="${dur}" begin="${begin}" repeatCount="indefinite"/>
+      <animate attributeName="opacity" from="0.5" to="0" dur="${dur}" begin="${begin}" repeatCount="indefinite"/>`;
+    lParis.appendChild(ring);
+  });
+
+  // Solid center dot
+  lParis.appendChild(svgEl('circle', { cx: x, cy: y, r: '4', fill: CT, filter: 'url(#glow-sm)' }));
+  lParis.appendChild(svgEl('circle', { cx: x, cy: y, r: '2.2', fill: '#fff', opacity: '.9' }));
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── Render attack arcs + markers ─────────────────────────────────────────────
+function renderAttacks(data) {
+  lArcs.innerHTML = '';
+  lHalos.innerHTML = '';
+  lMkrs.innerHTML  = '';
+  lADots.innerHTML = '';
+  ANIM_DOTS = [];
+
+  const visible = data.filter(d => SEV[sevKey(d)]);
+  const STAGGER = 250; // ms between arc draw starts
+
+  visible.forEach((d, i) => {
+    const p0    = proj(d.lat, d.lon);
+    const cp_   = ctrlPt(p0, PARIS_PT);
+    const color = sevColor(d);
+    const grad  = GRADS[sevKey(d)];
+    const phaseOff = (i * 0.37 + Math.random() * 0.2) % 1;
+
+    // ── Arcs ──────────────────────────────────────────────────────
+    if (ARCS_ON) {
+      // Glow arc (wide, blurred backdrop)
+      lArcs.appendChild(svgEl('path', {
+        d: arcD(p0, PARIS_PT), fill: 'none',
+        stroke: color, 'stroke-width': '4', 'stroke-opacity': '.1',
+        filter: 'url(#glow-lg)'
+      }));
+
+      // Main arc with gradient
+      const arcPath = svgEl('path', {
+        d: arcD(p0, PARIS_PT), fill: 'none',
+        stroke: `url(#${grad})`, 'stroke-width': '1.4',
+        'stroke-linecap': 'round'
+      });
+      lArcs.appendChild(arcPath);
+
+      // Draw-on animation via stroke-dashoffset
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const len = arcPath.getTotalLength();
+        arcPath.style.strokeDasharray  = len;
+        arcPath.style.strokeDashoffset = len;
+        arcPath.animate(
+          [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+          { duration: 1400, delay: i * STAGGER, easing: 'ease-in-out', fill: 'forwards' }
+        );
+      }));
+
+      // Moving attack dot
+      const dotEl = svgEl('circle', {
+        cx: p0.x, cy: p0.y, r: '3.5', fill: color,
+        opacity: '0', filter: 'url(#glow-sm)'
+      });
+      lADots.appendChild(dotEl);
+      ANIM_DOTS.push({ el: dotEl, p0, cp: cp_, p2: PARIS_PT, phase: phaseOff, speed: 3200 + (i % 4) * 400 });
+    }
+
+    // ── Pulsing halo (WorldMap source circle effect) ───────────────
+    const maxR = Math.max(8, Math.min(22, 6 + Math.log1p(d.count) * 2.2));
+    const halo = svgEl('circle', { cx: p0.x, cy: p0.y, r: '3', fill: color, opacity: '.35' });
+    halo.innerHTML = `
+      <animate attributeName="r" from="3" to="${maxR}" dur="2.5s" begin="${(i * 0.35) % 2}s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" from="0.4" to="0" dur="2.5s" begin="${(i * 0.35) % 2}s" repeatCount="indefinite"/>`;
+    lHalos.appendChild(halo);
+
+    // ── Country circle marker ──────────────────────────────────────
+    const r = Math.max(5, Math.min(18, 5 + Math.log1p(d.count) * 2.5));
+    const cir = svgEl('circle', {
+      cx: p0.x, cy: p0.y, r,
+      fill: color, 'stroke': 'rgba(255,255,255,0.35)', 'stroke-width': '1.2',
+      cursor: 'pointer', filter: 'url(#glow-sm)'
+    });
+    // Store data attrs for tooltip
+    Object.assign(cir.dataset, {
+      iso: d.iso, country: d.country,
+      count: d.count, crit: d.critical, med: d.medium, low: d.low, color
+    });
+    cir.addEventListener('mouseenter', onEnter);
+    cir.addEventListener('mouseleave', onLeave);
+    cir.addEventListener('mousemove',  onMove);
+    cir.addEventListener('click', () => { window.location = '/alerts?q=' + encodeURIComponent(d.country); });
+    lMkrs.appendChild(cir);
+  });
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+const tip = document.getElementById('nw-tip');
+
+function onEnter(e) {
+  const d = e.currentTarget.dataset;
+  tip.innerHTML = `
+    <div class="nw-tip-h">${flag(d.iso)} ${d.country}</div>
+    <div class="nw-tip-r"><span style="color:${CC}">● Critique</span><b>${fmt(d.crit)}</b></div>
+    <div class="nw-tip-r"><span style="color:${CM}">● Moyen</span><b>${fmt(d.med)}</b></div>
+    <div class="nw-tip-r"><span style="color:${CL}">● Faible</span><b>${fmt(d.low)}</b></div>
+    <div class="nw-tip-hint"><i class="bi bi-box-arrow-up-right me-1"></i>Cliquer pour les alertes</div>`;
+  tip.className = DARK ? 'nw-tip' : 'nw-tip light';
+  tip.style.display = 'block';
+  positionTip(e);
+}
+function onLeave()  { tip.style.display = 'none'; }
+function onMove(e)  { positionTip(e); }
+function positionTip(e) {
+  const x = e.clientX + 15, y = e.clientY - 10;
+  tip.style.left = (x + 170 > window.innerWidth  ? x - 185 : x) + 'px';
+  tip.style.top  = (y + 150 > window.innerHeight ? y - 165 : y) + 'px';
+}
+
+// ─── Animation loop (dot travel along bezier arc) ─────────────────────────────
+function animLoop(ts) {
+  for (const d of ANIM_DOTS) {
+    const t     = ((ts / d.speed) + d.phase) % 1;
+    const pos   = bezierAt(d.p0, d.cp, d.p2, t);
+    const alpha = t < 0.07 ? t / 0.07 : t > 0.88 ? (1 - t) / 0.12 : 1;
+    d.el.setAttribute('cx', pos.x.toFixed(1));
+    d.el.setAttribute('cy', pos.y.toFixed(1));
+    d.el.setAttribute('opacity', (alpha * 0.95).toFixed(2));
+  }
+  requestAnimationFrame(animLoop);
+}
+
+// ─── KPIs + sidebar ───────────────────────────────────────────────────────────
+function updateKPIs(data, total) {
+  const crit = data.reduce((s, d) => s + d.critical, 0);
+  const top  = data[0];
+  document.getElementById('kv-total').textContent   = fmt(total);
+  document.getElementById('kv-ctries').textContent  = data.length;
+  document.getElementById('kv-crit').textContent    = fmt(crit);
+  document.getElementById('hdr-total').textContent  = fmt(total);
+  document.getElementById('hdr-countries').textContent = data.length;
+  if (top) {
+    document.getElementById('kv-top').textContent = flag(top.iso) + ' ' + top.country;
+    document.getElementById('kv-top').style.fontSize = '1rem';
+  }
+  document.getElementById('nw-ts').textContent =
+    new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 function renderSidebar(data) {
-  const el = document.getElementById('sidebar-list');
-  const cnt = document.getElementById('sidebar-count');
-  cnt.textContent = data.length;
-
+  const el = document.getElementById('sb-list');
+  document.getElementById('sb-badge').textContent = data.length;
   if (!data.length) {
-    el.innerHTML='<div class="text-secondary text-center mt-4 small">Aucune donnée géolocalisée</div>';
+    el.innerHTML = '<div class="text-secondary text-center mt-4 small">Aucune donnée géolocalisée</div>';
     return;
   }
-
-  const maxCount = data[0]?.count||1;
-  el.innerHTML = data.slice(0,25).map(d=>{
+  const max = data[0]?.count || 1;
+  el.innerHTML = data.slice(0, 25).map(d => {
     const color = sevColor(d);
-    const pct   = Math.round((d.count/maxCount)*100);
-    const bages = [];
-    if (d.critical) bages.push(`<span class="ctry-badge" style="color:${C_CRIT}">⬤ ${d.critical}</span>`);
-    if (d.medium)   bages.push(`<span class="ctry-badge" style="color:${C_MED}">⬤ ${d.medium}</span>`);
-    if (d.low)      bages.push(`<span class="ctry-badge" style="color:${C_LOW}">⬤ ${d.low}</span>`);
+    const pct   = Math.round((d.count / max) * 100);
+    const bgs   = [];
+    if (d.critical) bgs.push(`<span class="nw-sb-bg" style="color:${CC}">⬤ ${d.critical}</span>`);
+    if (d.medium)   bgs.push(`<span class="nw-sb-bg" style="color:${CM}">⬤ ${d.medium}</span>`);
+    if (d.low)      bgs.push(`<span class="nw-sb-bg" style="color:${CL}">⬤ ${d.low}</span>`);
     return `
-      <div class="ctry-item" data-lon="${d.lon}" data-lat="${d.lat}" onclick="flyTo(${d.lon},${d.lat})">
-        <span class="ctry-flag">${flag(d.iso)}</span>
-        <div class="ctry-info">
-          <div class="ctry-name">${d.country}</div>
-          <div class="ctry-sev">${bages.join('')}</div>
-          <div class="ctry-bar"><div class="ctry-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="nw-sb-item" onclick="highlightCountry('${d.country}')">
+        <span class="nw-sb-flag">${flag(d.iso)}</span>
+        <div class="nw-sb-info">
+          <div class="nw-sb-name">${d.country}</div>
+          <div class="nw-sb-sev">${bgs.join('')}</div>
+          <div class="nw-sb-bar"><div class="nw-sb-fill" style="width:${pct}%;background:${color}"></div></div>
         </div>
-        <span class="ctry-count" style="background:${color}22;color:${color}">${numFmt(d.count)}</span>
+        <span class="nw-sb-cnt" style="background:${color}22;color:${color}">${fmt(d.count)}</span>
       </div>`;
   }).join('');
 }
 
-// ─── Contrôles ────────────────────────────────────────────────────────────────
-function toggleSev(sev, btn) {
-  SEV_FILTER[sev] = !SEV_FILTER[sev];
-  btn.classList.toggle('active', SEV_FILTER[sev]);
-  renderMap(GEO_DATA, TOTAL_GEO);
+function highlightCountry(name) {
+  // Flash the corresponding circle
+  const circles = lMkrs.querySelectorAll('circle');
+  for (const c of circles) {
+    if (c.dataset.country === name) {
+      c.animate([{ r: c.getAttribute('r') }, { r: +c.getAttribute('r') + 5 }, { r: c.getAttribute('r') }],
+                { duration: 600, easing: 'ease-out' });
+    }
+  }
 }
 
-function toggleArcs(btn) {
+// ─── Controls ─────────────────────────────────────────────────────────────────
+function togSev(sev, btn) {
+  SEV[sev] = !SEV[sev];
+  btn.classList.toggle('on', SEV[sev]);
+  renderAttacks(GEO_DATA);
+}
+
+function togArcs(btn) {
   ARCS_ON = !ARCS_ON;
-  btn.classList.toggle('active', ARCS_ON);
-  renderMap(GEO_DATA, TOTAL_GEO);
+  btn.classList.toggle('on', ARCS_ON);
+  renderAttacks(GEO_DATA);
 }
 
-function toggleTheme() {
-  THEME = THEME==='dark'?'light':'dark';
-  const isDark = THEME==='dark';
-  document.getElementById('theme-icon').className = isDark?'bi bi-moon-stars':'bi bi-sun';
-  document.getElementById('theme-label').textContent = isDark?'Sombre':'Clair';
-  document.getElementById('btn-theme').classList.toggle('active', true);
-  document.getElementById('nw-legend').classList.toggle('light', !isDark);
-  if (MAP) MAP.setStyle(CARTO_STYLES[THEME]);
+function togTheme() {
+  DARK = !DARK;
+  document.getElementById('nw-bg').setAttribute('fill', DARK ? '#0a0e16' : '#f0f4f8');
+  lDots.setAttribute('fill', DARK ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.2)');
+  document.getElementById('nw-legend').className = DARK ? 'nw-legend' : 'nw-legend light';
+  document.getElementById('thm-ic').className    = DARK ? 'bi bi-moon-stars' : 'bi bi-sun';
+  document.getElementById('thm-lbl').textContent  = DARK ? 'Sombre' : 'Clair';
+  document.getElementById('p-theme').classList.toggle('on', DARK);
 }
 
-function resetView() {
-  if (MAP) MAP.flyTo({center:[20,25],zoom:1.5,duration:900});
+function resetFlash() {
+  const svg = document.getElementById('nw-svg');
+  svg.style.transition = 'opacity .15s';
+  svg.style.opacity    = '.5';
+  setTimeout(() => { svg.style.opacity = '1'; }, 180);
 }
 
-function flyTo(lon, lat) {
-  if (MAP) MAP.flyTo({center:[lon,lat],zoom:4,duration:1000});
+// ─── Data fetch ───────────────────────────────────────────────────────────────
+function renderAll(data, total) {
+  GEO_DATA  = data;
+  TOTAL_GEO = total;
+  renderAttacks(data);
+  updateKPIs(data, total);
+  renderSidebar(data);
+  buildParis();
 }
 
-// ─── Chargement données ───────────────────────────────────────────────────────
-async function loadGeoData() {
+async function fetchGeo() {
   try {
     const r = await fetch('/api/geo');
-    if (!r.ok) throw new Error(r.statusText);
-    const json = await r.json();
-    const countries = json.countries || [];
-    const total_geo = json.total || json.total_geo || 0;
-    GEO_DATA  = countries;
-    TOTAL_GEO = total_geo;
-    renderMap(countries, total_geo);
-  } catch(e) {
-    console.error('[NetWatch Geomap] fetch error:', e);
+    const j = await r.json();
+    renderAll(j.countries || [], j.total || j.total_geo || 0);
+  } catch (e) {
+    console.error('[Geomap] fetch:', e);
   }
 }
 
 // ─── Countdown ────────────────────────────────────────────────────────────────
 function startCountdown() {
-  COUNTDOWN = 30;
-  if (CDN_TIMER) clearInterval(CDN_TIMER);
-  CDN_TIMER = setInterval(()=>{
-    COUNTDOWN--;
-    const el = document.getElementById('geo-countdown');
-    if (el) el.textContent = COUNTDOWN;
-    if (COUNTDOWN<=0) {
-      COUNTDOWN=30;
-      loadGeoData();
-    }
-  },1000);
+  _cd = 30;
+  if (_cdTimer) clearInterval(_cdTimer);
+  _cdTimer = setInterval(() => {
+    document.getElementById('nw-cd').textContent = --_cd;
+    if (_cd <= 0) { _cd = 30; fetchGeo(); }
+  }, 1000);
 }
 
-// ─── Bootstrap ───────────────────────────────────────────────────────────────
-// Données initiales depuis Jinja2 (zéro requête au premier affichage)
-try {
-  const raw = JSON.parse(document.getElementById('geo-init-data').textContent);
-  GEO_DATA  = raw;
-  TOTAL_GEO = {{ total_geo }};
-} catch(e) {}
+// ─── Bootstrap ────────────────────────────────────────────────────────────────
+(async () => {
+  // Load initial Jinja2 data instantly (no wait)
+  try {
+    GEO_DATA  = JSON.parse(document.getElementById('geo-data').textContent);
+  } catch (e) {}
 
-initMap();
-animateDots();
-startCountdown();
-// Premier fetch async pour confirmer/actualiser les données
-loadGeoData();
+  // Start animation loop
+  requestAnimationFrame(animLoop);
+
+  // Generate dotted world map (async D3 canvas)
+  buildDottedMap();
+
+  // Render initial data
+  renderAll(GEO_DATA, TOTAL_GEO);
+
+  // Fetch fresh from ES
+  fetchGeo();
+
+  // Start 30s countdown
+  startCountdown();
+})();
 </script>
 {% endblock %}
