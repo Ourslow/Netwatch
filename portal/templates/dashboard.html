@@ -122,9 +122,9 @@
     <span><i class="bi bi-shield-exclamation me-2 text-danger"></i><span data-i18n="dash_last_alerts">Dernières alertes IDS</span></span>
     <div class="d-flex align-items-center gap-2">
       {% if alert_stats %}
-        <span class="badge bg-danger">{{ alert_stats.critical }} <span data-i18n="sev_critical">Critique</span></span>
-        <span class="badge bg-warning text-dark">{{ alert_stats.medium }} <span data-i18n="sev_medium">Moyen</span></span>
-        <span class="text-muted small">24h : {{ alert_stats.last_24h }}</span>
+        <span class="badge bg-danger"><span id="dash-crit">{{ alert_stats.critical }}</span> <span data-i18n="sev_critical">Critique</span></span>
+        <span class="badge bg-warning text-dark"><span id="dash-med">{{ alert_stats.medium }}</span> <span data-i18n="sev_medium">Moyen</span></span>
+        <span class="text-muted small">24h : <span id="dash-24h">{{ alert_stats.last_24h }}</span></span>
       {% endif %}
       <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_see_all">Voir tout</a>
     </div>
@@ -249,4 +249,37 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var crit = document.getElementById('dash-crit');
+  var med  = document.getElementById('dash-med');
+  var h24  = document.getElementById('dash-24h');
+  if (!crit) return;
+
+  function animVal(el, next) {
+    if (parseInt(el.textContent, 10) === next) return;
+    el.textContent = next;
+    el.classList.remove('val-pulse');
+    void el.offsetWidth;
+    el.classList.add('val-pulse');
+  }
+
+  function poll() {
+    fetch('/api/stats')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if (!d || d.error) return;
+        animVal(crit, d.critical);
+        animVal(med,  d.medium);
+        animVal(h24,  d.last_24h);
+      })
+      .catch(function(){});
+  }
+
+  setInterval(poll, 30000);
+})();
+</script>
 {% endblock %}

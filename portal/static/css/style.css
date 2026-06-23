@@ -908,6 +908,93 @@ code {
 @keyframes shimmer { to { transform: translateX(100%); } }
 .skeleton-line { height: .72rem; margin-bottom: .55rem; }
 
+/* ── Palette de commandes Ctrl+K ── */
+.cmd-trigger {
+  display: flex; align-items: center; gap: .45rem;
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: var(--r-pill); padding: .28rem .75rem;
+  color: var(--text-dim); font-size: .78rem; cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+  white-space: nowrap;
+}
+.cmd-trigger:hover { border-color: var(--accent-line); color: var(--text-muted); }
+.cmd-trigger i { font-size: .85rem; }
+.cmd-trigger-hint { font-size: .65rem; opacity: .55; letter-spacing: .03em; }
+
+.cmd-overlay {
+  position: fixed; inset: 0; z-index: 1090;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 12vh;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--t-fast);
+}
+.cmd-overlay.cmd-open { opacity: 1; pointer-events: auto; }
+
+.cmd-modal {
+  width: 100%; max-width: 560px;
+  background: var(--bg-elev-2); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); overflow: hidden;
+  box-shadow: 0 24px 60px -12px rgba(0,0,0,.6);
+  transform: translateY(-10px);
+  transition: transform var(--t-fast);
+}
+.cmd-overlay.cmd-open .cmd-modal { transform: translateY(0); }
+
+.cmd-input-wrap {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .8rem 1rem; border-bottom: 1px solid var(--border);
+}
+.cmd-input-wrap > i { color: var(--text-muted); font-size: 1rem; flex-shrink: 0; }
+.cmd-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text-strong); font-size: .95rem; font-family: var(--font-ui);
+}
+.cmd-input::placeholder { color: var(--text-dim); }
+.cmd-esc-hint {
+  font-size: .62rem; color: var(--text-dim);
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 4px; padding: .12rem .4rem;
+}
+
+.cmd-list { max-height: 340px; overflow-y: auto; padding: .35rem 0; }
+
+.cmd-section-label {
+  padding: .4rem 1rem .15rem;
+  font-size: .65rem; font-weight: 600; letter-spacing: .07em;
+  color: var(--text-dim); text-transform: uppercase;
+}
+.cmd-item {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .5rem 1rem; cursor: pointer;
+  transition: background var(--t-fast);
+}
+.cmd-item:hover, .cmd-item.cmd-active { background: var(--accent-soft); }
+.cmd-item.cmd-active .cmd-item-label { color: var(--accent-bright); }
+.cmd-item-icon {
+  width: 28px; height: 28px; border-radius: var(--r-sm);
+  background: var(--bg-inset); border: 1px solid var(--border);
+  display: grid; place-items: center; flex-shrink: 0;
+  font-size: .82rem; color: var(--text-muted);
+}
+.cmd-item.cmd-active .cmd-item-icon { border-color: var(--accent-line); color: var(--accent); }
+.cmd-item-label { flex: 1; font-size: .88rem; color: var(--text); }
+.cmd-item-hint  { font-size: .72rem; color: var(--text-dim); }
+
+.cmd-empty {
+  padding: 2.5rem 1rem; text-align: center;
+  color: var(--text-dim); font-size: .85rem;
+}
+.cmd-footer {
+  border-top: 1px solid var(--border); padding: .4rem 1rem;
+  display: flex; gap: 1.2rem; font-size: .67rem; color: var(--text-dim);
+}
+.cmd-footer kbd {
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 3px; padding: .08rem .32rem; font-size: .64rem;
+  color: var(--text-muted); font-family: var(--font-mono);
+}
+
 /* Toasts */
 .nw-toast {
   background: var(--bg-elev-2);

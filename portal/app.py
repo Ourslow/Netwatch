@@ -813,6 +813,16 @@ def alerts_export_csv():
     return resp
 
 
+@app.route("/api/stats")
+@login_required
+def api_stats():
+    """Agrégats pour le polling live du dashboard."""
+    stats, err = es_client.get_alert_stats()
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify(stats)
+
+
 @app.route("/api/alerts/series")
 @login_required
 def api_alerts_series():
