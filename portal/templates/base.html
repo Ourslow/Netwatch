@@ -43,6 +43,7 @@
         <a href="{{ url_for('alerts') }}"
            class="nav-link {% if request.endpoint in ['alerts', 'alerts_export_csv'] %}active{% endif %}">
           <i class="bi bi-shield-exclamation"></i> <span data-i18n="nav_alerts">Alertes IDS</span>
+          <span class="nav-alert-badge" id="nav-alert-badge" style="display:none"></span>
         </a>
       </li>
       <li class="nav-item">
@@ -289,6 +290,28 @@
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
   });
+})();
+
+// ── Badge alertes critiques dans le nav ──
+(function () {
+  var badge = document.getElementById('nav-alert-badge');
+  if (!badge) return;
+  function updateBadge() {
+    fetch('/api/stats')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || d.error) return;
+        if (d.critical > 0) {
+          badge.textContent = d.critical > 99 ? '99+' : d.critical;
+          badge.style.display = '';
+        } else {
+          badge.style.display = 'none';
+        }
+      })
+      .catch(function () {});
+  }
+  updateBadge();
+  setInterval(updateBadge, 60000);
 })();
 </script>
 </body>

@@ -257,6 +257,23 @@ hr { border-color: var(--border); opacity: 1; }
   box-shadow: 0 0 10px -1px var(--accent-glow);
 }
 
+/* Badge d'alerte dans le nav */
+.nav-alert-badge {
+  margin-left: auto;
+  background: var(--crit);
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: var(--r-pill);
+  display: grid;
+  place-items: center;
+  padding: 0 .3rem;
+  line-height: 1;
+  box-shadow: 0 0 8px -2px rgba(255,77,94,.6);
+}
+
 .sidebar-footer {
   font-size: .72rem;
   color: var(--text-dim);
