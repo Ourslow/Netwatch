@@ -10,6 +10,12 @@
 @load policy/protocols/ssl/expiring-certs
 @load policy/protocols/ssl/validate-certs
 
+# Community ID (RFC draft) — corrèle conn.log Zeek avec alertes Suricata/Snort
+@load policy/protocols/conn/community-id-logging
+
+# Packages zkg installés : ja3, hassh
+@load packages
+
 # Scripts custom NetWatch
 @load ./scripts/port-scan-detect.zeek
 @load ./scripts/dns-entropy.zeek

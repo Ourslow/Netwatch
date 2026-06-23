@@ -166,9 +166,7 @@
           <th style="width:130px" data-i18n="col_source">Source</th>
           <th style="width:130px" data-i18n="col_destination">Destination</th>
           <th>MITRE</th>
-          <th style="width:54px" class="text-center" title="Explication par l'assistant IA local">
-            <i class="bi bi-stars" style="color:var(--accent)"></i>
-          </th>
+          <th style="width:80px" class="text-center">Actions</th>
         </tr>
       </thead>
       <tbody id="alerts-tbody">
@@ -218,12 +216,21 @@
               {% endif %}
             </td>
             <td class="text-center">
-              <button type="button" class="btn-ai-icon explain-btn"
-                      aria-label="Expliquer cette alerte par l'IA"
-                      title="Expliquer cette alerte (assistant IA local)"
-                      data-alert='{{ a | tojson | forceescape }}'>
-                <i class="bi bi-stars"></i>
-              </button>
+              <div class="d-flex gap-1 justify-content-center">
+                <button type="button" class="btn-ai-icon explain-btn"
+                        aria-label="Expliquer cette alerte par l'IA"
+                        title="Expliquer (IA locale)"
+                        data-alert='{{ a | tojson | forceescape }}'>
+                  <i class="bi bi-stars"></i>
+                </button>
+                {% if a.engine == 'suricata' and a.community_id %}
+                <button type="button" class="btn-ai-icon correlate-btn"
+                        title="Corréler avec Zeek (Community ID)"
+                        data-cid="{{ a.community_id }}">
+                  <i class="bi bi-link-45deg"></i>
+                </button>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -283,6 +290,27 @@
           <i class="bi bi-shield-lock"></i><span data-i18n="modal_privacy">Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur</span>
         </span>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" data-i18n="modal_close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal corrélation Community ID -->
+<div class="modal fade" id="correlateModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-link-45deg me-2" style="color:var(--accent)"></i>Corrélation multi-moteurs
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="correlate-modal-body"></div>
+      <div class="modal-footer">
+        <span class="text-muted small me-auto">
+          <i class="bi bi-diagram-2 me-1"></i>Zeek conn.log × Suricata EVE JSON via Community ID
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
       </div>
     </div>
   </div>
@@ -362,12 +390,14 @@ function refreshAlerts() {
           <td class="fw-mono small">${a.dest_ip}</td>
           <td>${mitreBadge(a)}</td>
           <td class="text-center">
-            <button type="button" class="btn-ai-icon explain-btn"
-                    aria-label="Expliquer cette alerte par l'IA"
-                    title="Expliquer cette alerte (assistant IA local)"
-                    data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
-              <i class="bi bi-stars"></i>
-            </button>
+            <div class="d-flex gap-1 justify-content-center">
+              <button type="button" class="btn-ai-icon explain-btn"
+                      title="Expliquer (IA locale)"
+                      data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
+                <i class="bi bi-stars"></i>
+              </button>
+              ${a.engine === 'suricata' && a.community_id ? `<button type="button" class="btn-ai-icon correlate-btn" title="Corréler avec Zeek (Community ID)" data-cid="${a.community_id}"><i class="bi bi-link-45deg"></i></button>` : ''}
+            </div>
           </td>
         </tr>
       `).join('');
@@ -441,6 +471,121 @@ document.addEventListener('click', (e) => {
       explainBody.innerHTML = `
         <div class="alert alert-danger mb-0">
           <i class="bi bi-x-circle-fill me-2"></i>Impossible de contacter l'assistant IA
+        </div>`;
+    });
+});
+
+/* ---- Corrélation Community ID ---- */
+const correlateModalEl = document.getElementById('correlateModal');
+const correlateModal   = new bootstrap.Modal(correlateModalEl);
+const correlateBody    = document.getElementById('correlate-modal-body');
+
+const CONN_STATES = {
+  SF:'Connexion établie et fermée normalement', S0:'SYN sans réponse',
+  S1:'Connexion établie, non fermée', REJ:'Connexion refusée (RST)',
+  RSTO:'RST par l\'originateur', RSTR:'RST par le répondeur',
+  OTH:'Paquet intermédiaire sans SYN', S2:'SYN+SYN/ACK sans ACK final',
+};
+
+function fmtBytes(b) {
+  if (!b) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.correlate-btn');
+  if (!btn) return;
+  const cid = btn.dataset.cid;
+
+  correlateBody.innerHTML = `
+    <div class="text-center py-3">
+      <span class="spinner-border spinner-border-sm me-2" style="color:var(--accent)"></span>
+      <span class="text-muted">Recherche dans Zeek et IDS…</span>
+    </div>`;
+  correlateModal.show();
+
+  fetch(`/api/correlate/${encodeURIComponent(cid)}`)
+    .then(r => r.json())
+    .then(data => {
+      let html = `
+        <div class="mb-3">
+          <span class="badge bg-dark border fw-mono" style="font-size:.7rem;color:var(--accent)">
+            <i class="bi bi-fingerprint me-1"></i>${data.community_id}
+          </span>
+        </div>`;
+
+      if (data.zeek_flow) {
+        const f = data.zeek_flow;
+        const dur = f.duration != null ? f.duration.toFixed(3) + ' s' : '—';
+        const state = f.conn_state || '—';
+        html += `
+          <h6 class="text-muted mb-2"><i class="bi bi-diagram-2 me-2"></i>Flux réseau — Zeek conn.log</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-borderless mb-0" style="font-size:.85rem">
+              <tr>
+                <td class="text-muted" style="width:110px">Flux</td>
+                <td class="fw-mono">${f.src_ip}<span class="text-muted">:${f.src_port}</span>
+                  <i class="bi bi-arrow-right mx-2 text-muted" style="font-size:.7rem"></i>
+                  ${f.dst_ip}<span class="text-muted">:${f.dst_port}</span></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Protocole</td>
+                <td>
+                  <span class="badge bg-dark border">${(f.proto||'').toUpperCase()}</span>
+                  ${f.service && f.service !== '—' ? `<span class="badge bg-dark border ms-1">${f.service}</span>` : ''}
+                </td>
+              </tr>
+              <tr><td class="text-muted">Durée</td><td class="fw-mono">${dur}</td></tr>
+              <tr>
+                <td class="text-muted">Trafic</td>
+                <td class="fw-mono small">
+                  <i class="bi bi-arrow-up text-warning" style="font-size:.7rem"></i> ${fmtBytes(f.orig_bytes)} (${f.orig_pkts||0} pkt)
+                  &nbsp;
+                  <i class="bi bi-arrow-down text-info" style="font-size:.7rem"></i> ${fmtBytes(f.resp_bytes)} (${f.resp_pkts||0} pkt)
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted">État</td>
+                <td>
+                  <span class="badge bg-dark border fw-mono">${state}</span>
+                  ${CONN_STATES[state] ? `<small class="text-muted ms-2">${CONN_STATES[state]}</small>` : ''}
+                </td>
+              </tr>
+            </table>
+          </div>`;
+      } else {
+        html += `
+          <div class="alert alert-secondary mb-3 small">
+            <i class="bi bi-info-circle me-2"></i>Aucun flux Zeek trouvé pour ce Community ID.
+            Vérifiez que <code>policy/protocols/conn/community-id-logging</code> est chargé dans Zeek et que le conteneur a été rebuild.
+          </div>`;
+      }
+
+      if (data.alerts && data.alerts.length > 0) {
+        html += `<h6 class="text-muted mb-2"><i class="bi bi-shield-exclamation me-2"></i>Alertes IDS sur ce flux (${data.alerts.length})</h6>`;
+        html += data.alerts.map(a => `
+          <div class="d-flex align-items-start gap-2 mb-2 p-2 rounded" style="background:var(--bg-surface);border:1px solid var(--border)">
+            ${a.engine === 'suricata' ? '<span class="badge engine-suricata">Suricata</span>' : '<span class="badge engine-snort">Snort</span>'}
+            ${a.severity === 1 ? '<span class="sev sev-crit">Critique</span>' : a.severity === 2 ? '<span class="sev sev-med">Moyen</span>' : '<span class="sev sev-low">Faible</span>'}
+            <div class="small">
+              <div class="fw-medium">${a.signature}</div>
+              ${a.mitre_tactic ? `<div class="text-muted">${a.mitre_tactic}${a.mitre_tech ? ' · ' + a.mitre_tech : ''}</div>` : ''}
+            </div>
+          </div>`).join('');
+      }
+
+      if (data.error) {
+        html += `<div class="alert alert-warning small mb-0 mt-2"><i class="bi bi-exclamation-triangle me-1"></i>${data.error}</div>`;
+      }
+
+      correlateBody.innerHTML = html;
+    })
+    .catch(() => {
+      correlateBody.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-x-circle-fill me-2"></i>Erreur lors de la requête de corrélation
         </div>`;
     });
 });

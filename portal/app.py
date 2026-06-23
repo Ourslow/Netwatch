@@ -866,6 +866,20 @@ def api_stats():
     return jsonify(stats)
 
 
+@app.route("/api/correlate/<path:community_id>")
+@login_required
+def api_correlate(community_id):
+    """Retourne le flux Zeek + alertes IDS corrélés par Community ID."""
+    flow, err1   = es_client.get_zeek_flow_by_community_id(community_id)
+    alerts, err2 = es_client.get_alerts_by_community_id(community_id)
+    return jsonify({
+        "community_id": community_id,
+        "zeek_flow":    flow,
+        "alerts":       alerts,
+        "error":        err1 or err2,
+    })
+
+
 @app.route("/api/alerts/series")
 @login_required
 def api_alerts_series():

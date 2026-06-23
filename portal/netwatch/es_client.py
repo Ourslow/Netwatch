@@ -65,6 +65,7 @@ def _normalize(hit):
             "severity":     int(alert.get("severity", 3)),
             "mitre_tactic": tactic,
             "mitre_tech":   tech,
+            "community_id": src.get("community_id"),
         }
     else:  # snort alert_json
         return {
@@ -77,6 +78,7 @@ def _normalize(hit):
             "severity":     int(src.get("priority", 3)),
             "mitre_tactic": None,
             "mitre_tech":   None,
+            "community_id": None,
         }
 
 
@@ -149,7 +151,7 @@ def get_recent_alerts(size=100, engine=None, severity=None, search=None):
             "@timestamp", "timestamp",
             "src_ip", "dest_ip", "src_addr", "dst_addr",
             "alert", "msg", "class", "priority", "sid",
-            "event_type",
+            "event_type", "community_id",
         ],
     }
 
@@ -162,6 +164,84 @@ def get_recent_alerts(size=100, engine=None, severity=None, search=None):
         return [], "Elasticsearch non joignable — vérifier NETWATCH_ES_URL"
     except requests.exceptions.Timeout:
         return [], f"Elasticsearch timeout (> {_TIMEOUT}s)"
+    except Exception as e:
+        return [], str(e)[:120]
+
+
+def get_zeek_flow_by_community_id(community_id):
+    """
+    Retourne le flux Zeek conn.log correspondant à un Community ID.
+    Retourne (flow: dict|None, error: str|None).
+    """
+    body = {
+        "size": 1,
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "query": {"term": {"community_id": community_id}},
+        "_source": [
+            "@timestamp", "ts", "id",
+            "proto", "service", "duration",
+            "orig_bytes", "resp_bytes", "orig_pkts", "resp_pkts",
+            "conn_state",
+        ],
+    }
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        hits = r.json().get("hits", {}).get("hits", [])
+        if not hits:
+            return None, None
+        src = hits[0]["_source"]
+        id_ = src.get("id", {})
+        return {
+            "timestamp":  src.get("@timestamp", src.get("ts", "")),
+            "src_ip":     id_.get("orig_h", "—"),
+            "src_port":   id_.get("orig_p", "—"),
+            "dst_ip":     id_.get("resp_h", "—"),
+            "dst_port":   id_.get("resp_p", "—"),
+            "proto":      src.get("proto", "—"),
+            "service":    src.get("service") or "—",
+            "duration":   src.get("duration"),
+            "orig_bytes": src.get("orig_bytes", 0),
+            "resp_bytes": src.get("resp_bytes", 0),
+            "orig_pkts":  src.get("orig_pkts", 0),
+            "resp_pkts":  src.get("resp_pkts", 0),
+            "conn_state": src.get("conn_state", "—"),
+        }, None
+    except requests.exceptions.ConnectionError:
+        return None, "Elasticsearch non joignable"
+    except Exception as e:
+        return None, str(e)[:120]
+
+
+def get_alerts_by_community_id(community_id):
+    """
+    Retourne toutes les alertes IDS (Suricata + Snort) partageant ce Community ID.
+    Retourne (alerts: list, error: str|None).
+    """
+    body = {
+        "size": 10,
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "query": {
+            "bool": {
+                "must": [{"term": {"community_id": community_id}}],
+                "should": [
+                    {"term": {"event_type": "alert"}},
+                    {"exists": {"field": "rule"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "_source": [
+            "@timestamp", "src_ip", "dest_ip",
+            "alert", "msg", "class", "priority",
+            "event_type", "community_id",
+        ],
+    }
+    try:
+        r = _es("/suricata-*,snort-*/_search", body)
+        r.raise_for_status()
+        hits = r.json().get("hits", {}).get("hits", [])
+        return [_normalize(h) for h in hits], None
     except Exception as e:
         return [], str(e)[:120]
 
