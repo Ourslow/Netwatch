@@ -17,7 +17,10 @@ Structure normalisée :
   }
 """
 
+import re
 import requests
+from datetime import datetime, timezone
+
 import config
 
 _TIMEOUT = 5
@@ -565,3 +568,167 @@ def get_alert_stats():
         return None, "Elasticsearch non joignable"
     except Exception as e:
         return None, str(e)[:80]
+
+
+# ------------------------------------------------------------------ #
+# Zeek logs enrichis — weird / files / x509                           #
+# ------------------------------------------------------------------ #
+
+_SUSPICIOUS_MIMES = {
+    "application/x-dosexec":       "Exécutable Windows",
+    "application/x-msdownload":    "Exécutable Windows",
+    "application/x-msdos-program": "Exécutable DOS/Windows",
+    "application/x-executable":    "Exécutable Linux",
+    "application/x-elf":           "Binaire ELF Linux",
+    "application/x-sh":            "Script Shell",
+    "application/x-shellscript":   "Script Shell",
+    "text/x-shellscript":          "Script Shell",
+    "application/javascript":      "Script JavaScript",
+    "application/x-javascript":    "Script JavaScript",
+    "application/x-python":        "Script Python",
+    "application/x-perl":          "Script Perl",
+}
+
+
+def get_tls_certs(size=50):
+    """
+    Certificats TLS vus sur le réseau (x509.log Zeek).
+    Retourne (certs: list, error: str|None).
+    """
+    body = {
+        "size": size,
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "query": {"term": {"_path": "x509"}},
+        "_source": [
+            "@timestamp", "certificate",
+        ],
+    }
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        hits = r.json().get("hits", {}).get("hits", [])
+        now  = datetime.now(timezone.utc)
+        results = []
+        for h in hits:
+            src  = h["_source"]
+            cert = src.get("certificate", {})
+            subject  = cert.get("subject", "")
+            issuer   = cert.get("issuer",  "")
+            not_after_raw = cert.get("not_valid_after")
+
+            cn_m = re.search(r"CN=([^,/]+)", subject)
+            cn   = cn_m.group(1) if cn_m else subject[:50] or "—"
+
+            expiry_str = None
+            expired = expiring_soon = False
+            if not_after_raw:
+                try:
+                    expiry = datetime.fromtimestamp(float(not_after_raw), tz=timezone.utc)
+                    expiry_str = expiry.strftime("%Y-%m-%d")
+                    delta = (expiry - now).days
+                    expired      = delta < 0
+                    expiring_soon = 0 <= delta < 30
+                except (ValueError, OSError):
+                    pass
+
+            results.append({
+                "timestamp":    src.get("@timestamp", ""),
+                "cn":           cn,
+                "subject":      subject,
+                "issuer":       issuer,
+                "not_after":    expiry_str,
+                "key_type":     cert.get("key_type", "—"),
+                "key_length":   cert.get("key_length"),
+                "self_signed":  bool(subject and subject == issuer),
+                "expired":      expired,
+                "expiring_soon": expiring_soon,
+            })
+        return results, None
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:120]
+
+
+def get_suspicious_files(size=50):
+    """
+    Fichiers aux MIME types suspects transférés sur le réseau (files.log Zeek).
+    Retourne (files: list, error: str|None).
+    """
+    body = {
+        "size": size,
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "query": {
+            "bool": {
+                "must": [{"term": {"_path": "files"}}],
+                "should": [{"term": {"mime_type": m}} for m in _SUSPICIOUS_MIMES],
+                "minimum_should_match": 1,
+            }
+        },
+        "_source": [
+            "@timestamp", "mime_type", "filename",
+            "seen_bytes", "tx_hosts", "rx_hosts", "source", "md5", "sha1",
+        ],
+    }
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        hits = r.json().get("hits", {}).get("hits", [])
+        results = []
+        for h in hits:
+            src  = h["_source"]
+            mime = src.get("mime_type", "—")
+            tx   = src.get("tx_hosts", [])
+            rx   = src.get("rx_hosts", [])
+            results.append({
+                "timestamp": src.get("@timestamp", ""),
+                "mime_type": mime,
+                "mime_label": _SUSPICIOUS_MIMES.get(mime, mime),
+                "filename":  src.get("filename") or "—",
+                "size":      src.get("seen_bytes", 0),
+                "md5":       src.get("md5") or "—",
+                "sha1":      src.get("sha1") or "—",
+                "src":       (tx[0] if isinstance(tx, list) and tx else str(tx or "—")),
+                "dst":       (rx[0] if isinstance(rx, list) and rx else str(rx or "—")),
+                "source":    src.get("source", "—"),
+            })
+        return results, None
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:120]
+
+
+def get_weird_events(size=50):
+    """
+    Violations et anomalies protocolaires (weird.log Zeek).
+    Retourne (events: list, error: str|None).
+    """
+    body = {
+        "size": size,
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "query": {"term": {"_path": "weird"}},
+        "_source": ["@timestamp", "name", "addl", "id"],
+    }
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        hits = r.json().get("hits", {}).get("hits", [])
+        results = []
+        for h in hits:
+            src = h["_source"]
+            id_ = src.get("id", {})
+            results.append({
+                "timestamp": src.get("@timestamp", ""),
+                "name":      src.get("name", "—"),
+                "addl":      src.get("addl") or "—",
+                "src_ip":    id_.get("orig_h", "—"),
+                "dst_ip":    id_.get("resp_h", "—"),
+                "src_port":  id_.get("orig_p", ""),
+                "dst_port":  id_.get("resp_p", ""),
+            })
+        return results, None
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:120]

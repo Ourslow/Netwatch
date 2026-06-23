@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}Analyse Zeek — NetWatch Portal{% endblock %}
+{% block page_title %}Analyse Zeek{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small">weird · files · x509</span>
+<span class="badge bg-dark border text-muted">
+  <i class="bi bi-arrow-repeat me-1"></i>live Zeek
+</span>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>{{ error }}</div>
+</div>
+{% endif %}
+
+<!-- Stats header -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label mb-1">Certs expirés</p>
+        <h2 class="stat-value {% if expired_count %}text-danger{% else %}text-success{% endif %}">
+          {{ expired_count }}
+        </h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label mb-1">Auto-signés</p>
+        <h2 class="stat-value {% if selfsig_count %}text-warning{% else %}text-success{% endif %}">
+          {{ selfsig_count }}
+        </h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label mb-1">Fichiers suspects</p>
+        <h2 class="stat-value {% if suspicious_count %}text-warning{% else %}text-success{% endif %}">
+          {{ suspicious_count }}
+        </h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card text-center">
+      <div class="card-body py-3">
+        <p class="stat-label mb-1">Anomalies protocole</p>
+        <h2 class="stat-value text-info">{{ weird_count }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     SECTION 1 — Certificats TLS (x509.log)
+     ==================================================== -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-shield-lock" style="color:var(--accent)"></i>
+    <span class="fw-medium">Certificats TLS vus sur le réseau</span>
+    <span class="badge bg-dark border text-muted ms-auto">x509.log · {{ certs | length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:130px">Horodatage</th>
+          <th>CN / Subject</th>
+          <th>Émetteur (CA)</th>
+          <th style="width:110px">Expiration</th>
+          <th style="width:110px">Clé</th>
+          <th style="width:120px">Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if certs %}
+          {% for c in certs %}
+          <tr class="{% if c.expired %}alert-row-crit{% elif c.self_signed or c.expiring_soon %}alert-row-med{% endif %}">
+            <td class="text-muted fw-mono small">
+              {{ c.timestamp[:19] | replace('T', ' ') if c.timestamp else '—' }}
+            </td>
+            <td class="small">
+              <span class="fw-medium">{{ c.cn }}</span>
+              {% if c.subject and c.subject != c.cn %}
+                <br><small class="text-muted" style="font-size:.7rem">{{ c.subject[:60] }}{% if c.subject | length > 60 %}…{% endif %}</small>
+              {% endif %}
+            </td>
+            <td class="small text-muted">
+              {{ c.issuer[:60] if c.issuer else '—' }}{% if c.issuer and c.issuer | length > 60 %}…{% endif %}
+            </td>
+            <td class="fw-mono small">{{ c.not_after or '—' }}</td>
+            <td class="small text-muted">
+              {% if c.key_type and c.key_length %}
+                {{ c.key_type | upper }} {{ c.key_length }}b
+              {% elif c.key_type %}
+                {{ c.key_type | upper }}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if c.expired %}
+                <span class="sev sev-crit">Expiré</span>
+              {% elif c.self_signed %}
+                <span class="sev sev-med">Auto-signé</span>
+              {% elif c.expiring_soon %}
+                <span class="sev sev-med">Expire bientôt</span>
+              {% else %}
+                <span class="sev sev-low" style="color:var(--success,#4ade80)">OK</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-state">
+              <i class="bi bi-shield-lock empty-icon"></i>
+              Aucun certificat TLS — assurez-vous que <code>base/files/x509</code> est chargé et que Zeek a capturé du trafic TLS
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ====================================================
+     SECTION 2 — Fichiers suspects (files.log)
+     ==================================================== -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-file-earmark-code" style="color:var(--warn,#f59e0b)"></i>
+    <span class="fw-medium">Fichiers suspects transférés</span>
+    <small class="text-muted">(exécutables, scripts)</small>
+    <span class="badge bg-dark border text-muted ms-auto">files.log · {{ files | length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:130px">Horodatage</th>
+          <th style="width:170px">Type MIME</th>
+          <th>Fichier</th>
+          <th style="width:90px">Taille</th>
+          <th style="width:130px">Source</th>
+          <th style="width:130px">Dest</th>
+          <th style="width:70px">Proto</th>
+          <th style="width:110px">MD5</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if files %}
+          {% for f in files %}
+          <tr class="alert-row-med">
+            <td class="text-muted fw-mono small">
+              {{ f.timestamp[:19] | replace('T', ' ') if f.timestamp else '—' }}
+            </td>
+            <td>
+              <span class="badge bg-dark border small">
+                {% if 'exe' in f.mime_type or 'dosexec' in f.mime_type or 'msdownload' in f.mime_type %}
+                  <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                {% elif 'shell' in f.mime_type or 'script' in f.mime_type or f.mime_type in ['application/x-sh', 'text/x-shellscript'] %}
+                  <i class="bi bi-terminal-fill text-warning me-1"></i>
+                {% else %}
+                  <i class="bi bi-code-slash text-info me-1"></i>
+                {% endif %}
+                {{ f.mime_label }}
+              </span>
+            </td>
+            <td class="fw-mono small">{{ f.filename }}</td>
+            <td class="text-muted small">
+              {% if f.size %}
+                {% if f.size < 1024 %}{{ f.size }} B
+                {% elif f.size < 1048576 %}{{ (f.size / 1024) | round(1) }} KB
+                {% else %}{{ (f.size / 1048576) | round(1) }} MB
+                {% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td class="fw-mono small">{{ f.src }}</td>
+            <td class="fw-mono small">{{ f.dst }}</td>
+            <td class="text-muted small">{{ f.source }}</td>
+            <td class="fw-mono small text-muted">
+              {% if f.md5 != '—' %}{{ f.md5[:8] }}…{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="empty-state">
+              <i class="bi bi-file-earmark-check empty-icon"></i>
+              Aucun fichier suspect détecté — le trafic analysé ne contient pas de transferts d'exécutables ou de scripts
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ====================================================
+     SECTION 3 — Anomalies protocolaires (weird.log)
+     ==================================================== -->
+<div class="card">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-bug" style="color:var(--accent)"></i>
+    <span class="fw-medium">Anomalies protocolaires</span>
+    <small class="text-muted">(violations de protocole, comportements inattendus)</small>
+    <span class="badge bg-dark border text-muted ms-auto">weird.log · {{ weirds | length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th style="width:130px">Horodatage</th>
+          <th>Anomalie</th>
+          <th>Détail</th>
+          <th style="width:130px">Source</th>
+          <th style="width:130px">Dest</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if weirds %}
+          {% for w in weirds %}
+          <tr>
+            <td class="text-muted fw-mono small">
+              {{ w.timestamp[:19] | replace('T', ' ') if w.timestamp else '—' }}
+            </td>
+            <td class="fw-mono small fw-medium" style="color:var(--accent)">{{ w.name }}</td>
+            <td class="small text-muted">{{ w.addl if w.addl != '—' else '' }}</td>
+            <td class="fw-mono small">
+              {{ w.src_ip }}{% if w.src_port %}<span class="text-muted">:{{ w.src_port }}</span>{% endif %}
+            </td>
+            <td class="fw-mono small">
+              {{ w.dst_ip }}{% if w.dst_port %}<span class="text-muted">:{{ w.dst_port }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="empty-state">
+              <i class="bi bi-check-circle empty-icon"></i>
+              Aucune anomalie protocolaire — trafic conforme aux spécifications
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

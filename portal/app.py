@@ -890,6 +890,24 @@ def api_alerts_series():
     return jsonify(series)
 
 
+@app.route("/zeek")
+@login_required
+def zeek_logs():
+    certs,  err1 = es_client.get_tls_certs()
+    files,  err2 = es_client.get_suspicious_files()
+    weirds, err3 = es_client.get_weird_events()
+    error = err1 or err2 or err3
+    return render_template("zeek.html",
+                           certs=certs,
+                           files=files,
+                           weirds=weirds,
+                           expired_count=sum(1 for c in certs if c["expired"]),
+                           selfsig_count=sum(1 for c in certs if c["self_signed"]),
+                           suspicious_count=len(files),
+                           weird_count=len(weirds),
+                           error=error)
+
+
 @app.route("/geomap")
 @login_required
 def geomap():
