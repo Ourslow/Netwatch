@@ -14,6 +14,7 @@ from flask_login import (LoginManager, UserMixin,
 
 import config
 from proxmox import client as px_client
+from esxi   import client as esxi_client
 from netwatch import health as nw_health
 from netwatch import es_client
 from netwatch import llm_client
@@ -369,9 +370,19 @@ def load_catalog():
 def get_proxmox():
     """Retourne un client Proxmox, ou None si non configuré / non joignable."""
     if not config.PROXMOX_HOST:
-        return None          # déploiement ESXi/standalone : pas de tentative (évite un hang de 5s)
+        return None
     try:
         return px_client.get_client()
+    except Exception:
+        return None
+
+
+def get_esxi():
+    """Retourne (host, session_id) ESXi, ou None si non configuré / non joignable."""
+    if not config.ESXI_HOST:
+        return None
+    try:
+        return esxi_client.get_session()
     except Exception:
         return None
 
@@ -515,13 +526,29 @@ def dashboard():
 
 @app.route("/vms")
 @login_required
-@proxmox_required
-def vms(px):
-    try:
-        vm_list = px_client.list_vms(px)
-    except Exception as e:
-        flash(f"Impossible de récupérer les VMs : {e}", "danger")
-        vm_list = []
+def vms():
+    vm_list = []
+    px = get_proxmox()
+    if px:
+        try:
+            vm_list.extend(px_client.list_vms(px))
+        except Exception as e:
+            flash(f"Proxmox : impossible de lister les VMs — {e}", "warning")
+
+    esxi = get_esxi()
+    if esxi:
+        try:
+            host, session_id = esxi
+            vm_list.extend(esxi_client.list_vms(host, session_id))
+        except Exception as e:
+            flash(f"ESXi : impossible de lister les VMs — {e}", "warning")
+
+    if not px and not esxi:
+        if not config.PROXMOX_HOST and not config.ESXI_HOST:
+            flash("Aucun hyperviseur configuré — renseigner PROXMOX_HOST ou ESXI_HOST dans .env", "info")
+        else:
+            flash("Hyperviseur(s) non joignables — vérifier les credentials dans .env", "danger")
+
     return render_template("vms.html", vms=vm_list)
 
 
@@ -546,6 +573,22 @@ def vm_delete(px, vmid):
         flash(f"VM {vmid} supprimée", "success")
     except Exception as e:
         flash(f"Erreur suppression : {e}", "danger")
+    return redirect(url_for("vms"))
+
+
+@app.route("/vms/esxi/<vm_id>/<action>", methods=["POST"])
+@login_required
+def esxi_vm_action(vm_id, action):
+    esxi = get_esxi()
+    if not esxi:
+        flash("ESXi non joignable", "danger")
+        return redirect(url_for("vms"))
+    host, session_id = esxi
+    try:
+        esxi_client.vm_action(host, session_id, vm_id, action)
+        flash(f"Action '{action}' envoyée à {vm_id}", "success")
+    except Exception as e:
+        flash(f"Erreur ESXi : {e}", "danger")
     return redirect(url_for("vms"))
 
 
@@ -934,13 +977,23 @@ def compliance():
 @app.route("/api/vms")
 @login_required
 def api_vms():
+    vm_list = []
     px = get_proxmox()
-    if not px:
-        return jsonify({"error": "Proxmox non joignable"}), 503
-    try:
-        return jsonify(px_client.list_vms(px))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    if px:
+        try:
+            vm_list.extend(px_client.list_vms(px))
+        except Exception:
+            pass
+    esxi = get_esxi()
+    if esxi:
+        try:
+            host, session_id = esxi
+            vm_list.extend(esxi_client.list_vms(host, session_id))
+        except Exception:
+            pass
+    if not vm_list and not px and not esxi:
+        return jsonify({"error": "Aucun hyperviseur joignable"}), 503
+    return jsonify(vm_list)
 
 
 @app.route("/api/catalog")

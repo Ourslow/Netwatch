@@ -34,14 +34,15 @@ def list_vms(px):
     result = []
     for vm in sorted(vms, key=lambda v: v["vmid"]):
         result.append({
-            "vmid":    vm["vmid"],
-            "name":    vm.get("name", f"vm-{vm['vmid']}"),
-            "status":  vm["status"],
-            "cpu":     vm.get("cpu", 0),
-            "maxmem":  vm.get("maxmem", 0),
-            "mem":     vm.get("mem", 0),
-            "uptime":  vm.get("uptime", 0),
-            "tags":    vm.get("tags", ""),
+            "vmid":       vm["vmid"],
+            "name":       vm.get("name", f"vm-{vm['vmid']}"),
+            "status":     vm["status"],
+            "cpu":        vm.get("cpu", 0),
+            "maxmem":     vm.get("maxmem", 0),
+            "mem":        vm.get("mem", 0),
+            "uptime":     vm.get("uptime", 0),
+            "tags":       vm.get("tags", ""),
+            "hypervisor": "proxmox",
         })
     return result
 

@@ -4,6 +4,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROXMOX_HOST     = os.getenv("PROXMOX_HOST", "")
+ESXI_HOST        = os.getenv("ESXI_HOST",   "")
+ESXI_USER        = os.getenv("ESXI_USER",   "root")
+ESXI_PASSWORD    = os.getenv("ESXI_PASSWORD", "")
+ESXI_VERIFY_SSL  = os.getenv("ESXI_VERIFY_SSL", "false").lower() == "true"
+
+# Garder pour rétro-compatibilité (la vraie var est PROXMOX_HOST)
+
 PROXMOX_USER     = os.getenv("PROXMOX_USER", "root@pam")
 PROXMOX_PASSWORD = os.getenv("PROXMOX_PASSWORD", "")
 PROXMOX_NODE     = os.getenv("PROXMOX_NODE", "pve")
