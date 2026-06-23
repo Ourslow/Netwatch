@@ -282,7 +282,7 @@ hr { border-color: var(--border); opacity: 1; }
   letter-spacing: -.2px;
 }
 
-.content-area { max-width: 1500px; }
+.content-area { max-width: var(--content-max); }
 
 /* Puce « live » réutilisable */
 .live-pill {
@@ -614,9 +614,11 @@ hr { border-color: var(--border); opacity: 1; }
   --bs-table-hover-color: var(--text-strong);
 }
 
-/* Accent sévérité en bord de ligne */
-.alert-row-critical td:first-child { box-shadow: inset 3px 0 0 var(--crit); }
-.alert-row-medium   td:first-child { box-shadow: inset 3px 0 0 var(--med); }
+/* Accent sévérité en bord de ligne (long + court car incidents.html utilise crit/med/low) */
+.alert-row-critical td:first-child,
+.alert-row-crit     td:first-child { box-shadow: inset 3px 0 0 var(--crit); }
+.alert-row-medium   td:first-child,
+.alert-row-med      td:first-child { box-shadow: inset 3px 0 0 var(--med); }
 .alert-row-low      td:first-child { box-shadow: inset 3px 0 0 var(--low); }
 
 /* ============================================================
