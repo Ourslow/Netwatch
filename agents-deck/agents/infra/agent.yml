@@ -1,0 +1,35 @@
+schema_version: "1.0"
+agent: Infra-agent
+canonical_id: infra
+jurisdiction:
+  scope: "Infra-agent owns Docker stack, CI, system config, network, storage."
+  files_owned:
+    - "docker-compose.yml"
+    - "elasticsearch/**"
+    - "filebeat/**"
+    - "prometheus/**"
+    - "grafana/**"
+    - "snort/**"
+    - "suricata/**"
+    - "zeek/**"
+    - "systemd/**"
+  files_forbidden:
+    - "portal/**"
+    - "agents-deck/agents/security/**"
+    - "agents-deck/agents/automation/**"
+    - "agents-deck/agents/frontend/**"
+skills_default: []
+skills_applicable:
+  - docker-compose
+  - elasticsearch
+  - crowdsec
+  - zeek
+tool_recommended: "Claude Code"
+tool_alternatives: []
+cross_agent_dependencies:
+  blocks: [automation, security, frontend]
+  blocked_by: []
+key_references:
+  - docker-compose.yml
+  - agents-deck/team-lead/state.yml
+  - README.md

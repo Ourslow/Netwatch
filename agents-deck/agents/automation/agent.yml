@@ -1,0 +1,28 @@
+schema_version: "1.0"
+agent: Automation-agent
+canonical_id: automation
+jurisdiction:
+  scope: "Automation-agent owns n8n workflows, alerting pipelines, ticket automation."
+  files_owned:
+    - "n8n/**"
+    - "scripts/automation/**"
+    - "reports/automation/**"
+  files_forbidden:
+    - "docker-compose.yml"
+    - "portal/**"
+    - "agents-deck/agents/infra/**"
+    - "agents-deck/agents/security/**"
+    - "agents-deck/agents/frontend/**"
+skills_default: []
+skills_applicable:
+  - n8n-workflows
+  - elasticsearch-query
+  - teams-webhook
+tool_recommended: "Claude Code"
+tool_alternatives: []
+cross_agent_dependencies:
+  blocks: []
+  blocked_by: [infra]
+key_references:
+  - docker-compose.yml
+  - agents-deck/team-lead/state.yml

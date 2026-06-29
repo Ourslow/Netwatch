@@ -1,0 +1,16 @@
+id: T_006
+title: "Configurer n8n — alertes Elasticsearch → Microsoft Teams"
+agent: Automation-agent
+phase: 1
+priority: high
+category: feature
+status: drafts
+created: "2026-06-29"
+acceptance:
+  - "Vérifier que n8n est accessible sur http://localhost:5678"
+  - "Créer le workflow 'NetWatch Alertes' dans n8n"
+  - "Nœud Elasticsearch : polling toutes les 5 min, filtre severity:high OR critical, last 5 min"
+  - "Nœud Microsoft Teams : webhook configuré, message formaté avec IP source, règle, timestamp, lien portail"
+  - "Tester avec une alerte simulée (`python3 simulate-traffic.py`) → notification Teams reçue"
+  - "Exporter le workflow en JSON dans scripts/automation/n8n-alertes-teams.json"
+  - "Documenter dans docs/n8n-setup.md : URL, credentials ES, webhook Teams, test"

@@ -1,0 +1,32 @@
+schema_version: "1.0"
+agent: Security-agent
+canonical_id: security
+jurisdiction:
+  scope: "Security-agent owns detection rules, skills cybersec, MISP, threat analysis."
+  files_owned:
+    - ".claude/skills/**"
+    - "zeek/scripts/**"
+    - "suricata/rules/**"
+    - "snort/rules/**"
+    - "reports/security/**"
+  files_forbidden:
+    - "docker-compose.yml"
+    - "portal/**"
+    - "agents-deck/agents/infra/**"
+    - "agents-deck/agents/automation/**"
+    - "agents-deck/agents/frontend/**"
+skills_default:
+  - Anthropic-Cybersecurity-Skills
+skills_applicable:
+  - threat-detection
+  - zeek-scripting
+  - suricata-rules
+  - misp-integration
+tool_recommended: "Claude Code"
+tool_alternatives: []
+cross_agent_dependencies:
+  blocks: []
+  blocked_by: [infra]
+key_references:
+  - .claude/skills/
+  - agents-deck/team-lead/state.yml

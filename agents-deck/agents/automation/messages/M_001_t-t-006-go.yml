@@ -1,0 +1,72 @@
+seq: 1
+date: '2026-06-29'
+from: coordinator
+to: executor
+category: ticket-go
+related_ticket: T_006
+banner_title: TEAM-LEAD → Automation-agent — GO ticket T_006
+checklist_inline: true
+audit_live:
+  at: '2026-06-29T20:07:35.233Z'
+  evidence: <TODO_FILL_AUDIT_LIVE_EVIDENCE — replace with concrete grep/psql/file:line evidence ≥80 chars>
+scope: <TODO_FILL_SCOPE — pointer vers agents-deck/agents/automation/tickets/planned/T_006.yml (ne pas dupliquer la spec ici)>
+open_questions: []
+skills_required: []
+f1_continue: <TODO_FILL_F1_CONTINUE — patterns gap probables>
+conventions: Identité Fuskerrs only. Juridiction strict. Header agent obligatoire. Reply 2 sections.
+body: |-
+  ═══════════════════════════
+    TEAM-LEAD → Automation-agent — GO ticket T_006
+  ═══════════════════════════
+
+  ## 📋 Checklist agent — (canonical _AGENT_CHECKLIST.yml not found, see repo docs)
+
+  ---
+
+  ## TLDR T_006
+
+  **Configurer n8n — alertes Elasticsearch → Microsoft Teams**
+
+  <TODO_FILL_TLDR_3_5_LIGNES — pourquoi ce ticket existe + scope + contrainte clé + bénéfice. PAS la spec complète, elle est dans le fichier ticket.>
+
+  ---
+
+  ## Récupère le ticket complet
+
+  ```bash
+  git fetch origin main && git rebase origin/main
+  cat agents-deck/agents/automation/tickets/planned/T_006.yml
+  ```
+
+  Lis le ticket entier (acceptance criteria, body, skills.required) AVANT de commencer le code. Le M_xxx ne contient que le ping + checklist + TLDR — la commande complète est dans le T_xxx.yml.
+
+  ---
+
+  ## Audit live D6 (team-lead pré-livraison)
+
+  <TODO_FILL_AUDIT_LIVE — ≥80 chars + file:line | SHA | psql output | docker logs | $ command | SQL query>
+
+  ---
+
+  ## Workflow démarrage
+
+  1. `npx agents-deck start-ticket --agent automation --ticket T_006 --tool "<X>" --ack-message M_001`
+  2. Move planned→working + flip status.yml + ack last_received_message
+  3. D6 audit (psql/grep evidence) AVANT code
+  4. Code + tests + commit Fuskerrs only
+  5. `npx agents-deck deliver-ticket --agent automation --ticket T_006 --delivery-body-file <md>` → écrit la section `delivery` du ticket (summary + technical) + flip review-pending + commit/push. Pas de R_xxx.
+
+  ---
+
+  ## F.1 anti-laziness
+
+  <TODO_FILL_F1_PATTERNS — gaps possibles à anticiper : missing helper, contract change cross-agent, etc.>
+
+  ---
+
+  ## Conventions process
+
+  - Identité commit **Fuskerrs** only (no Co-Authored-By Claude/Codex/Kimi/Aider)
+  - Juridiction : agent.yml.files_owned only
+  - Header agent obligatoire chaque chat output `═══ AGENT: agent-automation ═══`
+  - Livraison = section `delivery` DANS le ticket (summary lisible Founder + technical) via deliver-ticket. Pas de R_xxx, pas de dossier replies/.

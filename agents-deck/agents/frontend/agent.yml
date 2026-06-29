@@ -1,0 +1,27 @@
+schema_version: "1.0"
+agent: Frontend-agent
+canonical_id: frontend
+jurisdiction:
+  scope: "Frontend-agent owns portail Flask, templates HTML, routes, dashboard UI."
+  files_owned:
+    - "portal/**"
+    - "grafana/dashboards/**"
+  files_forbidden:
+    - "docker-compose.yml"
+    - "agents-deck/agents/infra/**"
+    - "agents-deck/agents/security/**"
+    - "agents-deck/agents/automation/**"
+skills_default: []
+skills_applicable:
+  - flask
+  - jinja2
+  - javascript
+  - grafana-dashboards
+tool_recommended: "Claude Code"
+tool_alternatives: []
+cross_agent_dependencies:
+  blocks: []
+  blocked_by: [infra]
+key_references:
+  - portal/app.py
+  - agents-deck/team-lead/state.yml

@@ -1,0 +1,15 @@
+id: T_001
+title: "Intégrer CrowdSec dans docker-compose NetWatch"
+agent: Infra-agent
+phase: 1
+priority: high
+category: feature
+status: drafts
+created: "2026-06-29"
+acceptance:
+  - "Ajouter le service crowdsec au docker-compose.yml avec image crowdsecurity/crowdsec:latest"
+  - "Monter les logs Zeek/Suricata/Nginx dans le container CrowdSec"
+  - "Configurer les collections : crowdsecurity/linux, crowdsecurity/nginx, crowdsecurity/zeek"
+  - "Vérifier que `docker compose ps crowdsec` affiche Up"
+  - "Valider qu'une IP test est bannie via `docker exec crowdsec cscli decisions list`"
+  - "Documenter dans docs/crowdsec-setup.md : installation, collections, test de ban"

@@ -1,0 +1,12 @@
+schema_version: "1.0"
+agent: Frontend-agent
+canonical_id: frontend
+tool: "Claude Code"
+session_id: null
+state: standby
+current_ticket: null
+ticket_started: null
+ticket_finished: null
+last_activity: "2026-06-29T20:00:00Z"
+current_ticket_skills: {}
+skills_override_reason: null

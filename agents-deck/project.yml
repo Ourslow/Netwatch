@@ -1,0 +1,67 @@
+schema_version: '2.0'
+project:
+  id: netwatch
+  name: NetWatch — Plateforme NDR × Agents IA
+  description: |
+    Plateforme NDR self-hosted (Zeek + Snort + Suricata + Filebeat + Elasticsearch
+    + Grafana + portail Flask) pilotée par 4 agents Claude Code en parallèle via
+    git worktrees. Station : ASUS ROG Zephyrus G14, Fedora 44, GTX 1660 Ti.
+  kind: app
+  created: '2026-06-29'
+  owner: Nicolas Malok
+paths:
+  agents_dir: agents-deck/agents
+  team_lead_dir: agents-deck/team-lead
+  schemas_dir: agents-deck/schemas
+  state_file: agents-deck/team-lead/state.yml
+  changelog_dir: agents-deck/changelog
+  worktrees_root: ../netwatch.wt
+agents:
+  - id: infra
+    full_name: Infra-agent
+  - id: security
+    full_name: Security-agent
+  - id: automation
+    full_name: Automation-agent
+  - id: frontend
+    full_name: Frontend-agent
+roles:
+  coordinator:
+    display_name: Lead
+    aliases:
+      - lead
+      - coordinator
+  executor:
+    display_name: Agent
+    aliases:
+      - agent
+      - dev
+  oversight:
+    display_name: Owner
+    aliases:
+      - owner
+      - nicolas
+phases:
+  - number: 1
+    label: Fondations — Stack + CrowdSec + n8n + Skills
+    status: working
+    started: '2026-06-29'
+  - number: 2
+    label: Intelligence — MISP + LangChain + T-Pot
+    status: planned
+  - number: 3
+    label: Scale — Supabase + OpenCTI + agents autonomes
+    status: planned
+  - number: 4
+    label: Maîtrise — Fine-tuning + SOC autonome + OSS
+    status: planned
+conventions:
+  multi_agent: true
+  has_team_lead: true
+  freeze_protocol: false
+  reply_required: false
+  conflict_detection: true
+  strict_skills_scope: false
+dashboard:
+  refresh_interval_sec: 15
+  conflict_detection_ui: card

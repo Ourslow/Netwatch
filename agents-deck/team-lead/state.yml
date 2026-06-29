@@ -1,0 +1,121 @@
+schema_version: '2.0'
+last_update: '2026-06-29T20:07:35.240Z'
+agents:
+  infra:
+    expected_state: working
+    last_merged_ticket: null
+    last_merged_sha: null
+    closed_phase: null
+    ticket_go:
+      transmitted: false
+      transmitted_at: '2026-06-29T20:07:26.960Z'
+      message_seq: 1
+    overrides:
+      ticket_go_skip_check: null
+      skills_override_reason: null
+    notes: Agent infra — Docker, CrowdSec, Elasticsearch, Proxmox.
+  security:
+    expected_state: working
+    last_merged_ticket: null
+    last_merged_sha: null
+    closed_phase: null
+    ticket_go:
+      transmitted: false
+      transmitted_at: '2026-06-29T20:07:34.913Z'
+      message_seq: 1
+    overrides:
+      ticket_go_skip_check: null
+      skills_override_reason: null
+    notes: Agent security — Anthropic-Cybersecurity-Skills, règles détection, MISP.
+  automation:
+    expected_state: working
+    last_merged_ticket: null
+    last_merged_sha: null
+    closed_phase: null
+    ticket_go:
+      transmitted: false
+      transmitted_at: '2026-06-29T20:07:35.233Z'
+      message_seq: 1
+    overrides:
+      ticket_go_skip_check: null
+      skills_override_reason: null
+    notes: Agent automation — n8n, alertes Teams, tickets agents-deck auto.
+  frontend:
+    expected_state: standby
+    last_merged_ticket: null
+    last_merged_sha: null
+    closed_phase: null
+    ticket_go:
+      transmitted: false
+      transmitted_at: null
+      message_seq: null
+    overrides:
+      ticket_go_skip_check: null
+      skills_override_reason: null
+    notes: Agent frontend — portail Flask, page /agents, dashboard.
+backlog:
+  - id: B_001_crowdsec
+    agent: infra
+    title: Intégrer CrowdSec dans docker-compose NetWatch
+    priority: high
+    category: feature
+    notes: |
+      Ajouter le service CrowdSec au docker-compose.yml. Configurer les collections
+      Nginx/Zeek/Suricata. Vérifier que les décisions de blocage remontent dans
+      le portail Flask.
+  - id: B_002_es_filebeat
+    agent: infra
+    title: Corriger le bug data-stream Filebeat → Elasticsearch
+    priority: high
+    category: bug
+    notes: |
+      Le pipeline Filebeat→ES génère des erreurs data-stream. Diagnostiquer,
+      créer les index templates manquants, valider l'ingestion end-to-end.
+  - id: B_003_proxmox
+    agent: infra
+    title: Déployer Shuttle sur Proxmox
+    priority: medium
+    category: feature
+    notes: |
+      Migrer ou dupliquer la stack NetWatch sur Proxmox. Documenter la procédure
+      de déploiement reproductible.
+  - id: B_004_cyberskills
+    agent: security
+    title: Intégrer Anthropic-Cybersecurity-Skills dans les sessions Claude
+    priority: high
+    category: feature
+    notes: |
+      Les 817 skills sont dans .claude/skills/. Valider le chargement, documenter
+      les 10 skills les plus utiles pour NetWatch (détection, analyse PCAP, règles Zeek).
+  - id: B_005_understand_anything
+    agent: security
+    title: Intégrer Understand-Anything pour knowledge graph IOCs
+    priority: medium
+    category: feature
+    notes: |
+      Évaluer Understand-Anything pour construire un graphe de connaissance
+      sur les IOCs détectés par NetWatch. Proof of concept sur 1 semaine d'alertes.
+  - id: B_006_n8n_teams
+    agent: automation
+    title: Configurer n8n — alertes Elasticsearch → Teams
+    priority: high
+    category: feature
+    notes: |
+      Créer le workflow n8n : polling ES toutes les 5 min → filtre severity≥high
+      → notification Teams avec lien portail. Tester sur une alerte simulée.
+  - id: B_007_n8n_tickets
+    agent: automation
+    title: Configurer n8n — création automatique de tickets agents-deck
+    priority: medium
+    category: feature
+    notes: |
+      Workflow n8n : alerte critique ES → créer un brouillon de ticket dans
+      agents-deck/agents/security/tickets/drafts/ avec le contexte de l'alerte.
+  - id: B_008_page_agents
+    agent: frontend
+    title: Ajouter la page /agents dans le portail Flask
+    priority: medium
+    category: feature
+    notes: |
+      Nouvelle route /agents dans portal/app.py. Affiche l'état des 4 agents
+      (lu depuis agents-deck/team-lead/state.yml). Accessible depuis le nav principal.
