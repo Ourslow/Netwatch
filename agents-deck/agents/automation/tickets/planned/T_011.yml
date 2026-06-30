@@ -1,0 +1,27 @@
+id: T_011
+title: "n8n — rapport hebdomadaire automatique ES → Teams + fichier JSON"
+agent: Automation-agent
+phase: 3
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/automation/weekly-report.py : agrège les alertes ES des 7 derniers jours, génère un rapport JSON structuré"
+  - "Rapport JSON : {period, total_alerts, by_engine, top_rules (top 10), top_src_ips (top 5), mitre_ttps, severity_breakdown}"
+  - "Créer scripts/automation/n8n-weekly-report.json : workflow n8n (Schedule lundi 08h00 → Execute weekly-report.py → Teams Adaptive Card)"
+  - "Teams card : résumé visuel avec chiffres clés, top 3 règles, lien vers portail"
+  - "Documenter dans docs/n8n-setup.md (section rapport hebdomadaire)"
+context: |
+  n8n tourne sur localhost:5678 (auth admin/netwatch2026).
+  ES tourne sur localhost:9200 (indices zeek-*, snort-*, suricata-*).
+
+  Le script weekly-report.py doit fonctionner en CLI :
+    python3 weekly-report.py [--days 7] [--output report.json]
+
+  Format Teams Adaptive Card à adapter depuis n8n-alertes-teams.json existant.
+  Le rapport JSON peut aussi être sauvegardé dans docs/reports/weekly-YYYY-WXX.json
+  pour historique.
+
+  Inspiration : scripts/automation/n8n-alertes-teams.json et create-ticket.py
+  pour la structure ES query et le format de sortie.

@@ -1,0 +1,32 @@
+id: T_009
+title: "Page /graph — visualisation interactive du graphe IOC (D3.js)"
+agent: Frontend-agent
+phase: 3
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Nouvelle route /graph dans portal/app.py — login_required"
+  - "API /api/ioc-graph : lance ioc-graph.py et retourne le JSON {nodes, edges, stats}"
+  - "Template graph.html : graphe D3.js force-directed, nœuds colorés par type (ip_src=rouge, ip_dst=bleu, rule=orange, mitre=violet, domain=vert)"
+  - "Clic sur un nœud = panneau latéral avec détails (IP, nb alertes, règles associées)"
+  - "Bouton Refresh pour relancer le calcul du graphe"
+  - "Ajout de l'entrée /graph dans le menu nav du portail"
+context: |
+  Le script scripts/security/ioc-graph.py existe déjà et génère
+  scripts/security/ioc-graph-output.json (format {nodes, edges, stats}).
+
+  Format nodes : [{id, label, type, weight, ...}]
+  Format edges : [{source, target, weight, label}]
+  Types de nœuds : ip_src, ip_dst, rule, mitre_ttp, domain
+
+  Le portail tourne sur localhost:5050 (Flask 3.x, Bootstrap 5, dark theme).
+  D3.js v7 peut être chargé via CDN. Utiliser une simulation force-directed
+  (d3.forceSimulation) avec zoom/pan (d3.zoom).
+
+  Fichiers clés :
+  - portal/app.py : ajouter route /graph et /api/ioc-graph
+  - portal/templates/graph.html : nouveau template
+  - portal/templates/base.html : ajouter entrée nav
+  - scripts/security/ioc-graph.py : appeler en subprocess depuis Flask

@@ -1,0 +1,30 @@
+id: T_007
+title: "n8n — création automatique de tickets agents-deck depuis alertes critiques"
+agent: Automation-agent
+phase: 2
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer un workflow n8n 'NetWatch Auto-Tickets' : polling ES toutes les 10 min sur alertes severity=critical"
+  - "Pour chaque nouvelle alerte critique : créer un fichier YAML de ticket dans agents-deck/agents/security/tickets/drafts/"
+  - "Format du ticket : id auto (T_auto_YYYYMMDD_HHMMSS), title depuis alert.signature, context depuis alert JSON"
+  - "Éviter les doublons : vérifier que l'alerte n'a pas déjà généré un ticket (par signature + timestamp)"
+  - "Exporter le workflow en JSON dans scripts/automation/n8n-auto-tickets.json"
+  - "Documenter dans docs/n8n-setup.md (section auto-tickets)"
+context: |
+  Quand une alerte critique arrive dans ES (ex: Meterpreter, C2 beacon, DNS tunneling),
+  un ticket doit être automatiquement créé dans le dossier drafts/ de l'agent security
+  pour qu'il puisse l'investiguer. Le ticket doit contenir suffisamment de contexte
+  (IP source, règle, timestamp, lien portail) pour être actionnable sans ouvrir ES.
+
+  n8n est déjà en marche sur localhost:5678 (auth admin/netwatch2026).
+  Le workflow T_006 (alertes Teams) est déjà créé — s'en inspirer pour la structure ES Query.
+
+  Le dossier cible : agents-deck/agents/security/tickets/drafts/
+  L'agent security peut ensuite promouvoir ces tickets en planned/ manuellement.
+
+  Contrainte technique : n8n doit écrire des fichiers dans le filesystem de l'hôte.
+  Utiliser un nœud 'Execute Command' ou un webhook vers un script Python sur l'hôte.
+  Script cible : scripts/automation/create-ticket.py (à créer).

@@ -1,0 +1,29 @@
+id: T_012
+title: "Guide déploiement Proxmox/ESXi + health-check amélioré"
+agent: Infra-agent
+phase: 3
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer docs/deployment-guide.md : guide complet déploiement NetWatch sur Proxmox VE ou ESXi"
+  - "Couvrir : prérequis VM (RAM/CPU/disk), clone repo, configuration .env, docker compose up, validation"
+  - "Créer scripts/health-check.sh : vérifie l'état de tous les 12 services et retourne un rapport coloré"
+  - "health-check.sh teste : ES (_cluster/health), Grafana (/api/health), Filebeat (index docs count), n8n (/healthz), portail Flask (HTTP 200)"
+  - "Exit code 0 = tout OK, 1 = dégradé, 2 = critique — intégrable dans un monitoring externe"
+  - "Ajouter target 'make health' dans le Makefile existant"
+context: |
+  Le Makefile existe déjà avec targets : start, stop, demo, logs, build, health, clean.
+  La target 'health' existe mais est basique. L'améliorer avec scripts/health-check.sh.
+
+  Proxmox cible : Shuttle avec Xeon, 16 Go RAM, 2 ports réseau (i350-T2).
+  Vision : 2 VMs — VM-Sensors (Zeek/Snort/Suricata, 6 Go) + VM-Data (ES/Grafana, 8 Go).
+
+  Le guide doit être autonome : quelqu'un qui clone le repo doit pouvoir
+  déployer NetWatch en moins de 30 minutes en suivant le guide.
+
+  Fichiers à créer/modifier :
+  - docs/deployment-guide.md (nouveau)
+  - scripts/health-check.sh (nouveau)
+  - Makefile (modifier target health)

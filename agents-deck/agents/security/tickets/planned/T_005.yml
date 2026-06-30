@@ -1,0 +1,27 @@
+id: T_005
+title: "Proof of concept Understand-Anything — knowledge graph IOCs NetWatch"
+agent: Security-agent
+phase: 2
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Évaluer si Understand-Anything peut traiter des alertes JSON (format Suricata EVE / Snort alert_json)"
+  - "Créer un script poc-understand-anything.py : charge 1 semaine d'alertes ES → extrait entités (IPs, domaines, règles, MITRE)"
+  - "Générer un graph JSON (nodes + edges) exportable (vis.js ou NetworkX)"
+  - "Documenter les résultats dans docs/understand-anything-poc.md : ce qui marche, ce qui ne marche pas"
+  - "Si Understand-Anything n'est pas installé/disponible : documenter les alternatives (spaCy, NetworkX seul) et implémenter un graphe minimaliste"
+context: |
+  Understand-Anything est un framework de knowledge graph pour extraire des entités
+  et relations depuis du texte non structuré. L'objectif est de l'appliquer aux
+  alertes IDS NetWatch pour construire un graphe IOC : quelles IPs communiquent
+  avec quels domaines, sous quelles règles, avec quels TTPs MITRE.
+
+  Ressources :
+  - Alertes ES : index suricata-*, snort-*, zeek-* sur localhost:9200
+  - Format Suricata : champs src_ip, dest_ip, alert.signature, alert.category, alert.metadata.mitre_*
+  - Script existant : simulate-traffic.py (peut générer des données de test)
+
+  Si Understand-Anything n'est pas dispo : implémenter un graphe NetworkX + export JSON
+  qui remplit le même objectif (visualisation des relations IOC).

@@ -1,0 +1,24 @@
+id: T_002
+title: "Corriger le bug data-stream Filebeat → Elasticsearch"
+agent: Infra-agent
+phase: 2
+priority: high
+category: bug
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Diagnostiquer pourquoi Filebeat échoue à indexer dans ES (erreur data-stream vs index classique)"
+  - "Créer ou corriger les index templates ES manquants pour zeek-*, snort-*, suricata-*"
+  - "Modifier filebeat/filebeat.yml si nécessaire (setup.template, index strategy)"
+  - "Valider l'ingestion end-to-end : au moins 1 doc visible dans chaque index zeek-*/snort-*/suricata-*"
+  - "Documenter la cause racine et le fix dans docs/filebeat-fix.md"
+context: |
+  Le pipeline Filebeat→ES génère des erreurs data-stream. Les logs Zeek/Snort/Suricata
+  ne s'indexent pas correctement. ES 8.x utilise des data-streams par défaut mais
+  NetWatch s'appuie sur des index classiques (zeek-2026.06.30). Il y a probablement
+  un conflit de stratégie d'indexation dans la config Filebeat ou les templates ES.
+
+  Fichiers concernés :
+  - filebeat/filebeat.yml (déjà modifié : pattern "zeek-*,snort-*,suricata-*,netwatch-*")
+  - docker-compose.yml (service filebeat)
+  - ES : curl http://localhost:9200/_cat/indices pour voir l'état réel

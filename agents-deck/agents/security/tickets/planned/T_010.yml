@@ -1,0 +1,29 @@
+id: T_010
+title: "Enrichissement IOC — réputation IP via AbuseIPDB + ipinfo.io"
+agent: Security-agent
+phase: 3
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/security/ioc-enrich.py : prend ioc-graph-output.json en entrée, enrichit chaque nœud IP"
+  - "Source 1 — AbuseIPDB (gratuit, 1000 req/jour) : abuseConfidenceScore, countryCode, isp, usageType, totalReports"
+  - "Source 2 — ipinfo.io (fallback sans API key) : country, org, hostname"
+  - "Anti-rate-limit : délai 0.1s entre requêtes + cache JSON local (scripts/security/ioc-enrich-cache.json)"
+  - "Output : ioc-graph-enriched.json — même format que ioc-graph-output.json mais nodes avec champ enrichment:{}"
+  - "Documenter dans docs/ioc-enrichment.md : setup AbuseIPDB API key, exemples de sortie"
+context: |
+  Le graphe IOC (ioc-graph-output.json) contient des nœuds IP sans contexte
+  de réputation. L'enrichissement ajoute : pays, ISP, score d'abus, type d'usage.
+
+  AbuseIPDB API : https://api.abuseipdb.com/api/v2/check
+  Headers : Key: <ABUSEIPDB_API_KEY>
+  Gratuit : 1000 req/jour (largement suffisant pour un lab)
+
+  ipinfo.io : https://ipinfo.io/<ip>/json (sans auth, 50k req/mois)
+
+  La clé ABUSEIPDB_API_KEY doit être lue depuis .env / os.getenv().
+  Si absente → fallback ipinfo.io uniquement, sans erreur bloquante.
+
+  IPs à ignorer (RFC 1918) : 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.1
