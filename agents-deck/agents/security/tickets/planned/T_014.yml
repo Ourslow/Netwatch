@@ -1,0 +1,29 @@
+id: T_014
+title: "Score de risque composite IOC — corrélation multi-moteurs par IP"
+agent: Security-agent
+phase: 4
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/security/ioc-score.py : calcule un score de risque 0-100 par IP source"
+  - "Score composite : nb alertes (×1) + sévérité (critical×10, high×5, medium×2) + nb moteurs distincts (×15) + AbuseIPDB score si dispo + règles MITRE (×8)"
+  - "Output JSON : [{ip, score, level (critical/high/medium/low), alerts_count, engines, top_rule, enrichment, mitre_ttps}]"
+  - "Seuils : critical≥80, high≥60, medium≥40, low<40"
+  - "API /api/ioc-scores dans portal/app.py — retourne le JSON (utilisé par /exec et /graph)"
+  - "Mettre à jour scripts/security/ioc-graph.py : ajouter champ risk_score dans les nodes IP"
+  - "Documenter dans docs/ioc-scoring.md"
+context: |
+  Aujourd'hui le graphe IOC montre des relations mais pas de priorisation.
+  Le score de risque composite permet de dire "cette IP est critique, celle-là est noise".
+
+  Sources de données :
+  - ES indices suricata-*, snort-*, zeek-* (alertes 24h par défaut, --days configurable)
+  - ioc-enrich-cache.json (enrichissement AbuseIPDB/ipinfo.io existant)
+  - Format Suricata : src_ip, alert.severity (1=critical,2=high,3=medium,4=low)
+  - Format Snort : src_ip, priority (1=high,2=medium,3=low)
+  - Format Zeek : id.orig_h, event_type
+
+  Le score sera affiché dans /exec (top 3 IPs), dans /graph (taille du nœud),
+  et déclenche l'escalade automation T_015 si score ≥ 80.

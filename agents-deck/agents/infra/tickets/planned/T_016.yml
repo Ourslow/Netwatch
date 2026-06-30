@@ -1,0 +1,36 @@
+id: T_016
+title: "Script de démo client interactif — pipeline complet en 5 minutes"
+agent: Infra-agent
+phase: 4
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Améliorer demo.sh existant : pipeline de démo structuré en 5 étapes numérotées avec pauses interactives"
+  - "Étape 1 — Stack UP : make health coloré, tous les services verts"
+  - "Étape 2 — Simulation trafic : python3 simulate-traffic.py --hours 1 --attack → montre des alertes arriver"
+  - "Étape 3 — Détection : curl ES pour montrer les alertes indexées (top 3 règles déclenchées)"
+  - "Étape 4 — Graphe IOC : python3 scripts/security/ioc-graph.py → affiche stats (nb nœuds, edges, top IP)"
+  - "Étape 5 — Score de risque : python3 scripts/security/ioc-score.py → affiche top 3 IPs avec scores"
+  - "Output coloré, timing affiché, [APPUYER ENTRÉE POUR CONTINUER] entre chaque étape"
+  - "Option --auto pour démo sans interaction (CI/présentation automatique)"
+  - "Durée totale : < 5 minutes en mode --auto"
+context: |
+  demo.sh existe déjà mais est basique. L'objectif est un script de démo
+  qu'on peut lancer en live devant un client pour montrer le pipeline complet
+  de la détection à la visualisation en moins de 5 minutes.
+
+  Le script ioc-score.py sera créé par l'agent security (T_014) en parallèle.
+  Si absent : sauter l'étape 5 gracieusement (message "T_014 en cours").
+
+  Style output cible :
+  ╔══════════════════════════════════════╗
+  ║  NetWatch Demo — Pipeline Complet   ║
+  ╚══════════════════════════════════════╝
+  [1/5] Stack Health Check...
+  ✓ Elasticsearch  UP (healthy)
+  ✓ Grafana        UP
+  ...
+
+  Makefile : ajouter target 'make demo-client' qui appelle demo.sh --auto

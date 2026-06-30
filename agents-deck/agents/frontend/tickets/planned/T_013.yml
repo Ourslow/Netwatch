@@ -1,0 +1,33 @@
+id: T_013
+title: "Page /exec — dashboard exécutif RSSI (score posture, top risques, KPIs)"
+agent: Frontend-agent
+phase: 4
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Route /exec dans portal/app.py — login_required"
+  - "Score de posture /100 calculé depuis ES : 100 - malus (alertes critiques×5, high×2, règles uniques déclenchées×1)"
+  - "KPI cards : total alertes 24h, alertes critiques 24h, IPs bloquées (autoblock), uptime stack (% services healthy)"
+  - "Top 5 règles déclenchées (dernières 24h) avec badge sévérité"
+  - "Top 3 IPs sources suspectes avec nb alertes et moteur détecteur"
+  - "Graphique sparkline 7j : évolution du volume d'alertes par jour"
+  - "Bouton 'Exporter PDF' — génère un PDF 1 page via pdfkit ou weasyprint"
+  - "Page pensée pour une présentation client : sobre, chiffres clés, pas de détail technique"
+context: |
+  Le portail a déjà une page /audit avec score et recommandations, et /report avec PDF.
+  /exec est différent : 1 page, lecture en 30 secondes, orientée management/RSSI.
+  Pas de tableaux, pas de détail — juste les chiffres qui comptent.
+
+  Inspiration design : dashboard SOC type "security posture overview".
+  Bootstrap 5 dark theme déjà en place. Chart.js disponible (déjà utilisé ailleurs).
+
+  Score de posture (exemple) :
+  - Base 100
+  - -5 par alerte critique (24h), cap à -40
+  - -2 par alerte high (24h), cap à -20
+  - -1 par règle unique déclenchée, cap à -20
+  - Résultat : 20-100, affiché avec couleur (>80 vert, 60-80 orange, <60 rouge)
+
+  API /api/exec-stats à créer (JSON) pour le PDF et un éventuel monitoring externe.
