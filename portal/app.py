@@ -1050,6 +1050,43 @@ def api_ioc_graph():
             return jsonify({"error": str(exc)}), 503
 
 
+@app.route("/exec")
+@login_required
+def exec_page():
+    """Dashboard exécutif RSSI — posture, KPIs, top règles, sparkline."""
+    stats, es_error = es_client.get_exec_stats()
+
+    # Uptime % : ratio services healthy
+    services, _ = nw_health.check_all(
+        es_url         = config.NETWATCH_ES_URL,
+        grafana_url    = config.NETWATCH_GRAFANA_URL,
+        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
+        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+        ollama_url     = config.OLLAMA_URL,
+    )
+    up_count   = sum(1 for s in services if s["status"] == "up")
+    uptime_pct = round(up_count / len(services) * 100) if services else 0
+
+    return render_template(
+        "exec.html",
+        stats        = stats,
+        error        = es_error,
+        services     = services,
+        uptime_pct   = uptime_pct,
+        generated_at = datetime.now().strftime("%d/%m/%Y %H:%M"),
+    )
+
+
+@app.route("/api/exec-stats")
+@login_required
+def api_exec_stats():
+    """Données brutes du dashboard exécutif (JSON)."""
+    stats, error = es_client.get_exec_stats()
+    if error:
+        return jsonify({"error": error, **stats}), 200
+    return jsonify(stats)
+
+
 @app.route("/agents")
 @login_required
 def agents_page():
