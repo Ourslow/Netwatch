@@ -111,6 +111,28 @@
   letter-spacing: .8px;
   margin-bottom: .75rem;
 }
+
+/* ── Section 4 — Trafic applicatif ── */
+.cat-badge {
+  display: inline-block;
+  padding: .1rem .5rem;
+  border-radius: var(--r-pill);
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cat-web           { background: rgba(34,211,238,.15); color: #22d3ee; border: 1px solid rgba(34,211,238,.3); }
+.cat-database      { background: rgba(167,139,250,.15); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
+.cat-remote-access { background: rgba(248,113,113,.15); color: #f87171; border: 1px solid rgba(248,113,113,.3); }
+.cat-infrastructure{ background: rgba(52,211,153,.15);  color: #34d399; border: 1px solid rgba(52,211,153,.3); }
+.cat-email         { background: rgba(251,191,36,.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+.cat-file-share    { background: rgba(251,146,60,.15);  color: #fb923c; border: 1px solid rgba(251,146,60,.3); }
+.cat-collaboration { background: rgba(232,121,249,.15); color: #e879f9; border: 1px solid rgba(232,121,249,.3); }
+.cat-streaming     { background: rgba(56,189,248,.15);  color: #38bdf8; border: 1px solid rgba(56,189,248,.3); }
+.cat-security      { background: rgba(255,77,94,.15);   color: #ff4d5e; border: 1px solid rgba(255,77,94,.3); }
+.cat-unknown       { background: rgba(100,116,139,.12); color: #94a3b8; border: 1px solid rgba(100,116,139,.25); }
 </style>
 {% endblock %}
 
@@ -202,6 +224,37 @@
       <span class="ms-2"><span class="art-badge art-ok">val</span> DNS &lt;50 ms</span>
       <span><span class="art-badge art-warn">val</span> DNS 50–200 ms</span>
       <span><span class="art-badge art-crit">val</span> DNS &gt;200 ms</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 4 — Trafic applicatif (T_024)              -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="flows-section-title"><i class="bi bi-grid-3x3-gap me-2" style="color:var(--accent)"></i>Trafic applicatif</h6>
+
+    <div class="row g-4">
+
+      <!-- Donut : top 10 catégories par bytes -->
+      <div class="col-12 col-lg-5">
+        <div class="chart-title">Top 10 catégories (bytes)</div>
+        <div id="donut-cat-wrap">
+          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+        </div>
+      </div>
+
+      <!-- Bar horizontal : top 10 applications -->
+      <div class="col-12 col-lg-7">
+        <div class="chart-title">Top 10 applications (bytes)</div>
+        <div id="bar-apps-wrap">
+          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+        </div>
+        <!-- Légende badges catégories -->
+        <div id="cat-legend" class="mt-2 d-flex flex-wrap gap-2" style="font-size:.7rem;display:none!important"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -578,11 +631,172 @@
       });
   }
 
+  /* ─── Section 4 : Trafic applicatif ───────────────────── */
+
+  /* Palette par catégorie (cohérente avec les classes CSS) */
+  var CAT_COLORS = {
+    'web':            'rgba(34,211,238,.75)',
+    'database':       'rgba(167,139,250,.75)',
+    'remote-access':  'rgba(248,113,113,.75)',
+    'infrastructure': 'rgba(52,211,153,.75)',
+    'email':          'rgba(251,191,36,.75)',
+    'file-share':     'rgba(251,146,60,.75)',
+    'collaboration':  'rgba(232,121,249,.75)',
+    'streaming':      'rgba(56,189,248,.75)',
+    'security':       'rgba(255,77,94,.75)',
+    'unknown':        'rgba(100,116,139,.55)',
+  };
+
+  function catColor(cat) {
+    return CAT_COLORS[cat] || 'rgba(100,116,139,.55)';
+  }
+
+  function catBadge(cat) {
+    var cls = 'cat-' + (cat || 'unknown').replace(/[^a-z-]/g, '');
+    return '<span class="cat-badge ' + cls + '">' + (cat || 'unknown') + '</span>';
+  }
+
+  function loadAppFlows() {
+    fetch('/api/app-flows')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+
+        /* ── Donut catégories ── */
+        var cats  = (d.by_category || []).slice(0, 10);
+        var catWrap = document.getElementById('donut-cat-wrap');
+        catWrap.innerHTML = '<canvas id="donut-cat" height="260"></canvas>';
+        if (cats.length) {
+          new Chart(document.getElementById('donut-cat'), {
+            type: 'doughnut',
+            data: {
+              labels:   cats.map(function (c) { return c.cat; }),
+              datasets: [{
+                data:            cats.map(function (c) { return c.bytes; }),
+                backgroundColor: cats.map(function (c) { return catColor(c.cat); }),
+                borderWidth: 1,
+                borderColor: '#0a0e16',
+              }]
+            },
+            options: Object.assign({}, CHART_BASE, {
+              plugins: Object.assign({}, CHART_BASE.plugins, {
+                legend: {
+                  display:  true,
+                  position: 'right',
+                  labels: {
+                    font:     { size: 10 },
+                    color:    '#7d8ba0',
+                    boxWidth: 10,
+                    padding:  8,
+                    generateLabels: function (chart) {
+                      return chart.data.labels.map(function (lbl, i) {
+                        var cat = cats[i];
+                        return {
+                          text:        lbl + ' (' + (cat ? cat.pct : 0) + '%)',
+                          fillStyle:   catColor(lbl),
+                          strokeStyle: '#0a0e16',
+                          lineWidth:   1,
+                          index:       i,
+                        };
+                      });
+                    }
+                  }
+                },
+                tooltip: Object.assign({}, CHART_BASE.plugins.tooltip, {
+                  callbacks: {
+                    label: function (ctx) {
+                      var cat = cats[ctx.dataIndex];
+                      return ' ' + fmtBytes(ctx.parsed) + ' (' + (cat ? cat.pct : 0) + '%)';
+                    }
+                  }
+                })
+              })
+            })
+          });
+        } else {
+          catWrap.innerHTML = '<div class="chart-loading text-muted"><i class="bi bi-inbox me-2"></i>Aucune donnée</div>';
+        }
+
+        /* ── Bar horizontal top 10 applications ── */
+        var apps    = (d.top_apps || []).slice(0, 10);
+        var appWrap = document.getElementById('bar-apps-wrap');
+        appWrap.innerHTML = '<canvas id="bar-apps" height="260"></canvas>';
+        if (apps.length) {
+          var appLabels = apps.map(function (a) { return a.name; });
+          var appBytes  = apps.map(function (a) { return a.bytes; });
+          var appColors = apps.map(function (a) { return catColor(a.category); });
+          new Chart(document.getElementById('bar-apps'), {
+            type: 'bar',
+            data: {
+              labels:   appLabels,
+              datasets: [{
+                label:           'Bytes',
+                data:            appBytes,
+                backgroundColor: appColors,
+                borderColor:     appColors.map(function (c) { return c.replace('.75)', '1)'); }),
+                borderWidth: 1,
+              }]
+            },
+            options: Object.assign({}, CHART_BASE, {
+              indexAxis: 'y',
+              scales: {
+                x: {
+                  grid:  { color: 'rgba(30,42,60,.7)' },
+                  ticks: {
+                    color: '#57647a', font: { size: 10 },
+                    callback: function (v) { return fmtBytes(v); }
+                  }
+                },
+                y: {
+                  grid:  { color: 'rgba(30,42,60,.5)' },
+                  ticks: { color: '#7d8ba0', font: { size: 10 } }
+                }
+              },
+              plugins: Object.assign({}, CHART_BASE.plugins, {
+                tooltip: Object.assign({}, CHART_BASE.plugins.tooltip, {
+                  callbacks: {
+                    afterLabel: function (ctx) {
+                      var app = apps[ctx.dataIndex];
+                      if (!app) return '';
+                      return 'Catégorie : ' + (app.category || 'unknown')
+                        + '\nFlux : ' + (app.flows || 0).toLocaleString('fr-FR');
+                    },
+                    label: function (ctx) {
+                      return ' ' + fmtBytes(ctx.parsed.x);
+                    }
+                  }
+                })
+              })
+            })
+          });
+
+          /* Légende catégories sous le graphe */
+          var usedCats = {};
+          apps.forEach(function (a) { usedCats[a.category] = true; });
+          var legendEl = document.getElementById('cat-legend');
+          legendEl.innerHTML = Object.keys(usedCats).map(function (c) {
+            return catBadge(c);
+          }).join(' ');
+          legendEl.style.display = '';
+        } else {
+          appWrap.innerHTML = '<div class="chart-loading text-muted"><i class="bi bi-inbox me-2"></i>Aucune donnée</div>';
+        }
+
+      })
+      .catch(function (err) {
+        console.error('app-flows:', err);
+        ['donut-cat-wrap', 'bar-apps-wrap'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.innerHTML = '<div class="chart-loading text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Erreur chargement</div>';
+        });
+      });
+  }
+
   /* ─── Init + Refresh ────────────────────────────────────── */
   function loadAll() {
     loadFlows();
     loadART();
     loadTCP();
+    loadAppFlows();
   }
 
   loadAll();
@@ -603,6 +817,12 @@
     document.getElementById('gauge-rtt-val').textContent = '—';
     document.getElementById('gauge-rtt-p95').textContent = '—';
     document.getElementById('flows-warning').classList.add('d-none');
+    /* Reset Section 4 */
+    ['donut-cat-wrap', 'bar-apps-wrap'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>';
+    });
+    document.getElementById('cat-legend').style.display = 'none';
     Chart.getChart('gauge-rtt') && Chart.getChart('gauge-rtt').destroy();
     loadAll();
   });

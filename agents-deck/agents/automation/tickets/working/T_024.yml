@@ -1,0 +1,23 @@
+id: T_024
+title: "Classification applicative + alertes saturation interfaces"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: working
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/app-classifier.py : enrichit les flux avec app_name/app_category"
+  - "PORT_APP_MAP 400+ entrées : HTTP/HTTPS/SSH/RDP/SMB/DNS/FTP/SMTP/Teams/Zoom/MySQL/PostgreSQL/MSSQL/Redis/MongoDB/VNC/SNMP/Syslog/ES/Kafka/NTP/LDAP/Kerberos"
+  - "Source 1 : ES netflow-* (dst_port) → app_name/app_category via bulk update_by_query"
+  - "Source 2 : ES zeek-* conn.log (service Zeek + id.resp_p fallback)"
+  - "Output : app-flows-today.json {top_apps, by_category} + bulk update ES"
+  - "CLI : python3 app-classifier.py [--days 1] [--output FILE] [--dry-run] [--verbose]"
+  - "Route /api/app-flows dans portal/app.py : cache 5min + fallback exécution app-classifier.py"
+  - "flows.html section 4 : Donut top 10 catégories + Bar horizontal top 10 apps avec badge catégorie"
+  - "scripts/automation/iface-saturation.py : surveille saturation SNMP via Prometheus"
+  - "Seuils : >80% medium, >90% high, >95% critical — anti-doublon TTL 15min"
+  - "Actions : create-ticket.py (category: capacity) + Teams si ≥ high"
+  - "Fallback Prometheus absent : skip gracieux"
+  - "CLI : python3 iface-saturation.py [--dry-run] [--verbose] [--threshold 80]"
+  - "scripts/automation/n8n-iface-saturation.json : workflow Schedule 5min → Execute → Parse → Teams"

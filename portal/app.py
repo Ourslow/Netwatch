@@ -1298,6 +1298,102 @@ def api_tcp_perf():
     return jsonify(data)
 
 
+# ---------------------------------------------------------------------------
+# App Classification — T_024
+# ---------------------------------------------------------------------------
+
+import time as _time_app  # noqa: E402
+
+_APP_FLOWS_CACHE: dict = {"data": None, "ts": 0.0}
+_APP_FLOWS_TTL   = 300  # 5 minutes
+
+
+@app.route("/api/app-flows")
+@login_required
+def api_app_flows():
+    """
+    Classification applicative des flux réseau.
+
+    Lit app-flows-today.json si récent (<5 min), sinon exécute app-classifier.py.
+    Retourne {top_apps:[{name,category,bytes,flows}], by_category:[{cat,bytes,pct}]}
+    """
+    global _APP_FLOWS_CACHE
+
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_file    = os.path.join(netwatch_root, "scripts", "automation", "app-flows-today.json")
+    classifier    = os.path.join(netwatch_root, "scripts", "automation", "app-classifier.py")
+
+    now = _time_app.monotonic()
+
+    # ── In-memory TTL ──
+    if _APP_FLOWS_CACHE["data"] is not None and (now - _APP_FLOWS_CACHE["ts"]) < _APP_FLOWS_TTL:
+        return jsonify(_APP_FLOWS_CACHE["data"])
+
+    # ── File cache (TTL 5 min) ──
+    def _load_file():
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                cached = json.load(f)
+            from datetime import datetime as _dt, timezone as _tz
+            gen = cached.get("generated_at", "")
+            if gen:
+                age = (_dt.now(_tz.utc) - _dt.fromisoformat(gen)).total_seconds()
+                if age < _APP_FLOWS_TTL:
+                    return cached
+        except Exception:
+            pass
+        return None
+
+    cached = _load_file()
+    if cached is not None:
+        _APP_FLOWS_CACHE = {"data": cached, "ts": now}
+        return jsonify(cached)
+
+    # ── Run app-classifier.py ──
+    try:
+        result = subprocess.run(
+            [
+                "python3", classifier,
+                "--output", cache_file,
+                "--days", "1",
+            ],
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            app.logger.warning(
+                "app-classifier.py exited %d: %s",
+                result.returncode,
+                (result.stderr or b"").decode(errors="replace")[:500],
+            )
+
+        with open(cache_file, encoding="utf-8") as f:
+            data = json.load(f)
+
+        _APP_FLOWS_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+
+    except subprocess.TimeoutExpired:
+        app.logger.warning("app-classifier.py timed out after 60s")
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception as exc:
+            return jsonify({"error": f"Timeout — pas de cache : {exc}"}), 503
+
+    except Exception as exc:
+        app.logger.warning("api_app_flows error: %s", exc)
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception:
+            return jsonify({"error": str(exc)}), 503
+
+
 # ============================================================
 # Erreurs HTTP
 # ============================================================
