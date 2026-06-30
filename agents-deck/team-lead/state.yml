@@ -1,10 +1,10 @@
 schema_version: '2.0'
-last_update: '2026-06-30T14:08:09.000Z'
+last_update: '2026-06-30T14:20:38.000Z'
 agents:
   infra:
-    expected_state: working
-    last_merged_ticket: T_021
-    last_merged_sha: d204b14
+    expected_state: done
+    last_merged_ticket: T_025
+    last_merged_sha: b8c557b
     closed_phase: null
     ticket_go:
       transmitted: false
