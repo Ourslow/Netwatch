@@ -41,9 +41,9 @@ agents:
       skills_override_reason: null
     notes: Agent automation — n8n, alertes Teams, tickets agents-deck auto.
   frontend:
-    expected_state: working
-    last_merged_ticket: T_023
-    last_merged_sha: 9c5b28a
+    expected_state: done
+    last_merged_ticket: T_027
+    last_merged_sha: 6cdb7c3
     closed_phase: null
     ticket_go:
       transmitted: false
