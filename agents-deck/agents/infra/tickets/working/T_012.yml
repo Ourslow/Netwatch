@@ -4,7 +4,7 @@ agent: Infra-agent
 phase: 1
 priority: high
 category: feature
-status: planned
+status: working
 created: "2026-06-30"
 acceptance:
   - "scripts/health-check.sh vérifie les 12 services NetWatch avec output coloré ✓/⚠/✗"
