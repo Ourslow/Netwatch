@@ -1,0 +1,74 @@
+{
+  "160.79.104.10": {
+    "source": "ipinfo",
+    "country": "US",
+    "org": "AS399358 Anthropic, PBC",
+    "hostname": null,
+    "city": "San Francisco",
+    "region": "California",
+    "enriched_at": "2026-06-30T09:19:55.005497+00:00"
+  },
+  "34.149.66.137": {
+    "source": "ipinfo",
+    "country": "US",
+    "org": "AS396982 Google LLC",
+    "hostname": "137.66.149.34.bc.googleusercontent.com",
+    "city": "Kansas City",
+    "region": "Missouri",
+    "enriched_at": "2026-06-30T09:19:55.231038+00:00"
+  },
+  "117.18.0.55": {
+    "source": "ipinfo",
+    "country": "HK",
+    "org": "AS152194 CTG Server Limited",
+    "hostname": null,
+    "city": "Hong Kong",
+    "region": "Hong Kong",
+    "enriched_at": "2026-06-30T09:19:55.498965+00:00"
+  },
+  "177.71.0.82": {
+    "source": "ipinfo",
+    "country": "BR",
+    "org": "AS28667 VERO S.A",
+    "hostname": "82.0.71.177.in-addr.arpa.verointernet.com.br",
+    "city": "Pirassununga",
+    "region": "São Paulo",
+    "enriched_at": "2026-06-30T09:19:55.728556+00:00"
+  },
+  "175.45.179.12": {
+    "source": "ipinfo",
+    "country": "KP",
+    "org": "AS131279 Ryugyong-dong",
+    "hostname": null,
+    "city": "Pyongyang",
+    "region": "Pyongyang",
+    "enriched_at": "2026-06-30T09:19:55.967398+00:00"
+  },
+  "188.165.200.12": {
+    "source": "ipinfo",
+    "country": "FR",
+    "org": "AS16276 OVH SAS",
+    "hostname": "ns209994.ovh.net",
+    "city": "Lille",
+    "region": "Hauts-de-France",
+    "enriched_at": "2026-06-30T09:19:56.318014+00:00"
+  },
+  "8.8.8.8": {
+    "source": "ipinfo",
+    "country": "US",
+    "org": "AS15169 Google LLC",
+    "hostname": "dns.google",
+    "city": "Mountain View",
+    "region": "California",
+    "enriched_at": "2026-06-30T09:19:56.557089+00:00"
+  },
+  "185.220.101.1": {
+    "source": "ipinfo",
+    "country": "DE",
+    "org": "AS60729 Stiftung Erneuerbare Freiheit",
+    "hostname": "berlin01.tor-exit.artikel10.org",
+    "city": "Berlin",
+    "region": "State of Berlin",
+    "enriched_at": "2026-06-30T09:19:56.785612+00:00"
+  }
+}
