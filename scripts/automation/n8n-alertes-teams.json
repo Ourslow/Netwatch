@@ -1,0 +1,204 @@
+{
+  "name": "NetWatch Alertes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Toutes les 5 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9200/suricata-*,snort-*/_search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"size\": 50,\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"range\": {\n            \"@timestamp\": {\n              \"gte\": \"now-5m\",\n              \"lte\": \"now\"\n            }\n          }\n        },\n        {\n          \"bool\": {\n            \"should\": [\n              { \"term\": { \"alert.severity\": 1 } },\n              { \"term\": { \"alert.severity\": 2 } },\n              { \"term\": { \"priority\": 1 } },\n              { \"term\": { \"priority\": 2 } },\n              { \"match\": { \"event.severity_label\": \"high\" } },\n              { \"match\": { \"event.severity_label\": \"critical\" } },\n              { \"terms\": { \"severity\": [\"high\", \"critical\"] } }\n            ],\n            \"minimum_should_match\": 1\n          }\n        }\n      ]\n    }\n  },\n  \"sort\": [ { \"@timestamp\": { \"order\": \"desc\" } } ],\n  \"_source\": [\n    \"@timestamp\", \"src_ip\", \"dest_ip\", \"alert.signature\", \"alert.severity\",\n    \"alert.category\", \"event.severity_label\", \"rule.name\", \"severity\",\n    \"proto\", \"dest_port\", \"priority\", \"msg\", \"engine\", \"_index\"\n  ]\n}"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "ES — Alertes High/Critical",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.hits.total.value }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Alertes trouvées ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formate les alertes ES pour Teams\nconst hits = $input.item.json.hits.hits;\nconst alerts = hits.map(hit => {\n  const src = hit._source;\n  const ts = src['@timestamp'] || 'N/A';\n  const srcIp = src.src_ip || src['source.ip'] || 'N/A';\n  const destIp = src.dest_ip || src['destination.ip'] || 'N/A';\n  const rule = src['alert.signature'] ||\n               (src.alert && src.alert.signature) ||\n               src['rule.name'] ||\n               src.msg ||\n               'Règle inconnue';\n  const severity = (src.alert && src.alert.severity) ||\n                   src.priority ||\n                   src['event.severity_label'] ||\n                   src.severity || 'N/A';\n  const category = (src.alert && src.alert.category) || src['event.category'] || '';\n  const proto = src.proto || src['network.transport'] || 'N/A';\n  const destPort = src.dest_port || src['destination.port'] || 'N/A';\n  const engine = src.engine || (hit._index || '').split('-')[0] || 'Unknown';\n  return { ts, srcIp, destIp, rule, severity, category, proto, destPort, engine };\n});\n\nreturn [{ json: { alerts, count: alerts.length } }];"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Formater les alertes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construit le payload Adaptive Card Teams\nconst { alerts, count } = $input.item.json;\nconst portalUrl = 'http://localhost:3000';\n\n// Top 5 alertes pour la carte\nconst top = alerts.slice(0, 5);\n\nconst factSets = top.map(a => ({\n  type: 'FactSet',\n  facts: [\n    { title: 'Heure', value: a.ts },\n    { title: 'IP source', value: a.srcIp },\n    { title: 'IP dest', value: `${a.destIp}:${a.destPort}` },\n    { title: 'Règle', value: String(a.rule).substring(0, 80) },\n    { title: 'Sévérité', value: String(a.severity) },\n    { title: 'Moteur', value: a.engine },\n    { title: 'Proto', value: a.proto }\n  ]\n}));\n\nconst payload = {\n  type: 'message',\n  attachments: [\n    {\n      contentType: 'application/vnd.microsoft.card.adaptive',\n      content: {\n        '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',\n        type: 'AdaptiveCard',\n        version: '1.4',\n        body: [\n          {\n            type: 'TextBlock',\n            text: `NetWatch — ${count} alerte(s) HIGH/CRITICAL`,\n            weight: 'Bolder',\n            size: 'Large',\n            color: 'Attention',\n            wrap: true\n          },\n          {\n            type: 'TextBlock',\n            text: `Dernières 5 minutes — ${new Date().toISOString()}`,\n            size: 'Small',\n            isSubtle: true\n          },\n          ...factSets\n        ],\n        actions: [\n          {\n            type: 'Action.OpenUrl',\n            title: 'Ouvrir le portail NetWatch',\n            url: portalUrl\n          }\n        ]\n      }\n    }\n  ]\n};\n\nreturn [{ json: payload }];"
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Construire message Teams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TEAMS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Envoyer vers Teams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 240]
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0007-0007-0007-000000000007",
+      "name": "Aucune alerte — Stop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 440]
+    }
+  ],
+  "connections": {
+    "Toutes les 5 min": {
+      "main": [
+        [
+          {
+            "node": "ES — Alertes High/Critical",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ES — Alertes High/Critical": {
+      "main": [
+        [
+          {
+            "node": "Alertes trouvées ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alertes trouvées ?": {
+      "main": [
+        [
+          {
+            "node": "Formater les alertes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aucune alerte — Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formater les alertes": {
+      "main": [
+        [
+          {
+            "node": "Construire message Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construire message Teams": {
+      "main": [
+        [
+          {
+            "node": "Envoyer vers Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "netwatch" },
+    { "name": "security" },
+    { "name": "teams" }
+  ],
+  "pinData": {},
+  "versionId": "1"
+}
