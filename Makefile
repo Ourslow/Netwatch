@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es health health-json health-no-color help
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es health health-json health-no-color help
 
 ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434
@@ -104,6 +104,9 @@ demo:
 demo-fast:
 	bash demo.sh --fast
 
+demo-client:
+	bash demo.sh --auto
+
 sim:
 	python3 simulate-traffic.py --hours 6 --intensity medium --attack --es $(ES)
 
@@ -162,6 +165,7 @@ help:
 	@echo ""
 	@echo "  make demo            Démonstration complète (6h de trafic)"
 	@echo "  make demo-fast       Démonstration rapide (1h, intensité high)"
+	@echo "  make demo-client     Démo client pipeline NDR (--auto, < 5 min)"
 	@echo "  make sim             Simuler 6h de trafic avec attaques"
 	@echo "  make sim-fast        Simuler 1h de trafic rapide"
 	@echo ""
