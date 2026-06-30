@@ -4,6 +4,7 @@ import hmac
 import io
 import json
 import os
+import subprocess
 from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlsplit, urlunsplit
@@ -1009,6 +1010,44 @@ def compliance():
         }
     referentials = [{**r, "summary": _summary(r["measures"])} for r in REFERENTIALS]
     return render_template("compliance.html", referentials=referentials)
+
+
+@app.route("/graph")
+@login_required
+def graph():
+    return render_template("graph.html")
+
+
+@app.route("/api/ioc-graph")
+@login_required
+def api_ioc_graph():
+    """Exécute ioc-graph.py et retourne le JSON. Timeout 30s → fallback cache."""
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_path = os.path.join(netwatch_root, "scripts", "security", "ioc-graph-output.json")
+
+    def _read_cache():
+        with open(cache_path, encoding="utf-8") as f:
+            return json.load(f)
+
+    try:
+        subprocess.run(
+            ["python3", "scripts/security/ioc-graph.py"],
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        return jsonify(_read_cache())
+    except subprocess.TimeoutExpired:
+        try:
+            return jsonify(_read_cache())
+        except Exception as exc:
+            return jsonify({"error": f"Timeout et pas de cache : {exc}"}), 503
+    except Exception as exc:
+        try:
+            return jsonify(_read_cache())
+        except Exception:
+            return jsonify({"error": str(exc)}), 503
 
 
 @app.route("/agents")

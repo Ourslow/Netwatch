@@ -3,10 +3,10 @@ agent: Frontend-agent
 canonical_id: frontend
 tool: "Claude Code"
 session_id: null
-state: working
+state: review-pending
 current_ticket: T_009
 ticket_started: "2026-06-30T13:00:00Z"
-ticket_finished: null
-last_activity: "2026-06-30T13:00:00Z"
+ticket_finished: "2026-06-30T13:30:00Z"
+last_activity: "2026-06-30T13:30:00Z"
 current_ticket_skills: {}
 skills_override_reason: null

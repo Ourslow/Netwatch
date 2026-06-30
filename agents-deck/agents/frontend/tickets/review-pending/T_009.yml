@@ -1,0 +1,43 @@
+id: T_009
+title: "Page /graph : visualisation interactive graphe IOC (D3.js)"
+agent: Frontend-agent
+phase: 2
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "Route /graph dans portal/app.py (login_required)"
+  - "API /api/ioc-graph : exécute scripts/security/ioc-graph.py et retourne le JSON"
+  - "Template graph.html : graphe D3.js v7 force-directed, noeuds colorés par type"
+  - "Clic sur noeud = panneau latéral avec détails (label, type, weight/nb alertes)"
+  - "Bouton Refresh pour relancer le calcul"
+  - "Entrée /graph dans le nav de base.html (icone bi-diagram-3)"
+body: |
+  Page de visualisation interactive du graphe IOC NetWatch.
+  Utilise D3.js v7 force-directed pour afficher les relations
+  entre IPs, règles IDS, TTPs MITRE et domaines suspects.
+delivery:
+  routes:
+    - "GET /graph — render graph.html (login_required)"
+    - "GET /api/ioc-graph — JSON du graphe, subprocess ioc-graph.py (timeout 30s + cache)"
+  template: "portal/templates/graph.html"
+  files_changed:
+    - "portal/app.py — +import subprocess, +route /graph, +route /api/ioc-graph"
+    - "portal/templates/base.html — nav entry bi-diagram-3, palette de commandes"
+    - "portal/templates/graph.html — template D3.js v7 force-directed"
+  node_colors:
+    ip_src: "#ef4444"
+    ip_dst: "#3b82f6"
+    rule: "#f97316"
+    mitre_ttp: "#a855f7"
+    domain: "#22c55e"
+  features:
+    - "Force-directed simulation D3.js v7 avec zoom/pan"
+    - "Drag & drop des noeuds"
+    - "Panneau latéral au clic (label, type, alertes, degrés)"
+    - "Labels automatiques (graphes <= 30 noeuds ou noeuds > 10 alertes)"
+    - "Légende des types de noeuds"
+    - "Flèches directionnelles sur les liens"
+    - "Stats bar (noeuds, liens, alertes, source, timestamp)"
+    - "Bouton Refresh dans topbar"
