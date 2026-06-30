@@ -1050,6 +1050,95 @@ def api_ioc_graph():
             return jsonify({"error": str(exc)}), 503
 
 
+# ---------------------------------------------------------------------------
+# IOC Risk Scores  (T_014)
+# ---------------------------------------------------------------------------
+
+import time as _time  # noqa: E402 — kept close to usage
+
+_IOC_SCORES_CACHE: dict = {"data": None, "ts": 0.0}
+_IOC_SCORES_TTL   = 300  # 5 minutes
+
+
+@app.route("/api/ioc-scores")
+@login_required
+def api_ioc_scores():
+    """
+    Execute ioc-score.py and return the composite risk scores per source IP.
+    Results are cached in memory for 5 minutes (TTL file-backed via ioc-scores-cache.json).
+    """
+    global _IOC_SCORES_CACHE
+
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_file    = os.path.join(netwatch_root, "scripts", "security", "ioc-scores-cache.json")
+
+    now = _time.monotonic()
+
+    # ---- In-memory TTL check ----
+    if _IOC_SCORES_CACHE["data"] is not None and (now - _IOC_SCORES_CACHE["ts"]) < _IOC_SCORES_TTL:
+        return jsonify(_IOC_SCORES_CACHE["data"])
+
+    # ---- File cache check (survives process restart) ----
+    def _load_file_cache():
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                cached = json.load(f)
+            # Check file-level TTL via meta.generated_at
+            from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+            gen = cached.get("meta", {}).get("generated_at", "")
+            if gen:
+                age = (_dt.now(_tz.utc) - _dt.fromisoformat(gen)).total_seconds()
+                if age < _IOC_SCORES_TTL:
+                    return cached
+        except Exception:
+            pass
+        return None
+
+    cached_data = _load_file_cache()
+    if cached_data is not None:
+        _IOC_SCORES_CACHE = {"data": cached_data, "ts": now}
+        return jsonify(cached_data)
+
+    # ---- Run ioc-score.py ----
+    script = os.path.join(netwatch_root, "scripts", "security", "ioc-score.py")
+    try:
+        result = subprocess.run(
+            ["python3", script, "--output", cache_file],
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            log_msg = (result.stderr or b"").decode(errors="replace")
+            app.logger.warning("ioc-score.py exited %d: %s", result.returncode, log_msg[:500])
+
+        with open(cache_file, encoding="utf-8") as f:
+            data = json.load(f)
+
+        _IOC_SCORES_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+
+    except subprocess.TimeoutExpired:
+        app.logger.warning("ioc-score.py timed out after 60s")
+        # Try stale cache
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception as exc:
+            return jsonify({"error": f"Timeout — pas de cache : {exc}"}), 503
+
+    except Exception as exc:
+        app.logger.warning("ioc-scores error: %s", exc)
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception:
+            return jsonify({"error": str(exc)}), 503
+
+
 @app.route("/agents")
 @login_required
 def agents_page():
