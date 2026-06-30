@@ -1,0 +1,33 @@
+id: T_002
+title: "Corriger le bug data-stream Filebeat → Elasticsearch"
+agent: Infra-agent
+phase: 1
+priority: high
+category: bugfix
+status: review-pending
+created: "2026-06-30"
+completed: "2026-06-30"
+acceptance:
+  - "Diagnostiquer pourquoi Filebeat échoue à indexer dans ES (data-stream vs index classique)"
+  - "Créer/corriger les index templates ES manquants pour zeek-*, snort-*, suricata-*"
+  - "Modifier filebeat/filebeat.yml si nécessaire"
+  - "Valider l'ingestion end-to-end : au moins 1 doc visible dans chaque index zeek-*/snort-*/suricata-*"
+  - "Documenter la cause racine et le fix dans docs/filebeat-fix.md"
+delivery:
+  root_cause: |
+    setup.template.pattern avec valeur comma-séparée → template catch-all [*] dans ES 8.x.
+    Filebeat 8.x appelle putDataStream() sur toute reconnexion même avec setup.ilm.enabled=false,
+    provoquant une erreur 500 (_data_stream_timestamp disabled) bloquant les reconnexions en boucle.
+    Secondairement : pipeline netwatch-geoip absent, scripts setup-es.sh/setup-geoip.sh non coordonnés.
+  fix_summary: |
+    1. filebeat/filebeat.yml : setup.template.enabled=false (délègue les templates à setup-es.sh)
+    2. setup-es.sh : intégration création pipeline netwatch-geoip avant les index templates
+    3. ES live : suppression template catch-all netwatch[*], création pipeline netwatch-geoip
+  validation: |
+    Filebeat démarre sans erreur (connexion établie en 1 tentative).
+    zeek-2026.06.30 : 449 docs, snort-2026.06.30 : 4680 docs, suricata-2026.06.30 : 26331 docs.
+    Métriques stables toutes les 30s, 0 erreur depuis le fix.
+  files_changed:
+    - filebeat/filebeat.yml
+    - setup-es.sh
+    - docs/filebeat-fix.md (créé)
