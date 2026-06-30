@@ -1209,6 +1209,35 @@ def api_exec_stats():
     return jsonify(stats)
 
 
+@app.route("/sla")
+@login_required
+def sla():
+    """Page SLA Compliance — gauges, timeline 7j, analyse Business Hours."""
+    days = int(request.args.get("days", 7))
+    days = max(1, min(days, 30))
+    sla_data, es_error = es_client.get_sla_stats(days=days)
+    no_data = all(s["buckets_total"] == 0 for s in sla_data.get("slas", []))
+    return render_template(
+        "sla.html",
+        sla_data  = sla_data,
+        no_data   = no_data,
+        days      = days,
+        error     = es_error,
+    )
+
+
+@app.route("/api/sla-stats")
+@login_required
+def api_sla_stats():
+    """SLA compliance data (JSON) — consommé par le refresh auto."""
+    days = int(request.args.get("days", 7))
+    days = max(1, min(days, 30))
+    data, error = es_client.get_sla_stats(days=days)
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify(data)
+
+
 @app.route("/agents")
 @login_required
 def agents_page():

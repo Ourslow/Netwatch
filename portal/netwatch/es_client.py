@@ -20,7 +20,7 @@ Structure normalisée :
 import math
 import re
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import config
 
@@ -1391,5 +1391,217 @@ def get_tcp_perf():
             )
     except Exception:
         pass
+
+    return result, None
+
+
+# ------------------------------------------------------------------ #
+# SLA Compliance — T_027                                               #
+# ------------------------------------------------------------------ #
+
+# Painless script source strings for time-of-day filtering
+_BIZ_SCRIPT = (
+    "def h=doc['@timestamp'].value.getHour();"
+    "def d=doc['@timestamp'].value.getDayOfWeek().getValue();"
+    "return h>=8&&h<18&&d>=1&&d<=5"
+)
+_OFF_SCRIPT = (
+    "def h=doc['@timestamp'].value.getHour();"
+    "def d=doc['@timestamp'].value.getDayOfWeek().getValue();"
+    "return !(h>=8&&h<18&&d>=1&&d<=5)"
+)
+
+
+def _run_sla_query(index, base_filters, field, days, biz_filter=None):
+    """
+    date_histogram 1h query for SLA compliance.
+    biz_filter: None (all hours) | "business" | "off"
+    Returns list of bucket dicts; [] on any error.
+    """
+    extra = []
+    if biz_filter == "business":
+        extra = [{"script": {"script": {"source": _BIZ_SCRIPT, "lang": "painless"}}}]
+    elif biz_filter == "off":
+        extra = [{"script": {"script": {"source": _OFF_SCRIPT, "lang": "painless"}}}]
+
+    body = {
+        "size": 0,
+        "query": {"bool": {"filter": [
+            {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
+            *base_filters,
+            *extra,
+        ]}},
+        "aggs": {
+            "per_hour": {
+                "date_histogram": {
+                    "field":          "@timestamp",
+                    "fixed_interval": "1h",
+                    "min_doc_count":  1,
+                },
+                "aggs": {
+                    "p95": {
+                        "percentiles": {
+                            "field":    field,
+                            "percents": [95],
+                        }
+                    }
+                },
+            }
+        },
+    }
+
+    try:
+        r = _es(f"/{index}/_search", body)
+        r.raise_for_status()
+        return r.json().get("aggregations", {}).get("per_hour", {}).get("buckets", [])
+    except Exception:
+        return []
+
+
+def _compute_sla_compliance(name, target_ms, target_pct, buckets, scale_ms, days):
+    """
+    Compute SLA compliance from hourly ES buckets.
+    scale_ms : True if field is in seconds (multiply ×1000 → ms).
+    Returns SLA compliance dict.
+    """
+    buckets_total = 0
+    buckets_ok    = 0
+    today = datetime.now(timezone.utc).date()
+
+    # Pre-fill daily slots for the window (oldest → today)
+    daily: dict = {}
+    for i in range(days, 0, -1):
+        d = (today - timedelta(days=i - 1)).isoformat()
+        daily[d] = [0, 0]  # [ok_count, total_count]
+
+    for b in buckets:
+        if b.get("doc_count", 0) == 0:
+            continue
+        p95_raw = b.get("p95", {}).get("values", {}).get("95.0")
+        if p95_raw is None:
+            continue
+        try:
+            p95_float = float(p95_raw)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(p95_float):
+            continue
+
+        p95_ms   = p95_float * 1000.0 if scale_ms else p95_float
+        date_str = b.get("key_as_string", "")[:10]   # YYYY-MM-DD prefix
+
+        buckets_total += 1
+        if date_str in daily:
+            daily[date_str][1] += 1
+
+        if p95_ms <= target_ms:
+            buckets_ok += 1
+            if date_str in daily:
+                daily[date_str][0] += 1
+
+    compliance_pct = (
+        round(buckets_ok / buckets_total * 100, 2) if buckets_total > 0 else 0.0
+    )
+
+    if compliance_pct >= target_pct:
+        status = "ok"
+    elif compliance_pct >= target_pct - 1.0:
+        status = "warn"
+    else:
+        status = "crit"
+
+    timeline = []
+    for i in range(days, 0, -1):
+        d = (today - timedelta(days=i - 1)).isoformat()
+        ok, total = daily.get(d, [0, 0])
+        timeline.append({
+            "date":           d,
+            "compliance_pct": round(ok / total * 100, 1) if total > 0 else None,
+        })
+
+    return {
+        "name":           name,
+        "target_ms":      target_ms,
+        "target_pct":     target_pct,
+        "compliance_pct": compliance_pct,
+        "buckets_ok":     buckets_ok,
+        "buckets_total":  buckets_total,
+        "status":         status,
+        "timeline":       timeline,
+    }
+
+
+def get_sla_stats(days=7):
+    """
+    SLA compliance sur `days` jours pour HTTP ART, DNS RTT, TCP RTT.
+    Sources :
+      - HTTP ART : zeek-* http.log  (duration, secondes → ms)
+      - DNS RTT  : zeek-* dns.log   (rtt,      secondes → ms)
+      - TCP RTT  : zeek-* conn.log  (rtt > 0,  secondes → ms, proto=tcp)
+    Business hours : L-V 8h-18h UTC (filtre Painless).
+    Retourne (data: dict, error: str|None).
+    """
+    target_pct = config.SLA_TARGET_PCT
+
+    sla_specs = [
+        {
+            "name":      "HTTP ART",
+            "target_ms": config.SLA_HTTP_TARGET_MS,
+            "index":     "zeek-*",
+            "filters":   [
+                {"term":   {"_path": "http"}},
+                {"exists": {"field": "duration"}},
+            ],
+            "field":    "duration",
+            "scale_ms": True,
+        },
+        {
+            "name":      "DNS RTT",
+            "target_ms": config.SLA_DNS_TARGET_MS,
+            "index":     "zeek-*",
+            "filters":   [
+                {"term":   {"_path": "dns"}},
+                {"exists": {"field": "rtt"}},
+            ],
+            "field":    "rtt",
+            "scale_ms": True,
+        },
+        {
+            "name":      "TCP RTT",
+            "target_ms": config.SLA_RTT_TARGET_MS,
+            "index":     "zeek-*",
+            "filters":   [
+                {"term":  {"_path": "conn"}},
+                {"term":  {"proto": "tcp"}},
+                {"range": {"rtt": {"gt": 0}}},
+            ],
+            "field":    "rtt",
+            "scale_ms": True,
+        },
+    ]
+
+    result: dict = {
+        "slas":           [],
+        "business_hours": {"slas": []},
+        "off_hours":      {"slas": []},
+    }
+
+    for spec in sla_specs:
+        for biz_filter, target_key in [
+            (None,       "slas"),
+            ("business", "business_hours"),
+            ("off",      "off_hours"),
+        ]:
+            buckets = _run_sla_query(
+                spec["index"], spec["filters"], spec["field"], days, biz_filter
+            )
+            entry = _compute_sla_compliance(
+                spec["name"], spec["target_ms"], target_pct,
+                buckets, spec["scale_ms"], days,
+            )
+            if biz_filter is None:
+                result["slas"].append(entry)
+            else:
+                result[target_key]["slas"].append(entry)
 
     return result, None

@@ -47,3 +47,9 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 # Timeout (s) des appels de génération Ollama. L'inférence CPU (sans GPU) est lente :
 # 120 s laisse le temps au modèle de se charger + générer. Réduire si GPU dispo.
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))
+
+# SLA targets — compliance thresholds (T_027)
+SLA_HTTP_TARGET_MS  = int(os.getenv("SLA_HTTP_TARGET_MS", "200"))
+SLA_DNS_TARGET_MS   = int(os.getenv("SLA_DNS_TARGET_MS", "50"))
+SLA_RTT_TARGET_MS   = int(os.getenv("SLA_RTT_TARGET_MS", "50"))
+SLA_TARGET_PCT      = float(os.getenv("SLA_TARGET_PCT", "99.0"))

@@ -1,0 +1,26 @@
+id: T_027
+title: "Page /sla : SLA compliance + Business Hours analysis"
+agent: Frontend-agent
+phase: 1
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+delivery: "2026-06-30T17:30:00Z"
+acceptance:
+  - "Constantes SLA_HTTP_TARGET_MS / SLA_DNS_TARGET_MS / SLA_RTT_TARGET_MS / SLA_TARGET_PCT dans portal/config.py"
+  - "Fonction get_sla_stats(days=7) dans portal/netwatch/es_client.py — date_histogram 1h + p95 + compliance par bucket"
+  - "Routes GET /sla et GET /api/sla-stats?days= dans portal/app.py"
+  - "Template sla.html : 3 gauges Chart.js doughnut 270°, timeline line chart 7j, tableau récapitulatif, section Business Hours vs Off-hours"
+  - "Entrée nav SLA (bi-patch-check) dans base.html après Exec + palette commandes"
+  - "Fallback no_data warning si Zeek actif < 1h"
+  - "Refresh auto toutes les 5 min (setInterval → location.reload)"
+context: |
+  Page SLA réseau pour le portail NetWatch.
+  Sources Zeek :
+    - HTTP ART  : zeek-* _path=http, champ duration (secondes → ms)
+    - DNS RTT   : zeek-* _path=dns,  champ rtt      (secondes → ms)
+    - TCP RTT   : zeek-* _path=conn, champ rtt > 0, proto=tcp (secondes → ms)
+  Business hours : L-V 8h-18h UTC via filtre Painless ES.
+  Statut jauge   : ok >= target_pct, warn >= target_pct-1%, crit sinon.
+  Timeline       : compliance % par jour sur la fenêtre demandée.
