@@ -1,0 +1,21 @@
+id: T_008
+title: "Ajouter la page /agents dans le portail Flask"
+agent: Frontend-agent
+phase: 1
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Nouvelle route /agents dans portal/app.py — login_required"
+  - "Lire agents-deck/team-lead/state.yml et les 4 agents-deck/agents/*/status.yml"
+  - "Template agents.html : tableau des 4 agents (id, state, current_ticket, last_activity)"
+  - "Badge coloré par état : done=vert, working=bleu, review=orange, standby=gris"
+  - "Lien /agents accessible depuis le nav principal (base.html ou navbar)"
+  - "Rafraîchissement auto toutes les 15s (JS fetch ou meta refresh)"
+  - "Accessible sur http://localhost:5050/agents sans erreur"
+body: |
+  Page de monitoring des agents IA dans le portail NetWatch.
+  Lit l'état en temps réel depuis les fichiers YAML agents-deck.
+  Permet à Nicolas de voir d'un coup d'oeil quels agents bossent,
+  sur quel ticket, depuis quand.
