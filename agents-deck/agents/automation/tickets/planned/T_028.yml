@@ -1,0 +1,48 @@
+id: T_028
+title: "Intégration ITSM — ServiceNow + JIRA via n8n + workflow escalade enrichi"
+agent: Automation-agent
+phase: 7
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/automation/n8n-servicenow.json : workflow n8n Schedule 5min → lit nouveaux tickets drafts → crée incident ServiceNow"
+  - "Mapping ticket NetWatch → ServiceNow : title→short_description, severity(critical→1/high→2/medium→3)→urgency, description→description, category→category"
+  - "Créer scripts/automation/n8n-jira.json : même logique → crée issue JIRA (project configurable via JIRA_PROJECT_KEY env)"
+  - "Créer scripts/automation/itsm-sync.py : CLI qui lit agents-deck/agents/*/tickets/drafts/*.yml et pousse vers ServiceNow OU JIRA selon ITSM_BACKEND env var"
+  - "ITSM_BACKEND=servicenow : POST https://{SNOW_INSTANCE}.service-now.com/api/now/table/incident"
+  - "ITSM_BACKEND=jira : POST https://{JIRA_URL}/rest/api/3/issue"
+  - "ITSM_BACKEND=none (défaut) : skip gracieux, log 'ITSM non configuré'"
+  - "Anti-doublon : ajouter champ itsm_id dans le ticket YAML une fois créé (évite doublons si relancé)"
+  - "Documenter dans docs/itsm-setup.md : config ServiceNow REST API, config JIRA API token, variables .env"
+  - "Ajouter dans .env.example : ITSM_BACKEND, SNOW_INSTANCE, SNOW_USER, SNOW_PASSWORD, JIRA_URL, JIRA_USER, JIRA_TOKEN, JIRA_PROJECT_KEY"
+context: |
+  ServiceNow REST API (Basic auth ou OAuth2) :
+  POST /api/now/table/incident
+  Body : {"short_description": "...", "urgency": "2", "category": "network",
+          "description": "...", "assignment_group": "NOC"}
+  Response : {"result": {"sys_id": "abc123", "number": "INC0012345"}}
+
+  JIRA Cloud REST API v3 :
+  POST /rest/api/3/issue
+  Headers : Authorization: Basic base64(user:token)
+  Body : {"fields": {"project": {"key": "NOC"}, "summary": "...",
+          "issuetype": {"name": "Bug"}, "priority": {"name": "High"},
+          "description": {"type": "doc", "version": 1, "content": [...]}}}
+
+  Les workflows n8n utilisent les nodes natifs ServiceNow et JIRA.
+  itsm-sync.py est le fallback CLI si n8n n'est pas configuré.
+
+  Variables .env minimales ServiceNow :
+  ITSM_BACKEND=servicenow
+  SNOW_INSTANCE=mycompany
+  SNOW_USER=admin
+  SNOW_PASSWORD=xxx
+
+  Variables .env minimales JIRA :
+  ITSM_BACKEND=jira
+  JIRA_URL=https://mycompany.atlassian.net
+  JIRA_USER=nicolas@company.com
+  JIRA_TOKEN=xxx
+  JIRA_PROJECT_KEY=NOC

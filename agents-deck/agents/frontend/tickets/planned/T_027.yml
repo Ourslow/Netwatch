@@ -1,0 +1,39 @@
+id: T_027
+title: "SLA compliance + Business Hours — dashboard et section /flows"
+agent: Frontend-agent
+phase: 7
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Route /sla + API /api/sla-stats dans portal/app.py (login_required)"
+  - "API /api/sla-stats : calcule compliance % sur 7j pour 3 SLAs par défaut"
+  - "SLA 1 — HTTP ART : p95 < 200ms (target 99% du temps)"
+  - "SLA 2 — DNS ART : p95 < 50ms (target 99.5% du temps)"
+  - "SLA 3 — RTT réseau : p95 < 50ms (target 99% du temps)"
+  - "Compliance % = nb_buckets_dans_sla / nb_buckets_total × 100 (buckets 5min sur 7j)"
+  - "Template sla.html : gauge circulaire par SLA (vert≥target, orange dans 1%, rouge en dessous), timeline 7j compliance, tableau récapitulatif"
+  - "API /api/business-hours : même métriques mais filtrées 8h-18h lun-ven vs reste"
+  - "Section 'Heures ouvrées vs off-hours' dans sla.html : comparaison ART/RTT pendant vs hors horaires bureau"
+  - "Entrée nav 'SLA' avec icône bi-patch-check dans base.html"
+  - "Configurer les SLAs via config.py : SLA_HTTP_TARGET_MS, SLA_DNS_TARGET_MS, SLA_RTT_TARGET_MS, SLA_TARGET_PCT"
+context: |
+  Calcul compliance par bucket ES :
+  - date_histogram interval=5m sur 7j
+  - sub-agg percentiles (95) sur art_ms ou rtt
+  - Compter buckets où p95 < target → compliance %
+
+  Business hours filter ES :
+  "script": {
+    "source": "doc['@timestamp'].value.getHour() >= 8 && doc['@timestamp'].value.getHour() < 18 && doc['@timestamp'].value.getDayOfWeek() >= 1 && doc['@timestamp'].value.getDayOfWeek() <= 5"
+  }
+
+  La page /sla est l'équivalent NetWatch du "SLA Compliance Report" de Riverbed NetProfiler.
+  C'est ce que les DSI regardent pour justifier la qualité du réseau.
+
+  Config par défaut dans config.py :
+  SLA_HTTP_TARGET_MS = int(os.getenv("SLA_HTTP_TARGET_MS", "200"))
+  SLA_DNS_TARGET_MS  = int(os.getenv("SLA_DNS_TARGET_MS", "50"))
+  SLA_RTT_TARGET_MS  = int(os.getenv("SLA_RTT_TARGET_MS", "50"))
+  SLA_TARGET_PCT     = float(os.getenv("SLA_TARGET_PCT", "99.0"))

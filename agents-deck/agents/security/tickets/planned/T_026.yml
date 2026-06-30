@@ -1,0 +1,33 @@
+id: T_026
+title: "VoIP pipeline — Zeek SIP/RTP activé + MOS score E-model G.107"
+agent: Security-agent
+phase: 7
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Activer analyseurs Zeek SIP et RTP dans zeek/local.zeek : @load policy/protocols/sip/sip.zeek et @load policy/protocols/conn/vlan-logging.zeek"
+  - "Créer zeek/scripts/voip-mos.zeek : calcule MOS score depuis RTP (jitter, packet loss, latency)"
+  - "Formule MOS E-model ITU-T G.107 simplifiée : R = 93.2 - Id - Ie (Id=delay factor, Ie=equipment impairment)"
+  - "Id = 0.024*latency_ms + 0.11*(latency_ms-177.3)*H(latency_ms-177.3)"
+  - "Ie depuis packet_loss : Ie ≈ 30*packet_loss_pct (codec G.711)"
+  - "MOS = 1 + 0.035*R + R*(R-60)*(100-R)*7e-6 (conversion R→MOS 1-5)"
+  - "Output voip.log : ts, call_id, src_ip, dst_ip, codec, duration_s, jitter_ms, packet_loss_pct, latency_ms, mos_score, mos_level (excellent≥4.0/good≥3.6/fair≥3.1/poor≥2.6/bad<2.6)"
+  - "Script scripts/security/voip-quality.py : agrège voip.log depuis ES, top 10 appels dégradés, MOS moyen"
+  - "Output JSON : {avg_mos, calls_total, calls_degraded(mos<3.6), top_bad_calls:[{call_id,src,dst,mos,duration}]}"
+context: |
+  Zeek built-in SIP analyzer : active avec @load policy/protocols/sip
+  Génère sip.log avec : ts, uid, src/dst, method, uri, call_id, status
+
+  Zeek RTP : @load policy/protocols/conn/weirds ou custom
+  RTP stats dans conn.log si pas d'analyzer dédié.
+  Alternative : utiliser les données de conn.log (udp, port 5004/5005/16384-32767)
+  et calculer jitter depuis les inter-arrival times.
+
+  Si SIP/RTP pas disponibles dans cette version Zeek → créer voip-quality.py
+  qui détecte les flux UDP RTP depuis conn.log (port range 10000-20000, udp)
+  et estime la qualité depuis les durées et volumes.
+
+  MOS scale : 5=excellent, 4=good, 3=fair, 2=poor, 1=bad
+  Seuil dégradé : MOS < 3.6 (perceptible par l'utilisateur)

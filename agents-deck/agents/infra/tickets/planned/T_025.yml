@@ -1,0 +1,38 @@
+id: T_025
+title: "Capacity planning — predict_linear Prometheus + Grafana 'jours avant saturation'"
+agent: Infra-agent
+phase: 7
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Ajouter Prometheus recording rules dans prometheus/rules/capacity.yml : taux de croissance 7j des interfaces (bytes/sec)"
+  - "Query predict_linear : predict_linear(rate(ifHCInOctets{job='snmp'}[7d])[1h:], 86400*30) → 'bytes dans 30j'"
+  - "Calcul 'jours avant saturation' par interface : (ifSpeed - current_bytes*8) / growth_rate_per_day"
+  - "Dashboard Grafana grafana/dashboards/capacity-planning.json : table interfaces triée par 'jours avant saturation' (rouge <7j, orange 7-30j, vert >30j)"
+  - "Panel time series : évolution 30j historique + prédiction 30j future (ligne pointillée)"
+  - "Stat panel : nb interfaces critiques (<7j), interfaces sous tension (7-30j)"
+  - "Intégrer dans snmp-interfaces.json existant : ajouter row 'Capacity Planning' en bas"
+  - "Documenter dans docs/capacity-planning.md"
+context: |
+  Prometheus predict_linear(v range-vector, t scalar) extrapole linéairement
+  sur t secondes. Exemple :
+  predict_linear(rate(ifHCInOctets{job="snmp",ifDescr="GigabitEthernet0/1"}[7d])[1h:], 86400*30)
+  → octets estimés dans 30 jours
+
+  Jours avant saturation :
+  days_left = (ifSpeed/8 - current_rate) / growth_rate_per_sec / 86400
+
+  Si growth_rate ≤ 0 (traffic décroissant) → afficher "∞"
+  Si current_rate > ifSpeed/8 → afficher "SATURÉ"
+
+  Recording rules (pré-calcul Prometheus) :
+  groups:
+    - name: capacity
+      interval: 5m
+      rules:
+        - record: netwatch:iface_growth_rate_7d
+          expr: deriv(rate(ifHCInOctets{job="snmp"}[5m])[7d:5m])
+        - record: netwatch:iface_days_to_saturation
+          expr: (ifHighSpeed*125000 - rate(ifHCInOctets{job="snmp"}[5m])) / netwatch:iface_growth_rate_7d / 86400
