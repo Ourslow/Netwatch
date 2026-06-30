@@ -1,0 +1,92 @@
+id: T_020
+title: "Alertes performance réseau + rapport NPM quotidien"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/npm-alerts.py : surveille RTT p95, retransmissions et ART HTTP sur fenêtre 5min — DONE"
+  - "Source ES : zeek-* conn.rtt (sec→ms), conn.orig_retrans_pkts, conn.orig_pkts — DONE"
+  - "Seuils RTT : >150ms → medium, >300ms → high — DONE"
+  - "Seuils retransmissions : ratio >3% → medium, >10% → critical — DONE"
+  - "Seuils ART HTTP : >500ms → medium (skip gracieux si art.log non indexé) — DONE"
+  - "Actions : create-ticket.py (category: performance) + Teams webhook si severity ≥ high — DONE"
+  - "Anti-doublon : npm-alerts-history.json TTL 1h par clé métrique+seuil — DONE"
+  - "Log performance : npm-perf-log.json (rétention 30j, lu par daily-npm-report.py) — DONE"
+  - "CLI : python3 npm-alerts.py [--dry-run] [--verbose] [--window-minutes 5] — DONE"
+  - "scripts/automation/daily-npm-report.py : rapport NPM 24h — DONE"
+  - "Top 5 talkers : netflow-* bytes → zeek-* conn.orig_bytes (fallback) — DONE"
+  - "RTT p95 zeek conn.rtt, ART HTTP p95 art.log→http.log, DNS p95 dns.rtt — DONE"
+  - "Volume total bytes 24h + comparaison J-1 (best-effort, skip si pas de données) — DONE"
+  - "Nb alertes perf depuis npm-perf-log.json (total/critical/high/medium) — DONE"
+  - "Output JSON → reports/npm-YYYY-MM-DD.json + résumé console coloré — DONE"
+  - "CLI : python3 daily-npm-report.py [--days 1] [--output FILE] [--no-color] — DONE"
+  - "scripts/automation/n8n-npm-daily.json : workflow n8n Schedule 0 8 * * * — DONE"
+  - "Execute Command daily-npm-report.py → parse JSON → Teams Adaptive Card — DONE"
+  - "Teams card : top talker, RTT p95 [✓/⚠/✗], ART HTTP p95, alertes perf — DONE"
+  - "Dégradation gracieuse si netflow-* ou art.log absents — DONE"
+delivery:
+  summary: |
+    Livraison complète du pipeline de monitoring NPM et rapport quotidien NetWatch.
+
+    npm-alerts.py : script Python 290 lignes (stdlib pur). Interroge ES zeek-*
+    sur une fenêtre configurable (défaut 5 min) et évalue 3 métriques :
+    RTT p95 (conn.rtt, sec→ms), ratio retransmissions (conn.orig_retrans_pkts /
+    conn.orig_pkts), ART HTTP p95 (art.log ou http.log fallback, skip gracieux).
+    Anti-doublon : npm-alerts-history.json TTL 1h par clé (rtt_high, rtt_medium,
+    retrans_critical, retrans_medium, art_http_medium). Log persistant :
+    npm-perf-log.json (rétention 30j) pour comptage dans le rapport quotidien.
+    Actions : create-ticket.py avec JSON {category:performance, engine:npm-alerts},
+    Teams Adaptive Card si severity ≥ high (TEAMS_WEBHOOK_URL, skip gracieux si absent).
+    CLI complet : --dry-run, --verbose, --window-minutes, --es-url, --history-file.
+
+    daily-npm-report.py : script Python 310 lignes. Fenêtre configurable (--days,
+    défaut 1j). Top 5 talkers : tente netflow-* (champ bytes) puis fallback zeek-*
+    (conn.orig_bytes) avec index_has_data() check avant requête. RTT p95 zeek-*
+    conn.rtt (conv sec→ms). ART HTTP p95 : cascade art.rtt → http.duration avec
+    détection auto de l'unité (×1000 si < 100). DNS p95 : dns.rtt ou rtt.
+    Volume total : sum(conn.orig_bytes + conn.resp_bytes) + fallback netflow-* bytes.
+    Comparaison J-1 : query même métrique sur [2*days, days] window, calcul % variation
+    (best-effort, skip si zéro). Alertes perf : lecture npm-perf-log.json avec filtre
+    datetime. Output JSON → reports/npm-YYYY-MM-DD.json. Résumé console ANSI coloré
+    avec icônes [✓/⚠/✗] selon seuils. JSON stdout pour n8n/piping.
+
+    n8n-npm-daily.json : workflow 5 nœuds (Schedule 0 8 * * * → Execute Command →
+    Code JS parse → Code JS build card → HTTP Request Teams). Le parse JS tente
+    JSON.parse ligne par ligne depuis stdout (robuste aux logs stderr mélangés),
+    avec JSON fallback regex et rapport vide par défaut. La carte Teams inclut
+    top talker IP+bytes, volume total+variation J-1, RTT p95 [✓/⚠/✗], ART HTTP p95
+    [✓/⚠], DNS p95, alertes perf (total/critical/high/medium), top 3 talkers en FactSet.
+  technical: |
+    - scripts/automation/npm-alerts.py :
+      • load_json_file / save_json_file : helpers I/O JSON génériques
+      • purge_history : purge anti-doublon > TTL 1h
+      • is_in_cooldown / record_alert_history : gestion TTL par clé métrique
+      • append_perf_log : append à npm-perf-log.json avec purge 30j
+      • es_post : POST JSON vers ES avec gestion URLError/HTTPError
+      • index_has_field : vérifie présence d'un champ avant requête p95
+      • query_rtt_p95 : percentiles 95 sur conn.rtt, conversion ×1000
+      • query_retransmission_ratio : sum(retrans_pkts)/sum(orig_pkts)×100
+      • query_art_http_p95 : cascade zeek-art-*/art.rtt → zeek-art-*/rtt → zeek-*/http.duration
+      • action_create_ticket : subprocess create-ticket.py, stdin JSON engine=npm-alerts
+      • action_teams : Adaptive Card Warning/Attention selon severity, skip si env absent
+      • fire_alert : orchestration cooldown → create-ticket → teams → log
+      • evaluate_rtt / evaluate_retransmissions / evaluate_art_http : logique seuils
+    - scripts/automation/daily-npm-report.py :
+      • es_post / index_has_data : helpers ES avec fallback et timeout
+      • query_top_talkers : cascade netflow-*/bytes → zeek-*/conn.orig_bytes, terms agg
+      • query_percentile : générique p95 avec to_ms flag
+      • query_rtt_p95 / query_art_http_p95 / query_dns_p95 : wrappers spécialisés
+      • query_total_bytes : sum orig+resp zeek, fallback netflow-* bytes
+      • count_perf_alerts : lecture npm-perf-log.json + filtre datetime
+      • build_report : agrège toutes les queries, calcule variation J-1
+      • colorize / fmt_bytes / rtt_icon / art_icon : formatage console ANSI
+      • print_console_summary : sortie console structurée avec icônes seuils
+    - scripts/automation/n8n-npm-daily.json : 5 nœuds UUIDs c3d4e5f6-*,
+      Schedule cron "0 8 * * *", Execute Command avec 2>&1, Code JS parse
+      multi-stratégie (par-ligne, regex), Code JS Adaptive Card avec fmtBytes/
+      rttStatus/artStatus inline, HTTP Request Teams via $env.TEAMS_WEBHOOK_URL
+    - reports/ : répertoire créé pour les JSON quotidiens npm-YYYY-MM-DD.json
+  delivered_at: "2026-06-30T14:00:00Z"
