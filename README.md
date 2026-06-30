@@ -84,6 +84,8 @@ La v2 passe de 4 à **12 services** avec trois moteurs d'analyse IDS en parallè
 | 🤖 | **IA locale on-prem** | Explication des alertes via Ollama/Mistral — zéro fuite de données |
 | 🔐 | **Fingerprinting TLS/SSH** | JA3 · JA3S · HASSH via Zeek |
 | ⚡ | **Métriques système** | Prometheus + node-exporter — CPU, RAM, disque, réseau |
+| 🕸️ | **Graphe IOC** | Knowledge graph NetworkX — IPs · règles · MITRE TTPs · relations (ioc-graph.py) |
+| 🎫 | **Ticketing automatique** | n8n → YAML ticket créé automatiquement sur alerte critique ES |
 
 ---
 
@@ -387,6 +389,7 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | IA locale | Ollama / Mistral | — |
 | IPS collaboratif | CrowdSec | latest |
 | Automatisation alertes | n8n | 2.x |
+| Graphe IOC | NetworkX + elasticsearch-py | 3.x / 8.x |
 | Orchestration agents IA | agents-deck (Fuskerrs) | 2.0 |
 | Orchestration | Docker Compose | v2 |
 | OS cible | Ubuntu | 22.04 LTS |
@@ -419,6 +422,7 @@ netwatch/
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
 ├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch
 ├── setup-geoip.sh                  # Pipeline ingest GeoIP
+├── setup-es.sh                     # Index templates ES + pipeline GeoIP (fix T_002)
 ├── update-intel.sh                 # Mise à jour watchlists Zeek Intel
 │
 ├── zeek/                           # Analyse protocolaire
@@ -430,6 +434,16 @@ netwatch/
 │   └── intel/
 │       ├── ip_watchlist.dat        # IPs malveillantes (Feodo Tracker)
 │       └── domain_watchlist.dat    # Domaines malveillants (URLhaus)
+│
+├── scripts/
+│   ├── security/
+│   │   ├── ioc-graph.py            # Graphe IOC NetworkX (IPs·règles·MITRE TTPs)
+│   │   └── ioc-graph-output.json   # Export graphe (nodes + edges)
+│   └── automation/
+│       ├── create-ticket.py        # Création YAML ticket depuis alerte ES (CLI)
+│       ├── n8n-alertes-teams.json  # Workflow n8n alertes → Teams
+│       ├── n8n-auto-tickets.json   # Workflow n8n alertes critiques → tickets
+│       └── deploy-n8n-workflow.sh  # Import auto workflow via API n8n
 │
 ├── snort/                          # IDS signatures MITRE
 │   ├── Dockerfile                  # Build from source + libdaq + tcmalloc
@@ -582,7 +596,8 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | Version | Statut | Contenu |
 |---------|--------|---------|
 | **v1** | ✅ Mars 2026 | Stack Docker 4 services · 4 dashboards Grafana · Scripts Zeek · Simulateur trafic |
-| **v2** | 🟢 Juin 2026 | 12 services · 11 dashboards · Portail Flask · IA locale · CrowdSec · n8n alertes Teams · Agents IA · Validé ESXi lab Axians |
+| **v2 Phase 1** | ✅ Juin 2026 | 12 services · CrowdSec · n8n alertes Teams · page /agents · calibrage 12 règles IDS · détection lateral movement |
+| **v2 Phase 2** | ✅ Juin 2026 | Fix Filebeat/ES data-stream · graphe IOC NetworkX · ticketing auto n8n → agents-deck · audit sécurité P0/P1/P2 |
 | **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
 
 ---
