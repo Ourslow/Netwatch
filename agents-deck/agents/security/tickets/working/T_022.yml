@@ -1,0 +1,23 @@
+id: T_022
+title: "Découverte topologie réseau : SNMP CDP/LLDP + ARP Zeek → topology.json"
+agent: Security-agent
+phase: 3
+priority: high
+category: feature
+status: working
+created: "2026-06-30"
+started: "2026-06-30"
+finished: null
+branch: "agent/security/active"
+acceptance:
+  - "scripts/security/topology-discover.py : découverte topologie L2/L3 SNMP LLDP + ARP Zeek"
+  - "Source SNMP LLDP-MIB : lldpRemSysName, lldpRemPortDescr, lldpLocPortId, lldpRemChassisId, sysName, sysDescr, ifDescr, ipNetToMediaPhysAddress"
+  - "Implémentation SNMP via subprocess snmpwalk -v2c, parser texte → dict OID→valeur, fallback gracieux si absent"
+  - "Source Zeek ARP depuis ES : zeek-* filtre network.protocol:arp OR log_type:arp"
+  - "Table OUI → vendor (≥50 entrées) pour Cisco/HP/Juniper/Dell/VMware/Aruba/Fortinet/Palo Alto"
+  - "Output topology.json : devices (id/name/ip/mac/type/vendor/interfaces), links (src/dst/ports/speed), stats"
+  - "Types détectés : router/switch/firewall/host selon sysDescr"
+  - "Mode --demo : topologie fictive (1 routeur, 2 switchs, 5 hosts) sans SNMP ni ES"
+  - "CLI : python3 topology-discover.py [--targets IP1,IP2] [--community public] [--output topology.json] [--demo] [--verbose]"
+  - "Résultat écrit dans scripts/security/topology.json"
+delivery: null

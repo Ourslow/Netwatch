@@ -1,0 +1,65 @@
+id: T_022
+title: "Découverte topologie réseau : SNMP CDP/LLDP + ARP Zeek → topology.json"
+agent: Security-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30"
+finished: "2026-06-30"
+branch: "agent/security/active"
+acceptance:
+  - "scripts/security/topology-discover.py : découverte topologie L2/L3 SNMP LLDP + ARP Zeek"
+  - "Source SNMP LLDP-MIB : lldpRemSysName, lldpRemPortDescr, lldpLocPortId, lldpRemChassisId, sysName, sysDescr, ifDescr, ipNetToMediaPhysAddress"
+  - "Implémentation SNMP via subprocess snmpwalk -v2c, parser texte → dict OID→valeur, fallback gracieux si absent"
+  - "Source Zeek ARP depuis ES : zeek-* filtre network.protocol:arp OR log_type:arp"
+  - "Table OUI → vendor (≥50 entrées) pour Cisco/HP/Juniper/Dell/VMware/Aruba/Fortinet/Palo Alto"
+  - "Output topology.json : devices (id/name/ip/mac/type/vendor/interfaces), links (src/dst/ports/speed), stats"
+  - "Types détectés : router/switch/firewall/host selon sysDescr"
+  - "Mode --demo : topologie fictive (1 routeur, 2 switchs, 5 hosts) sans SNMP ni ES"
+  - "CLI : python3 topology-discover.py [--targets IP1,IP2] [--community public] [--output topology.json] [--demo] [--verbose]"
+  - "Résultat écrit dans scripts/security/topology.json"
+delivery:
+  summary: |
+    T_022 livré : script topology-discover.py + topology.json généré.
+
+    topology-discover.py effectue la découverte topologie L2/L3 via deux sources :
+    (1) SNMP LLDP-MIB sur les cibles --targets (snmpwalk -v2c subprocess) avec
+    fallback gracieux si snmpwalk absent, (2) ARP Zeek depuis Elasticsearch
+    (index zeek-*, filtre network.protocol:arp OR log_type:arp).
+
+    La table OUI→vendor intègre >100 entrées couvrant Cisco, HP, Aruba, Juniper,
+    Dell, VMware, Fortinet, Palo Alto, Ubiquiti, MikroTik, F5, Check Point,
+    Extreme, Netscout. La détection du type de device (router/switch/firewall/host)
+    repose sur les mots-clés dans sysDescr et le nombre d'interfaces IP.
+
+    Output topology.json conforme au schéma : devices[] avec id/name/ip/mac/type/
+    vendor/interfaces, links[] avec src/src_port/dst/dst_port/speed, stats avec
+    devices count, links count, discovered_at (UTC ISO8601), source label.
+
+    Le mode --demo génère 1 routeur Cisco, 2 switches (Cisco + Aruba), 5 hosts
+    (Dell x3 + VMware + HP x2) avec 8 liens, sans aucune dépendance externe.
+    topology.json est écrit dans scripts/security/ (lu par le portail).
+  technical: |
+    - scripts/security/topology-discover.py : stdlib pure (subprocess, json,
+      argparse, re, logging, urllib, pathlib), aucune dépendance externe
+    - snmpwalk() : subprocess.run(["snmpwalk", "-v2c", "-c", community, "-Oq",
+      "-Oe", target, oid], capture_output=True, timeout=10), parse stdout ligne
+      par ligne → dict {oid_key: value}, FileNotFoundError → warning + return {}
+    - snmpget_scalar() : appelle snmpwalk et retourne la première valeur
+    - discover_device_snmp() : sysName, sysDescr, ifDescr table, ARP table
+      (ipNetToMediaPhysAddress), LLDP remote sys/port/chassis + local port
+    - _normalize_mac_hex() : gère hex-STRING SNMP, espaces, tirets → xx:xx:xx:xx:xx:xx
+    - _lldp_neighbor_key() : extrait clé stable depuis suffixe OID LLDP
+    - fetch_arp_from_es() : urllib.request, query bool should (network.protocol:arp
+      OR log_type:arp), extrait src_ip/src_mac/dst_ip avec fallback multi-champs
+      (src_ip / source.ip / zeek.arp.src_ip)
+    - build_topology() : fusionne SNMP + ARP, déduplique liens via frozenset,
+      crée stubs pour voisins LLDP inconnus, nettoie champs internes (_prefix)
+    - OUI_VENDOR dict : >100 OUI (00:00:0c → Cisco, 00:0b:86 → Aruba, etc.)
+    - infer_device_type() : regex case-insensitive sur sysDescr + ip_count>2
+    - build_demo_topology() : 8 devices, 8 links, source="demo"
+    - _make_id() : nom → id ASCII lowercase sans caractères spéciaux
+    - topology.json écrit via pathlib.Path.open() avec mkdir parents=True
+  delivered_at: "2026-06-30T14:30:00Z"
