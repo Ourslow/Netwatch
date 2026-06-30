@@ -1,0 +1,44 @@
+id: T_011
+title: "n8n rapport hebdomadaire ES → Teams"
+agent: Automation-agent
+phase: 2
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/weekly-report.py : CLI --days N --output report.json, agrège alertes ES 7 derniers jours"
+  - "Output JSON : period, generated_at, total_alerts, by_engine, top_rules, top_src_ips, severity, mitre_ttps"
+  - "scripts/automation/n8n-weekly-report.json : workflow n8n, schedule lundi 08h00 (cron 0 8 * * 1), Execute Command + Teams Adaptive Card"
+  - "Rapport JSON sauvegardé dans docs/reports/weekly-YYYY-WXX.json (via --save-docs)"
+  - "Section 'Rapport hebdomadaire' dans docs/n8n-setup.md"
+delivery:
+  summary: |
+    Livraison complète du pipeline rapport hebdomadaire NetWatch.
+    weekly-report.py : script Python CLI (argparse) qui agrège les alertes des
+    7 derniers jours depuis Elasticsearch (zeek-*, snort-*, suricata-*) et produit
+    un JSON structuré couvrant tous les champs du spec : period, generated_at,
+    total_alerts, by_engine, top_rules (top 10), top_src_ips (top 5), severity
+    (critical/high/medium/low) et mitre_ttps. Si ES est vide ou inaccessible,
+    le rapport retourne des zéros sans erreur. Testé en live : 32 807 alertes
+    agrégées correctement depuis les index snort-* et suricata-* du lab.
+    n8n-weekly-report.json : workflow 5 nœuds (Schedule lundi 08h00 → Execute
+    Command → Parse JS → Build Adaptive Card JS → POST Teams). La carte contient
+    chiffres clés (total, par moteur, par sévérité), top 3 règles et lien portail.
+    docs/reports/ : répertoire créé, --save-docs archive weekly-YYYY-WXX.json.
+    docs/n8n-setup.md : section "Rapport hebdomadaire" ajoutée (~130 lignes,
+    usage CLI, format JSON, architecture nœuds, Adaptive Card, test manuel, fichiers).
+  technical: |
+    - scripts/automation/weekly-report.py : 230 lignes Python stdlib pur
+      (urllib, json, argparse, datetime), 6 fonctions ES (count par engine,
+      top rules Suricata/Snort via aggs terms, top IPs, severity par bool/should,
+      MITRE ttps). Fallback gracieux sur URLError/HTTPError.
+    - scripts/automation/n8n-weekly-report.json : workflow n8n exporté,
+      5 nœuds, schedule cron 0 8 * * 1, executeCommand avec --save-docs,
+      Adaptive Card v1.4 couleur dynamique (Good/Warning/Attention selon volume).
+    - docs/reports/ : répertoire créé avec .gitkeep pour traçabilité git.
+      Les rapports weekly-YYYY-WXX.json y sont archivés par save_to_docs().
+    - docs/n8n-setup.md : section ajoutée en fin de fichier (vue d'ensemble,
+      usage CLI, format JSON annoté, architecture nœuds tableau, détail carte
+      Teams, test manuel, tableau fichiers associés).
+  delivered_at: "2026-06-30T12:30:00Z"

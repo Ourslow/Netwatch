@@ -1,0 +1,137 @@
+{
+  "name": "NetWatch Rapport Hebdomadaire",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000001",
+      "name": "Lundi 08h00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "python3 /home/ourslow/code/netwatch/scripts/automation/weekly-report.py --days 7 --output /tmp/netwatch-weekly-report.json --save-docs && cat /tmp/netwatch-weekly-report.json"
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000002",
+      "name": "Générer le rapport",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse le JSON produit par weekly-report.py\nconst stdout = $input.item.json.stdout || '';\nlet report = {};\ntry {\n  report = JSON.parse(stdout);\n} catch(e) {\n  // ES vide ou erreur : rapport avec zéros\n  report = {\n    period: { from: 'N/A', to: 'N/A' },\n    generated_at: new Date().toISOString(),\n    total_alerts: 0,\n    by_engine: { zeek: 0, snort: 0, suricata: 0 },\n    top_rules: [],\n    top_src_ips: [],\n    severity: { critical: 0, high: 0, medium: 0, low: 0 },\n    mitre_ttps: []\n  };\n}\n\n// Calcul de la semaine ISO\nconst now = new Date();\nconst startOfYear = new Date(now.getFullYear(), 0, 1);\nconst weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);\nconst isoWeek = `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;\n\n// Prépare les chiffres clés pour la carte Teams\nconst topRules = (report.top_rules || []).slice(0, 3);\nconst byEngine = report.by_engine || {};\nconst severity = report.severity || {};\nconst periodFrom = (report.period || {}).from || 'N/A';\nconst periodTo = (report.period || {}).to || 'N/A';\n\nreturn [{ json: { report, isoWeek, topRules, byEngine, severity, periodFrom, periodTo } }];"
+      },
+      "id": "b2c3d4e5-0003-0003-0003-000000000003",
+      "name": "Parser le rapport",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construit l'Adaptive Card Teams pour le rapport hebdomadaire\nconst { report, isoWeek, topRules, byEngine, severity, periodFrom, periodTo } = $input.item.json;\nconst portalUrl = 'http://localhost:5050';\nconst total = report.total_alerts || 0;\n\n// Lignes top 3 règles\nconst rulesFacts = topRules.length > 0\n  ? topRules.map((r, i) => ({\n      title: `#${i + 1}`,\n      value: `${String(r.name || 'N/A').substring(0, 70)} (${r.count})`\n    }))\n  : [{ title: 'Top règles', value: 'Aucune alerte cette semaine' }];\n\n// Couleur titre selon volume\nconst titleColor = total === 0 ? 'Good' : total < 100 ? 'Warning' : 'Attention';\n\nconst payload = {\n  type: 'message',\n  attachments: [\n    {\n      contentType: 'application/vnd.microsoft.card.adaptive',\n      content: {\n        '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',\n        type: 'AdaptiveCard',\n        version: '1.4',\n        body: [\n          {\n            type: 'TextBlock',\n            text: `NetWatch — Rapport Hebdomadaire ${isoWeek}`,\n            weight: 'Bolder',\n            size: 'Large',\n            color: titleColor,\n            wrap: true\n          },\n          {\n            type: 'TextBlock',\n            text: `Période : ${periodFrom} → ${periodTo}`,\n            size: 'Small',\n            isSubtle: true,\n            wrap: true\n          },\n          {\n            type: 'ColumnSet',\n            columns: [\n              {\n                type: 'Column',\n                width: 'stretch',\n                items: [\n                  {\n                    type: 'TextBlock',\n                    text: 'Alertes totales',\n                    weight: 'Bolder',\n                    size: 'Small'\n                  },\n                  {\n                    type: 'TextBlock',\n                    text: String(total),\n                    size: 'ExtraLarge',\n                    weight: 'Bolder',\n                    color: titleColor\n                  }\n                ]\n              },\n              {\n                type: 'Column',\n                width: 'stretch',\n                items: [\n                  {\n                    type: 'TextBlock',\n                    text: 'Par moteur',\n                    weight: 'Bolder',\n                    size: 'Small'\n                  },\n                  {\n                    type: 'FactSet',\n                    facts: [\n                      { title: 'Zeek', value: String(byEngine.zeek || 0) },\n                      { title: 'Snort', value: String(byEngine.snort || 0) },\n                      { title: 'Suricata', value: String(byEngine.suricata || 0) }\n                    ]\n                  }\n                ]\n              },\n              {\n                type: 'Column',\n                width: 'stretch',\n                items: [\n                  {\n                    type: 'TextBlock',\n                    text: 'Par sévérité',\n                    weight: 'Bolder',\n                    size: 'Small'\n                  },\n                  {\n                    type: 'FactSet',\n                    facts: [\n                      { title: 'Critical', value: String(severity.critical || 0) },\n                      { title: 'High', value: String(severity.high || 0) },\n                      { title: 'Medium', value: String(severity.medium || 0) },\n                      { title: 'Low', value: String(severity.low || 0) }\n                    ]\n                  }\n                ]\n              }\n            ]\n          },\n          {\n            type: 'TextBlock',\n            text: 'Top 3 règles déclenchées',\n            weight: 'Bolder',\n            size: 'Medium',\n            separator: true\n          },\n          {\n            type: 'FactSet',\n            facts: rulesFacts\n          }\n        ],\n        actions: [\n          {\n            type: 'Action.OpenUrl',\n            title: 'Ouvrir le portail NetWatch',\n            url: portalUrl\n          }\n        ]\n      }\n    }\n  ]\n};\n\nreturn [{ json: payload }];"
+      },
+      "id": "b2c3d4e5-0004-0004-0004-000000000004",
+      "name": "Construire carte Teams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TEAMS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "b2c3d4e5-0005-0005-0005-000000000005",
+      "name": "Envoyer vers Teams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Lundi 08h00": {
+      "main": [
+        [
+          {
+            "node": "Générer le rapport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer le rapport": {
+      "main": [
+        [
+          {
+            "node": "Parser le rapport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser le rapport": {
+      "main": [
+        [
+          {
+            "node": "Construire carte Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construire carte Teams": {
+      "main": [
+        [
+          {
+            "node": "Envoyer vers Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "netwatch" },
+    { "name": "report" },
+    { "name": "teams" },
+    { "name": "weekly" }
+  ],
+  "pinData": {},
+  "versionId": "1"
+}

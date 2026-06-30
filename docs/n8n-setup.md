@@ -342,3 +342,150 @@ ls agents-deck/agents/security/tickets/drafts/
 | `scripts/automation/create-ticket.py` | Script Python de génération de tickets |
 | `scripts/automation/n8n-auto-tickets.json` | Export du workflow n8n Auto-Tickets |
 | `agents-deck/agents/security/tickets/drafts/` | Répertoire des tickets auto-générés |
+
+---
+
+## Rapport hebdomadaire
+
+### Vue d'ensemble
+
+Le workflow **NetWatch Rapport Hebdomadaire** génère chaque lundi à 08h00 un rapport
+JSON agrégé des 7 derniers jours d'alertes Elasticsearch et l'envoie vers Microsoft
+Teams sous forme d'Adaptive Card.
+
+**Pipeline** :
+```
+n8n Schedule (lundi 08h00, cron: 0 8 * * 1)
+  → Execute Command : weekly-report.py --days 7 --save-docs
+      → docs/reports/weekly-YYYY-WXX.json (archivage automatique)
+  → Code JS : parse JSON + prépare données Teams
+  → Code JS : construit Adaptive Card (chiffres clés, top 3 règles, sévérités)
+  → POST webhook Teams
+```
+
+---
+
+### Script weekly-report.py
+
+**Emplacement** : `scripts/automation/weekly-report.py`
+
+Agrège les alertes depuis Elasticsearch (`zeek-*`, `snort-*`, `suricata-*`) sur la
+fenêtre temporelle demandée et produit un JSON structuré.
+
+```bash
+# Rapport des 7 derniers jours (par défaut)
+python3 scripts/automation/weekly-report.py
+
+# Rapport sur 14 jours, fichier de sortie personnalisé
+python3 scripts/automation/weekly-report.py --days 14 --output /tmp/report.json
+
+# Rapport + archivage dans docs/reports/
+python3 scripts/automation/weekly-report.py --save-docs
+
+# URL ES personnalisée
+python3 scripts/automation/weekly-report.py --es-url http://192.168.1.10:9200
+```
+
+**Format JSON de sortie** :
+
+```json
+{
+  "period": { "from": "2026-06-23T08:00:00Z", "to": "2026-06-30T08:00:00Z" },
+  "generated_at": "2026-06-30T08:00:00Z",
+  "total_alerts": 1247,
+  "by_engine": { "zeek": 312, "snort": 418, "suricata": 517 },
+  "top_rules": [
+    { "name": "ET SCAN Nmap SYN Scan", "count": 89 },
+    { "name": "ET MALWARE Meterpreter Session", "count": 42 }
+  ],
+  "top_src_ips": [
+    { "ip": "10.10.1.50", "count": 213 }
+  ],
+  "severity": { "critical": 14, "high": 87, "medium": 632, "low": 514 },
+  "mitre_ttps": [
+    { "tactic": "reconnaissance", "count": 312 }
+  ]
+}
+```
+
+**Fonctionnement si ES vide** : chaque requête retourne 0, le rapport est généré avec
+tous les compteurs à 0 — aucune erreur levée.
+
+**Archivage automatique** (`--save-docs`) :
+Le rapport est sauvegardé dans `docs/reports/weekly-YYYY-WXX.json`
+(ex : `docs/reports/weekly-2026-W27.json`) selon la semaine ISO de génération.
+
+---
+
+### Workflow n8n — NetWatch Rapport Hebdomadaire
+
+**Fichier** : `scripts/automation/n8n-weekly-report.json`
+
+#### Import dans n8n
+
+```bash
+# Import via API REST n8n
+curl -s -u admin:netwatch2026 \
+  -X POST http://localhost:5678/rest/workflows \
+  -H "Content-Type: application/json" \
+  -d @scripts/automation/n8n-weekly-report.json
+
+# Ou via UI :
+# http://localhost:5678 → Workflows → Import from file → n8n-weekly-report.json
+# → Activer le workflow (toggle ON)
+```
+
+#### Architecture des nœuds
+
+| Nœud | Type | Description |
+|------|------|-------------|
+| Lundi 08h00 | Schedule Trigger | Cron `0 8 * * 1` — chaque lundi à 08h00 |
+| Générer le rapport | Execute Command | `python3 weekly-report.py --days 7 --save-docs` |
+| Parser le rapport | Code (JS) | Parse stdout JSON, calcule semaine ISO, prépare données |
+| Construire carte Teams | Code (JS) | Adaptive Card v1.4 — chiffres clés, top 3 règles, sévérités par moteur |
+| Envoyer vers Teams | HTTP Request | POST `$env.TEAMS_WEBHOOK_URL` |
+
+#### Schedule
+
+- **Cron** : `0 8 * * 1` (lundi, 08h00 UTC)
+- **Timezone** : régler dans les paramètres n8n si besoin (`TZ=Europe/Paris`)
+
+#### Adaptive Card Teams
+
+La carte envoyée contient :
+- **Titre** : `NetWatch — Rapport Hebdomadaire YYYY-WXX`
+- **Chiffres clés** : total alertes, répartition par moteur (Zeek/Snort/Suricata), répartition par sévérité (Critical/High/Medium/Low)
+- **Top 3 règles** : nom de la règle + nombre de déclenchements
+- **Bouton** : lien vers le portail NetWatch (`http://localhost:5050`)
+
+La couleur du titre s'adapte au volume (`Good` = 0 alerte, `Warning` < 100, `Attention` ≥ 100).
+
+---
+
+### Test manuel
+
+```bash
+# 1. Injecter des alertes sur la semaine (ES doit tourner)
+python3 simulate-traffic.py --hours 1 --intensity high --attack
+
+# 2. Générer le rapport directement
+python3 scripts/automation/weekly-report.py --days 7 --output /tmp/report.json
+cat /tmp/report.json | python3 -m json.tool | head -30
+
+# 3. Générer avec archivage
+python3 scripts/automation/weekly-report.py --save-docs
+ls docs/reports/
+
+# 4. Tester le workflow depuis n8n UI :
+# http://localhost:5678 → Workflows → NetWatch Rapport Hebdomadaire → Execute Workflow
+```
+
+---
+
+### Fichiers associés (Rapport hebdomadaire)
+
+| Fichier | Description |
+|---------|-------------|
+| `scripts/automation/weekly-report.py` | Script Python d'agrégation ES → rapport JSON |
+| `scripts/automation/n8n-weekly-report.json` | Export du workflow n8n Rapport Hebdomadaire |
+| `docs/reports/weekly-YYYY-WXX.json` | Rapports archivés (un par semaine ISO) |
