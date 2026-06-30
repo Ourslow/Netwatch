@@ -1,0 +1,15 @@
+id: T_025
+title: "Capacity planning : predict_linear Prometheus + Grafana jours avant saturation"
+agent: Infra-agent
+phase: 7
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "prometheus/rules/capacity.yml : 3 recording rules (netwatch:iface_bytes_rate, netwatch:iface_growth_rate_7d, netwatch:iface_days_to_saturation)"
+  - "prometheus/prometheus.yml : rule_files block ajouté (/etc/prometheus/rules/*.yml)"
+  - "docker-compose.yml service prometheus : volume ./prometheus/rules:/etc/prometheus/rules:ro"
+  - "grafana/dashboards/capacity-planning.json : variable $device, table saturation (rouge<7j/orange7-30j/vert>30j), time series historique+predict_linear pointillé, stat panels critiques/tension"
+  - "grafana/dashboards/snmp-interfaces.json : row Capacity Planning + 2 stat panels critiques/tension"
+  - "docs/capacity-planning.md : explication formule, interprétation seuils, ajustement SNMP polling interval"

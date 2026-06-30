@@ -1,0 +1,55 @@
+id: T_025
+title: "Capacity planning : predict_linear Prometheus + Grafana jours avant saturation"
+agent: Infra-agent
+phase: 7
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30T16:00:00Z"
+delivery: "2026-06-30T16:30:00Z"
+acceptance:
+  - "prometheus/rules/capacity.yml : 3 recording rules (netwatch:iface_bytes_rate, netwatch:iface_growth_rate_7d, netwatch:iface_days_to_saturation)"
+  - "prometheus/prometheus.yml : rule_files block ajouté (/etc/prometheus/rules/*.yml)"
+  - "docker-compose.yml service prometheus : volume ./prometheus/rules:/etc/prometheus/rules:ro"
+  - "grafana/dashboards/capacity-planning.json : variable $device, table saturation (rouge<7j/orange7-30j/vert>30j), time series historique+predict_linear pointillé, stat panels critiques/tension"
+  - "grafana/dashboards/snmp-interfaces.json : row Capacity Planning + 2 stat panels critiques/tension"
+  - "docs/capacity-planning.md : explication formule, interprétation seuils, ajustement SNMP polling interval"
+delivery:
+  summary: |
+    Recording rules Prometheus pour capacity planning (3 métriques dérivées SNMP).
+    Dashboard Grafana capacity-planning.json complet : variable $device, table de saturation
+    avec couleurs rouge/orange/vert, time series historique 30j + predict_linear pointillé,
+    2 stat panels critiques/tension. Row Capacity Planning ajouté à snmp-interfaces.json.
+    Documentation technique complète dans docs/capacity-planning.md.
+  implementation: |
+    prometheus/rules/capacity.yml : 3 recording rules évaluées toutes les 5 min.
+    netwatch:iface_bytes_rate = rate(ifHCInOctets[5m]).
+    netwatch:iface_growth_rate_7d = deriv(rate(...)[7d:5m]).
+    netwatch:iface_days_to_saturation = clamp_min((capacité_restante) / clamp_min(croissance_quotidienne, 0.001), 0).
+
+    prometheus/prometheus.yml : ajout block rule_files avant scrape_configs.
+    docker-compose.yml : volume mount ./prometheus/rules:/etc/prometheus/rules:ro sur service prometheus.
+
+    capacity-planning.json : 7 panels (2 rows + 2 stat + 1 table + 1 row + 1 timeseries).
+    Table : 4 queries instant (rate, utilisation%, croissance/j, jours saturation) + merge transform + organize.
+    Timeseries : query A solid (historique) + query B dashed override (predict_linear 30*86400).
+    Stat panels : count() with "or vector(0)" pour afficher 0 si aucun résultat.
+
+    snmp-interfaces.json : créé (T_021 pas encore livré) avec stub interfaces SNMP + row
+    Capacity Planning (panels id 100-102) en bas du dashboard.
+
+    docs/capacity-planning.md : formule décomposée, tableau seuils, interprétation cas limites,
+    guide ajustement polling interval par équipement, exemples PromQL v3 SNMP.
+  files_created:
+    - prometheus/rules/capacity.yml
+    - grafana/dashboards/capacity-planning.json
+    - grafana/dashboards/snmp-interfaces.json
+    - docs/capacity-planning.md
+    - agents-deck/agents/infra/tickets/planned/T_025.yml
+    - agents-deck/agents/infra/tickets/working/T_025.yml
+    - agents-deck/agents/infra/tickets/review-pending/T_025.yml
+  files_modified:
+    - prometheus/prometheus.yml
+    - docker-compose.yml
+    - agents-deck/agents/infra/status.yml
