@@ -76,11 +76,20 @@ output.elasticsearch:
   index: "%{[engine]:unknown}-%{+yyyy.MM.dd}"
   bulk_max_size: 500
 
-setup.template.name: "netwatch"
-setup.template.pattern: "zeek-*,snort-*,suricata-*,netwatch-*"
-setup.template.settings:
-  index.number_of_shards: 1
-  index.number_of_replicas: 0
+# ============================================================
+# Index template & ILM — gestion manuelle (fix T_002)
+# ============================================================
+# Filebeat 8.x sur ES 8.x tente systématiquement de créer un data-stream
+# "netwatch" via putDataStream(), même quand setup.ilm.enabled=false.
+# Avec l'ancienne valeur "zeek-*,snort-*,suricata-*,netwatch-*", ES 8.x
+# normalisait le pattern en "*" (catch-all), ce qui provoquait une erreur
+# 500 "_data_stream_timestamp disabled" bloquant les reconnexions.
+#
+# Fix : setup.template.enabled=false délègue entièrement la gestion des
+# templates à setup-es.sh (index-templates netwatch-zeek/snort/suricata,
+# priorité 500 + pipeline netwatch-geoip). Filebeat ne touche plus aux
+# templates et n'appelle plus putDataStream() → plus d'erreur reconnexion.
+setup.template.enabled: false
 setup.ilm.enabled: false
 
 logging.level: info
