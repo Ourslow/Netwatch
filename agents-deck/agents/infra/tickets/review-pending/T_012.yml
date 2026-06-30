@@ -1,0 +1,43 @@
+id: T_012
+title: "health-check.sh amélioré + guide déploiement Proxmox/ESXi"
+agent: Infra-agent
+phase: 1
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+completed: "2026-06-30"
+acceptance:
+  - "scripts/health-check.sh vérifie les 12 services NetWatch avec output coloré ✓/⚠/✗"
+  - "Elasticsearch : curl /_cluster/health → status green/yellow/red"
+  - "Grafana : curl /api/health"
+  - "Filebeat : index zeek-*/snort-*/suricata-* avec docs récents (5min)"
+  - "n8n : curl /healthz"
+  - "Portail Flask : curl localhost:5050/ → HTTP 200/302"
+  - "CrowdSec : docker exec netwatch-crowdsec cscli version"
+  - "Prometheus : curl /-/healthy"
+  - "Ollama : curl /api/version"
+  - "Autoblock, beacon-detect, Zeek, Snort, Suricata : docker inspect State.Status"
+  - "Exit code : 0=all OK, 1=dégradé, 2=critique"
+  - "docs/deployment-guide.md : guide complet ~300 lignes (Proxmox + ESXi + troubleshooting)"
+  - "Makefile : target 'health' appelle scripts/health-check.sh"
+delivery:
+  summary: |
+    Script health-check.sh couvrant 12 services via HTTP/API et docker inspect.
+    Output coloré ✓/⚠/✗, exit code 0/1/2, modes --json et --no-color.
+    Guide déploiement 715 lignes (Proxmox + ESXi + 10 erreurs fréquentes).
+    Makefile : health → scripts/health-check.sh + cibles health-json/health-no-color.
+  implementation: |
+    health-check.sh : vérifie les 8 services HTTP (ES, Grafana, Filebeat, n8n, Flask,
+    Prometheus, Ollama, CrowdSec via docker exec cscli) + 5 containers via docker inspect
+    (Autoblock, Beacon-detect, Zeek, Snort, Suricata).
+    Filebeat : query ES sur les 3 index (zeek-*/snort-*/suricata-*) avec filtre
+    @timestamp ≥ now-5m pour détecter l'inactivité.
+    ES : status green/yellow/red → ok/warn/err avec nb de noeuds et indices.
+    Sortie JSON disponible via --json pour intégration CI/Prometheus Pushgateway.
+  files_changed:
+    - scripts/health-check.sh (créé, 260 lignes, chmod +x)
+    - docs/deployment-guide.md (créé, 715 lignes)
+    - Makefile (health target remplacé, + health-json + health-no-color)
+    - agents-deck/agents/infra/status.yml
+    - agents-deck/agents/infra/tickets/review-pending/T_012.yml
