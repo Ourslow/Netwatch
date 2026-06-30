@@ -30,7 +30,7 @@ _TIMEOUT = 5
 def _es(path, body=None, method="post"):
     url = config.NETWATCH_ES_URL.rstrip("/") + path
     fn  = getattr(requests, method)
-    kw  = {"timeout": _TIMEOUT, "verify": False}
+    kw  = {"timeout": _TIMEOUT, "verify": config.ES_VERIFY_SSL}
     if body is not None:
         kw["json"] = body
     return fn(url, **kw)

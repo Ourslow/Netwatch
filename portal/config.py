@@ -18,8 +18,10 @@ PROXMOX_VERIFY_SSL = os.getenv("PROXMOX_VERIFY_SSL", "false").lower() == "true"
 
 _secret = os.getenv("FLASK_SECRET_KEY", "")
 if not _secret:
-    import secrets as _secrets
-    _secret = _secrets.token_hex(32)
+    raise RuntimeError(
+        "FLASK_SECRET_KEY doit être défini dans .env — "
+        "générer avec : python3 -c \"import secrets; print(secrets.token_hex(32))\""
+    )
 FLASK_SECRET_KEY = _secret
 FLASK_DEBUG      = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 PORT             = int(os.getenv("PORT", 5050))
@@ -32,6 +34,7 @@ PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")
 PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")   # vide = portail désactivé si pas défini
 
 # URLs des services NetWatch (pour la page /status)
+ES_VERIFY_SSL           = os.getenv("ES_VERIFY_SSL", "false").lower() == "true"
 NETWATCH_ES_URL         = os.getenv("NETWATCH_ES_URL",         "http://localhost:9200")
 NETWATCH_GRAFANA_URL    = os.getenv("NETWATCH_GRAFANA_URL",    "http://localhost:3000")
 NETWATCH_PROMETHEUS_URL = os.getenv("NETWATCH_PROMETHEUS_URL", "http://localhost:9090")

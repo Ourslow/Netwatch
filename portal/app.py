@@ -318,6 +318,16 @@ REFERENTIALS = [
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
+
+@app.after_request
+def set_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 # Durcissement des cookies de session
 #  - HttpOnly : inaccessible au JS (anti-XSS vol de session)
 #  - SameSite=Lax : le cookie n'est pas envoyé sur les POST cross-site (anti-CSRF)
@@ -365,10 +375,15 @@ def _check_credentials(username: str, password: str) -> bool:
 # Helpers
 # ============================================================
 
+_CATALOG_CACHE = None
+
 def load_catalog():
-    catalog_path = os.path.join(os.path.dirname(__file__), "catalog", "tools.json")
-    with open(catalog_path, encoding="utf-8") as f:
-        return json.load(f)
+    global _CATALOG_CACHE
+    if _CATALOG_CACHE is None:
+        catalog_path = os.path.join(os.path.dirname(__file__), "catalog", "tools.json")
+        with open(catalog_path, encoding="utf-8") as f:
+            _CATALOG_CACHE = json.load(f)
+    return _CATALOG_CACHE
 
 
 def get_proxmox():
@@ -646,9 +661,13 @@ def deploy(px, tool_id):
     if request.method == "POST":
         name         = request.form.get("name", f"{tool_id}-vm")
         template_id  = request.form.get("template_vmid")
-        ram_gb       = int(request.form.get("ram_gb", tool["ram_gb"]))
-        cpu          = int(request.form.get("cpu", tool["cpu"]))
-        disk_gb      = int(request.form.get("disk_gb", tool["disk_gb"]))
+        try:
+            ram_gb  = int(request.form.get("ram_gb", tool["ram_gb"]))
+            cpu     = int(request.form.get("cpu", tool["cpu"]))
+            disk_gb = int(request.form.get("disk_gb", tool["disk_gb"]))
+        except (ValueError, TypeError):
+            flash("Valeur numérique invalide pour RAM, CPU ou disque.", "danger")
+            return redirect(url_for("deploy_tool", tool_id=tool_id))
 
         if not template_id:
             flash("Sélectionner un template Proxmox", "warning")
@@ -1018,12 +1037,23 @@ def graph():
     return render_template("graph.html")
 
 
+_IOC_GRAPH_CACHE: dict = {"data": None, "ts": 0.0}
+_IOC_GRAPH_TTL = 300  # 5 minutes
+
+
 @app.route("/api/ioc-graph")
 @login_required
 def api_ioc_graph():
-    """Exécute ioc-graph.py et retourne le JSON. Timeout 30s → fallback cache."""
+    """Exécute ioc-graph.py et retourne le JSON. Cache TTL 5 min. Timeout 30s → fallback cache."""
+    global _IOC_GRAPH_CACHE
     netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cache_path = os.path.join(netwatch_root, "scripts", "security", "ioc-graph-output.json")
+
+    import time as _time_mod
+    now = _time_mod.monotonic()
+
+    if _IOC_GRAPH_CACHE["data"] is not None and (now - _IOC_GRAPH_CACHE["ts"]) < _IOC_GRAPH_TTL:
+        return jsonify(_IOC_GRAPH_CACHE["data"])
 
     def _read_cache():
         with open(cache_path, encoding="utf-8") as f:
@@ -1037,7 +1067,9 @@ def api_ioc_graph():
             timeout=30,
             check=False,
         )
-        return jsonify(_read_cache())
+        data = _read_cache()
+        _IOC_GRAPH_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
     except subprocess.TimeoutExpired:
         try:
             return jsonify(_read_cache())

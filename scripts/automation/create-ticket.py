@@ -201,9 +201,10 @@ acceptance:
 
 
 def generate_ticket_id() -> str:
-    """Génère un ID unique basé sur le timestamp."""
+    """Génère un ID unique basé sur le timestamp + suffixe aléatoire (anti-collision burst)."""
+    import uuid
     now = datetime.now(timezone.utc)
-    return f"T_auto_{now.strftime('%Y%m%d_%H%M%S')}"
+    return f"T_auto_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
 
 
 def main():

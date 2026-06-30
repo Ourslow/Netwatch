@@ -122,17 +122,24 @@ def scores_from_ioc_score_py(threshold: int, verbose: bool) -> list[dict] | None
         return None
 
     try:
-        result = subprocess.run(
-            [sys.executable, str(IOC_SCORE_SCRIPT), "--threshold", str(threshold), "--output-json"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            if verbose:
-                print(f"DEBUG: ioc-score.py exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr)
-            return None
-        return json.loads(result.stdout)
+        import tempfile, os as _os
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            result = subprocess.run(
+                [sys.executable, str(IOC_SCORE_SCRIPT), "--threshold", str(threshold), "--output", tmp_path],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                if verbose:
+                    print(f"DEBUG: ioc-score.py exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr)
+                return None
+            with open(tmp_path, encoding="utf-8") as f:
+                return json.load(f)
+        finally:
+            _os.unlink(tmp_path) if _os.path.exists(tmp_path) else None
     except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
         if verbose:
             print(f"DEBUG: ioc-score.py subprocess error: {e}", file=sys.stderr)

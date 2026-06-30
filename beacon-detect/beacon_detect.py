@@ -228,8 +228,8 @@ def detect_long_connections(es, since: datetime) -> list:
         detections.append({
             "@timestamp":       now_iso,
             "detection_type":   "long_connection",
-            "src_ip":           s.get("id.orig_h", "unknown"),
-            "dst_ip":           s.get("id.resp_h", "unknown"),
+            "src_ip":           s.get("id", {}).get("orig_h", s.get("id.orig_h", "unknown")),
+            "dst_ip":           s.get("id", {}).get("resp_h", s.get("id.resp_h", "unknown")),
             "dst_port":         s.get("id.resp_p", 0),
             "duration_s":       round(duration, 1),
             "duration_h":       round(duration / 3600, 2),

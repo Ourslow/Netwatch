@@ -195,8 +195,7 @@ def block_ip(ip: str, reason: str, severity: str) -> dict:
     # log_event hors du lock — appel ES (timeout=5s) sans bloquer les webhooks concurrents
     if event_to_log:
         log_event(event_to_log)
-        log.warning("BLOQUE %s | raison=%s | expire=%s",
-                    ip, result["expires"][:19], "")
+        log.warning("BLOQUE %s | expire=%s", ip, result["expires"][:19])
 
     return result
 
@@ -268,6 +267,7 @@ def extract_ips_from_alert(payload: dict) -> list[tuple[str, str, str]]:
 
 # ─── Routes Flask ─────────────────────────────────────────────────────────────
 @app.route("/health", methods=["GET"])
+@require_token
 def health():
     with state_lock:
         expire_blocks()
