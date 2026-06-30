@@ -1,12 +1,13 @@
-schema_version: "1.0"
+schema_version: '1.0'
 agent: Frontend-agent
 canonical_id: frontend
-tool: "Claude Code"
+tool: Claude Code
 session_id: null
-state: review-pending
-current_ticket: T_009
-ticket_started: "2026-06-30T13:00:00Z"
-ticket_finished: "2026-06-30T13:30:00Z"
-last_activity: "2026-06-30T13:30:00Z"
+state: done
+current_ticket: null
+ticket_started: '2026-06-30T13:00:00Z'
+ticket_finished: '2026-06-30T13:30:00Z'
+last_activity: '2026-06-30T09:24:57Z'
 current_ticket_skills: {}
 skills_override_reason: null
+last_ticket: T_009
