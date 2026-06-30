@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es help
+.PHONY: start stop restart status logs demo sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es health health-json health-no-color help
 
 ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434
@@ -133,11 +133,13 @@ clean:
 # ============================================================
 
 health:
-	@echo "=== Cluster ES ===" && curl -sf $(ES)/_cluster/health?pretty
-	@echo ""
-	@echo "=== Index ===" && curl -sf "$(ES)/_cat/indices?v&s=index&h=index,docs.count,store.size"
-	@echo ""
-	@echo "=== AutoBlock ===" && curl -sf http://localhost:5001/health || echo "autoblock non disponible"
+	@bash scripts/health-check.sh
+
+health-json:
+	@bash scripts/health-check.sh --json
+
+health-no-color:
+	@bash scripts/health-check.sh --no-color
 
 # ============================================================
 # Aide
@@ -166,7 +168,9 @@ help:
 	@echo "  make update-intel    Mettre à jour les listes threat intel Zeek"
 	@echo "  make setup-geoip     Initialiser le pipeline GeoIP Elasticsearch"
 	@echo "  make llm-pull        Télécharger le modèle IA local (Ollama, défaut: mistral)"
-	@echo "  make health          Vérifier l'état du stack (ES + index + autoblock)"
+	@echo "  make health          Health check complet des 12 services (coloré, exit code 0/1/2)
+	@echo "  make health-json     Health check sortie JSON (intégration CI/monitoring)"
+	@echo "  make health-no-color Health check sans couleurs (logs, cron)""
 	@echo "  make clean           Supprimer le stack ET les données (irréversible)"
 	@echo ""
 	@echo "  make portal          Lancer le portail Flask en arrière-plan"
