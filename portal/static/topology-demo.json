@@ -1,0 +1,120 @@
+{
+  "devices": [
+    {
+      "id": "router-01",
+      "name": "gw-principal",
+      "ip": "192.168.1.254",
+      "type": "router",
+      "vendor": "Cisco",
+      "uptime": 864000,
+      "interfaces": [
+        {"port": "Gi0/0", "speed": 10000, "neighbor": "sw-core"},
+        {"port": "Gi0/1", "speed": 1000,  "neighbor": "sw-access-01"},
+        {"port": "Gi0/2", "speed": 1000,  "neighbor": null, "description": "WAN"}
+      ]
+    },
+    {
+      "id": "sw-core",
+      "name": "sw-coeur",
+      "ip": "192.168.1.1",
+      "type": "switch",
+      "vendor": "HP",
+      "uptime": 1728000,
+      "interfaces": [
+        {"port": "Te1/1",  "speed": 10000, "neighbor": "router-01"},
+        {"port": "Gi1/2",  "speed": 1000,  "neighbor": "sw-access-01"},
+        {"port": "Gi1/3",  "speed": 1000,  "neighbor": "host-01"},
+        {"port": "Gi1/4",  "speed": 1000,  "neighbor": "host-02"}
+      ]
+    },
+    {
+      "id": "sw-access-01",
+      "name": "sw-acces-01",
+      "ip": "192.168.1.2",
+      "type": "switch",
+      "vendor": "Cisco",
+      "uptime": 432000,
+      "interfaces": [
+        {"port": "Gi0/1",  "speed": 1000, "neighbor": "router-01"},
+        {"port": "Gi0/2",  "speed": 1000, "neighbor": "sw-core"},
+        {"port": "Fa0/3",  "speed": 100,  "neighbor": "host-03"},
+        {"port": "Fa0/4",  "speed": 100,  "neighbor": "host-04"},
+        {"port": "Fa0/5",  "speed": 100,  "neighbor": "host-05"}
+      ]
+    },
+    {
+      "id": "host-01",
+      "name": "srv-web",
+      "ip": "192.168.10.10",
+      "type": "host",
+      "vendor": "Dell",
+      "uptime": 259200,
+      "interfaces": [
+        {"port": "eth0", "speed": 1000, "neighbor": "sw-core"},
+        {"port": "eth1", "speed": 1000, "neighbor": "host-02", "description": "heartbeat"}
+      ]
+    },
+    {
+      "id": "host-02",
+      "name": "srv-db",
+      "ip": "192.168.10.11",
+      "type": "host",
+      "vendor": "HPE",
+      "uptime": 259200,
+      "interfaces": [
+        {"port": "eth0", "speed": 1000, "neighbor": "sw-core"},
+        {"port": "eth1", "speed": 1000, "neighbor": "host-01", "description": "heartbeat"}
+      ]
+    },
+    {
+      "id": "host-03",
+      "name": "ws-01",
+      "ip": "192.168.20.10",
+      "type": "host",
+      "vendor": "Lenovo",
+      "uptime": 57600,
+      "interfaces": [
+        {"port": "eth0", "speed": 100, "neighbor": "sw-access-01"}
+      ]
+    },
+    {
+      "id": "host-04",
+      "name": "ws-02",
+      "ip": "192.168.20.11",
+      "type": "host",
+      "vendor": "Lenovo",
+      "uptime": 28800,
+      "interfaces": [
+        {"port": "eth0", "speed": 100, "neighbor": "sw-access-01"}
+      ]
+    },
+    {
+      "id": "host-05",
+      "name": "ws-03",
+      "ip": "192.168.20.12",
+      "type": "host",
+      "vendor": "HP",
+      "uptime": 14400,
+      "interfaces": [
+        {"port": "eth0", "speed": 100, "neighbor": "sw-access-01"}
+      ]
+    }
+  ],
+  "links": [
+    {"source": "router-01",    "target": "sw-core",       "speed": 10000, "utilization": 23},
+    {"source": "router-01",    "target": "sw-access-01",  "speed": 1000,  "utilization": 8},
+    {"source": "sw-core",      "target": "sw-access-01",  "speed": 1000,  "utilization": 12},
+    {"source": "sw-core",      "target": "host-01",       "speed": 1000,  "utilization": 65},
+    {"source": "sw-core",      "target": "host-02",       "speed": 1000,  "utilization": 45},
+    {"source": "sw-access-01", "target": "host-03",       "speed": 100,   "utilization": 5},
+    {"source": "sw-access-01", "target": "host-04",       "speed": 100,   "utilization": 3},
+    {"source": "sw-access-01", "target": "host-05",       "speed": 100,   "utilization": 82},
+    {"source": "host-01",      "target": "host-02",       "speed": 1000,  "utilization": 15}
+  ],
+  "stats": {
+    "devices": 8,
+    "links": 9,
+    "source": "demo",
+    "discovered_at": "2026-06-30T00:00:00Z"
+  }
+}

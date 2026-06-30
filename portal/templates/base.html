@@ -65,6 +65,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('topology') }}"
+           class="nav-link {% if request.endpoint == 'topology' %}active{% endif %}">
+          <i class="bi bi-diagram-2-fill"></i> <span>Topologie</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('graph') }}"
            class="nav-link {% if request.endpoint == 'graph' %}active{% endif %}">
           <i class="bi bi-bezier2"></i> <span>Graphe IOC</span>
@@ -233,6 +239,7 @@
     { icon: 'bi-clipboard2-check',    label: 'Conformité',           url: '/compliance',  hint: 'NIS2 · NIST · ISO' },
     { icon: 'bi-robot',               label: 'Agents IA',            url: '/agents',      hint: 'Statut des agents' },
     { icon: 'bi-diagram-3',           label: 'Flows',                url: '/flows',       hint: 'Top talkers · ART · TCP' },
+    { icon: 'bi-diagram-2-fill',      label: 'Topologie',            url: '/topology',    hint: 'Carte réseau L2/L3 · LLDP' },
     { icon: 'bi-bezier2',             label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
     { icon: 'bi-speedometer2',        label: 'Dashboard Exec',       url: '/exec',        hint: 'RSSI · posture · KPIs' },
     { icon: 'bi-file-earmark-text',   label: 'Rapport exécutif',     url: '/report',      hint: 'PDF', blank: true },

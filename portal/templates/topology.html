@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+
+{% block title %}Topologie réseau — NetWatch Portal{% endblock %}
+
+{% block page_title %}Topologie réseau{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Layout ── */
+  #topo-wrap {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 130px);
+    min-height: 480px;
+    border-radius: .5rem;
+    overflow: hidden;
+  }
+
+  /* ── Canvas SVG ── */
+  #topo-svg-container {
+    flex: 1 1 auto;
+    background: #0a0e16;
+    position: relative;
+    border-radius: .5rem 0 0 .5rem;
+  }
+  #topo-svg-container.panel-open {
+    border-radius: .5rem 0 0 .5rem;
+  }
+  #topo-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ── Overlay ── */
+  #topo-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    color: #94a3b8;
+    font-size: .9rem;
+    pointer-events: none;
+  }
+  #topo-overlay.hidden { display: none; }
+  #topo-overlay .spinner-border { width: 2rem; height: 2rem; color: #22d3ee; }
+
+  /* ── Side panel ── */
+  #topo-panel {
+    width: 290px;
+    min-width: 290px;
+    flex-shrink: 0;
+    background: #111827;
+    border-left: 1px solid #1e2d3d;
+    padding: 1.25rem;
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    border-radius: 0 .5rem .5rem 0;
+    overflow-y: auto;
+  }
+  #topo-panel.open { display: flex; }
+
+  #topo-panel-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    font-size: 1rem;
+    transition: color .15s;
+  }
+  #topo-panel-close:hover { color: #e2e8f0; }
+
+  .panel-badge {
+    display: inline-block;
+    padding: .3em .65em;
+    border-radius: .375rem;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .panel-row {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+  }
+  .panel-row label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .panel-row .panel-value {
+    font-size: .82rem;
+    color: #cbd5e1;
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-all;
+  }
+  .panel-divider {
+    border: none;
+    border-top: 1px solid #1e2d3d;
+    margin: 0;
+  }
+
+  /* Interfaces list in panel */
+  .iface-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+  .iface-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: .72rem;
+    color: #94a3b8;
+    font-family: 'JetBrains Mono', monospace;
+    padding: .2rem .4rem;
+    border-radius: .25rem;
+    background: rgba(255,255,255,.03);
+  }
+  .iface-port { color: #e2e8f0; font-weight: 600; }
+  .iface-speed { color: #475569; }
+  .iface-neighbor { color: #22d3ee; font-size: .68rem; }
+
+  /* ── Legend ── */
+  #topo-legend {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    background: rgba(10, 14, 22, .88);
+    border: 1px solid #1e2d3d;
+    border-radius: .4rem;
+    padding: .6rem .9rem;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    pointer-events: none;
+  }
+  .legend-section { font-size: .65rem; color: #475569; text-transform: uppercase; letter-spacing: .08em; margin-top: .2rem; }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .72rem;
+    color: #94a3b8;
+  }
+  .legend-shape {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .legend-line {
+    width: 24px;
+    height: 3px;
+    flex-shrink: 0;
+    border-radius: 2px;
+  }
+
+  /* ── Stats bar ── */
+  #topo-stats {
+    display: flex;
+    gap: 1.5rem;
+    font-size: .75rem;
+    color: #64748b;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  #topo-stats span { color: #94a3b8; }
+  #topo-stats b { color: #e2e8f0; }
+
+  /* ── Badge demo ── */
+  #demo-badge {
+    display: none;
+    font-size: .7rem;
+    background: rgba(249,115,22,.15);
+    color: #f97316;
+    border: 1px solid rgba(249,115,22,.3);
+    border-radius: .375rem;
+    padding: .2em .6em;
+    font-weight: 600;
+  }
+  #demo-badge.visible { display: inline-block; }
+
+  /* ── D3 elements ── */
+  .nw-topo-link {
+    stroke-opacity: .75;
+  }
+  .nw-topo-node { cursor: pointer; }
+  .nw-topo-node:hover .node-shape { filter: brightness(1.35); }
+  .nw-topo-node.selected .node-shape {
+    stroke: #22d3ee !important;
+    stroke-width: 2.5px !important;
+  }
+  .nw-topo-label {
+    font-size: 9px;
+    fill: #94a3b8;
+    pointer-events: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<span id="demo-badge"><i class="bi bi-play-circle me-1"></i>Mode démo</span>
+<button id="btn-rediscover" class="btn btn-sm btn-outline-warning" title="Relancer la découverte réseau">
+  <i class="bi bi-arrow-repeat me-1"></i>Redécouvrir
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div id="topo-stats">
+        <div><b id="stat-devices">—</b> <span>devices</span></div>
+        <div><b id="stat-links">—</b> <span>liens</span></div>
+        <div id="stat-source" style="display:none">Source : <b id="stat-source-val">—</b></div>
+        <div id="stat-discovery" class="text-muted" style="font-size:.68rem"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="topo-wrap">
+  <div id="topo-svg-container">
+    <svg id="topo-svg"></svg>
+
+    <div id="topo-overlay">
+      <div class="spinner-border" role="status"></div>
+      <span id="overlay-msg">Découverte de la topologie…</span>
+    </div>
+
+    <!-- Legend -->
+    <div id="topo-legend">
+      <div class="legend-section">Types de noeuds</div>
+      <div class="legend-item">
+        <div class="legend-shape">
+          <svg width="14" height="14" viewBox="-7 -7 14 14">
+            <polygon points="0,-6 5.2,3 -5.2,3" fill="#ef4444" stroke="#0a0e16" stroke-width="1"/>
+          </svg>
+        </div>
+        Routeur
+      </div>
+      <div class="legend-item">
+        <div class="legend-shape">
+          <svg width="14" height="14" viewBox="-7 -7 14 14">
+            <rect x="-5" y="-5" width="10" height="10" fill="#3b82f6" stroke="#0a0e16" stroke-width="1"/>
+          </svg>
+        </div>
+        Switch
+      </div>
+      <div class="legend-item">
+        <div class="legend-shape">
+          <svg width="14" height="14" viewBox="-7 -7 14 14">
+            <polygon points="0,-6 5.2,-3 5.2,3 0,6 -5.2,3 -5.2,-3" fill="#f97316" stroke="#0a0e16" stroke-width="1"/>
+          </svg>
+        </div>
+        Firewall
+      </div>
+      <div class="legend-item">
+        <div class="legend-shape">
+          <svg width="14" height="14" viewBox="-7 -7 14 14">
+            <circle cx="0" cy="0" r="5" fill="#6b7280" stroke="#0a0e16" stroke-width="1"/>
+          </svg>
+        </div>
+        Hôte
+      </div>
+
+      <div class="legend-section">Utilisation BW</div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#22c55e"></div>
+        &lt; 50 %
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#f97316"></div>
+        50 – 80 %
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#ef4444"></div>
+        &gt; 80 %
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#475569"></div>
+        Inconnu
+      </div>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div id="topo-panel">
+    <div class="d-flex align-items-center justify-content-between">
+      <span class="fw-semibold text-info" style="font-size:.85rem">
+        <i class="bi bi-hdd-network me-1"></i>Détails du device
+      </span>
+      <button id="topo-panel-close" title="Fermer">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <hr class="panel-divider">
+
+    <div class="panel-row">
+      <label>Type</label>
+      <div><span id="panel-type-badge" class="panel-badge">—</span></div>
+    </div>
+
+    <div class="panel-row">
+      <label>Nom</label>
+      <div class="panel-value" id="panel-name">—</div>
+    </div>
+
+    <div class="panel-row">
+      <label>Adresse IP</label>
+      <div class="panel-value" id="panel-ip">—</div>
+    </div>
+
+    <div class="panel-row">
+      <label>Vendor</label>
+      <div class="panel-value" id="panel-vendor">—</div>
+    </div>
+
+    <div class="panel-row" id="panel-uptime-row" style="display:none">
+      <label>Uptime</label>
+      <div class="panel-value" id="panel-uptime">—</div>
+    </div>
+
+    <hr class="panel-divider">
+
+    <div class="panel-row" id="panel-ifaces-row" style="display:none">
+      <label>Interfaces (<span id="panel-iface-count">0</span>)</label>
+      <ul class="iface-list" id="panel-ifaces"></ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Constantes par type de noeud ──────────────────────────────────
+  var TYPE_COLOR = {
+    router:   '#ef4444',
+    switch:   '#3b82f6',
+    firewall: '#f97316',
+    host:     '#6b7280',
+    unknown:  '#e5e7eb',
+  };
+
+  var TYPE_SIZE = {
+    router:   40,
+    switch:   35,
+    firewall: 38,
+    host:     25,
+    unknown:  20,
+  };
+
+  var TYPE_LABEL = {
+    router:   'Routeur',
+    switch:   'Switch',
+    firewall: 'Firewall',
+    host:     'Hôte',
+    unknown:  'Inconnu',
+  };
+
+  // ── Couleur de lien selon utilisation ────────────────────────────
+  function linkColor(util) {
+    if (util == null) return '#475569';
+    if (util > 80)   return '#ef4444';
+    if (util > 50)   return '#f97316';
+    return '#22c55e';
+  }
+
+  // ── Épaisseur de lien selon vitesse (Mbps) ───────────────────────
+  function linkWidth(speed) {
+    if (!speed)        return 1;
+    if (speed >= 100000) return 4;   // 100G+
+    if (speed >= 10000)  return 2;   // 10G
+    return 1;                        // 1G ou moins
+  }
+
+  // ── Rayon/demi-taille pour les calculs de position ────────────────
+  function nodeRadius(d) {
+    return (TYPE_SIZE[d.type] || 20) / 2;
+  }
+
+  // ── Uptime humain ─────────────────────────────────────────────────
+  function fmtUptime(sec) {
+    if (!sec) return '—';
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    if (d > 0) return d + 'j ' + h + 'h';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+
+  // ── Vitesse humaine ───────────────────────────────────────────────
+  function fmtSpeed(mbps) {
+    if (!mbps) return '?';
+    if (mbps >= 100000) return (mbps / 1000) + 'G';
+    if (mbps >= 1000)   return (mbps / 1000) + 'G';
+    return mbps + 'M';
+  }
+
+  // ── État global ────────────────────────────────────────────────────
+  var simulation  = null;
+  var selectedNode = null;
+
+  // ── Éléments DOM ─────────────────────────────────────────────────
+  var overlay      = document.getElementById('topo-overlay');
+  var overlayMsg   = document.getElementById('overlay-msg');
+  var panel        = document.getElementById('topo-panel');
+  var svgContainer = document.getElementById('topo-svg-container');
+  var demoBadge    = document.getElementById('demo-badge');
+
+  // ── Panel helpers ─────────────────────────────────────────────────
+  function openPanel(d) {
+    var color = TYPE_COLOR[d.type] || '#94a3b8';
+    var badge = document.getElementById('panel-type-badge');
+    badge.textContent = TYPE_LABEL[d.type] || d.type;
+    badge.style.background = color + '22';
+    badge.style.color = color;
+
+    document.getElementById('panel-name').textContent   = d.name || d.id;
+    document.getElementById('panel-ip').textContent     = d.ip   || '—';
+    document.getElementById('panel-vendor').textContent = d.vendor || '—';
+
+    var uptimeRow = document.getElementById('panel-uptime-row');
+    if (d.uptime) {
+      uptimeRow.style.display = '';
+      document.getElementById('panel-uptime').textContent = fmtUptime(d.uptime);
+    } else {
+      uptimeRow.style.display = 'none';
+    }
+
+    var ifacesRow  = document.getElementById('panel-ifaces-row');
+    var ifacesList = document.getElementById('panel-ifaces');
+    var ifaces     = d.interfaces || [];
+    if (ifaces.length > 0) {
+      ifacesRow.style.display = '';
+      document.getElementById('panel-iface-count').textContent = ifaces.length;
+      ifacesList.innerHTML = ifaces.map(function (iface) {
+        return '<li class="iface-item">'
+          + '<span class="iface-port">' + (iface.port || '?') + '</span>'
+          + '<span class="iface-speed">' + fmtSpeed(iface.speed) + '</span>'
+          + (iface.neighbor
+              ? '<span class="iface-neighbor"><i class="bi bi-arrow-right-short"></i>' + iface.neighbor + '</span>'
+              : '')
+          + '</li>';
+      }).join('');
+    } else {
+      ifacesRow.style.display = 'none';
+    }
+
+    panel.classList.add('open');
+    svgContainer.classList.add('panel-open');
+  }
+
+  function closePanel() {
+    panel.classList.remove('open');
+    svgContainer.classList.remove('panel-open');
+    if (selectedNode) {
+      d3.select(selectedNode).classed('selected', false);
+      selectedNode = null;
+    }
+  }
+
+  document.getElementById('topo-panel-close').addEventListener('click', closePanel);
+
+  // ── Stats bar ─────────────────────────────────────────────────────
+  function updateStats(data) {
+    var stats = data.stats || {};
+    document.getElementById('stat-devices').textContent =
+      stats.devices != null ? stats.devices : (data.devices ? data.devices.length : '—');
+    document.getElementById('stat-links').textContent =
+      stats.links != null ? stats.links : (data.links ? data.links.length : '—');
+
+    var src = stats.source || '';
+    if (src) {
+      document.getElementById('stat-source').style.display = '';
+      document.getElementById('stat-source-val').textContent = src;
+    }
+
+    if (stats.discovered_at) {
+      document.getElementById('stat-discovery').textContent =
+        'Dernière découverte : ' + new Date(stats.discovered_at).toLocaleString('fr-FR');
+    }
+
+    if (src.indexOf('demo') !== -1) {
+      demoBadge.classList.add('visible');
+    } else {
+      demoBadge.classList.remove('visible');
+    }
+  }
+
+  // ── SVG shape builders ────────────────────────────────────────────
+  function appendShape(selection, d) {
+    var color = TYPE_COLOR[d.type] || '#e5e7eb';
+    var s     = TYPE_SIZE[d.type] || 20;
+    var r     = s / 2;
+
+    switch (d.type) {
+      case 'router': {
+        // Triangle équilatéral pointant vers le haut
+        var h  = s * 0.866;
+        var pts = '0,' + (-h * 0.667)
+          + ' ' + (s * 0.5) + ',' + (h * 0.333)
+          + ' ' + (-s * 0.5) + ',' + (h * 0.333);
+        selection.append('polygon')
+          .attr('class', 'node-shape')
+          .attr('points', pts)
+          .attr('fill', color)
+          .attr('fill-opacity', 0.9)
+          .attr('stroke', '#0a0e16')
+          .attr('stroke-width', 1.5);
+        break;
+      }
+      case 'switch': {
+        selection.append('rect')
+          .attr('class', 'node-shape')
+          .attr('x', -r).attr('y', -r)
+          .attr('width', s).attr('height', s)
+          .attr('rx', 2)
+          .attr('fill', color)
+          .attr('fill-opacity', 0.9)
+          .attr('stroke', '#0a0e16')
+          .attr('stroke-width', 1.5);
+        break;
+      }
+      case 'firewall': {
+        // Hexagone régulier
+        var hexPts = d3.range(6).map(function (i) {
+          var angle = (Math.PI / 180) * (60 * i - 30);
+          return (r * Math.cos(angle)) + ',' + (r * Math.sin(angle));
+        }).join(' ');
+        selection.append('polygon')
+          .attr('class', 'node-shape')
+          .attr('points', hexPts)
+          .attr('fill', color)
+          .attr('fill-opacity', 0.9)
+          .attr('stroke', '#0a0e16')
+          .attr('stroke-width', 1.5);
+        break;
+      }
+      default: {
+        // Cercle (host / unknown)
+        selection.append('circle')
+          .attr('class', 'node-shape')
+          .attr('r', r)
+          .attr('fill', color)
+          .attr('fill-opacity', 0.9)
+          .attr('stroke', '#0a0e16')
+          .attr('stroke-width', 1.5);
+      }
+    }
+  }
+
+  // ── Rendu D3 ──────────────────────────────────────────────────────
+  function render(data) {
+    overlay.classList.add('hidden');
+
+    var devices = (data.devices || []).map(function (d) { return Object.assign({}, d); });
+    var links   = (data.links   || []).map(function (l) { return Object.assign({}, l); });
+
+    var container = document.getElementById('topo-svg-container');
+    var W = container.clientWidth  || 800;
+    var H = container.clientHeight || 600;
+
+    // Nettoie le SVG précédent
+    var svg = d3.select('#topo-svg');
+    svg.selectAll('*').remove();
+
+    var g = svg.append('g');
+
+    // Zoom / pan
+    svg.call(
+      d3.zoom()
+        .scaleExtent([0.08, 6])
+        .on('zoom', function (event) { g.attr('transform', event.transform); })
+    );
+
+    // Simulation
+    simulation = d3.forceSimulation(devices)
+      .force('link', d3.forceLink(links)
+        .id(function (d) { return d.id; })
+        .distance(function (l) {
+          var s = l.speed || 0;
+          if (s >= 10000) return 120;
+          if (s >= 1000)  return 90;
+          return 70;
+        }))
+      .force('charge', d3.forceManyBody().strength(-300))
+      .force('center', d3.forceCenter(W / 2, H / 2))
+      .force('collision', d3.forceCollide().radius(function (d) { return nodeRadius(d) + 8; }));
+
+    // Liens
+    var link = g.append('g')
+      .selectAll('line')
+      .data(links)
+      .join('line')
+        .attr('class', 'nw-topo-link')
+        .attr('stroke', function (d) { return linkColor(d.utilization); })
+        .attr('stroke-width', function (d) { return linkWidth(d.speed); });
+
+    // Noeuds
+    var node = g.append('g')
+      .selectAll('g')
+      .data(devices)
+      .join('g')
+        .attr('class', 'nw-topo-node')
+        .call(
+          d3.drag()
+            .on('start', function (event, d) {
+              if (!event.active) simulation.alphaTarget(0.3).restart();
+              d.fx = d.x; d.fy = d.y;
+            })
+            .on('drag', function (event, d) {
+              d.fx = event.x; d.fy = event.y;
+            })
+            .on('end', function (event, d) {
+              if (!event.active) simulation.alphaTarget(0);
+              d.fx = null; d.fy = null;
+            })
+        )
+        .on('click', function (event, d) {
+          event.stopPropagation();
+          if (selectedNode) d3.select(selectedNode).classed('selected', false);
+          selectedNode = this;
+          d3.select(this).classed('selected', true);
+          openPanel(d);
+        });
+
+    // Formes selon le type
+    node.each(function (d) { appendShape(d3.select(this), d); });
+
+    // Labels
+    node.append('text')
+      .attr('class', 'nw-topo-label')
+      .attr('dy', function (d) { return nodeRadius(d) + 11; })
+      .attr('text-anchor', 'middle')
+      .text(function (d) {
+        var lbl = d.name || d.id;
+        return lbl.length > 20 ? lbl.slice(0, 18) + '…' : lbl;
+      });
+
+    // Tooltip
+    node.append('title').text(function (d) {
+      return (d.name || d.id)
+        + '\nType : ' + (TYPE_LABEL[d.type] || d.type)
+        + (d.ip ? '\nIP : ' + d.ip : '')
+        + (d.vendor ? '\nVendor : ' + d.vendor : '');
+    });
+
+    // Fermer panel sur clic SVG fond
+    svg.on('click', function () { closePanel(); });
+
+    // Tick
+    simulation.on('tick', function () {
+      link
+        .attr('x1', function (d) { return d.source.x; })
+        .attr('y1', function (d) { return d.source.y; })
+        .attr('x2', function (d) { return d.target.x; })
+        .attr('y2', function (d) { return d.target.y; });
+
+      node.attr('transform', function (d) {
+        return 'translate(' + d.x + ',' + d.y + ')';
+      });
+    });
+  }
+
+  // ── Chargement ────────────────────────────────────────────────────
+  function loadTopology(forceRefresh) {
+    overlay.classList.remove('hidden');
+    var spinner = overlay.querySelector('.spinner-border');
+    if (spinner) spinner.style.display = '';
+    overlayMsg.textContent = forceRefresh
+      ? 'Redécouverte en cours…'
+      : 'Découverte de la topologie…';
+
+    var url = '/api/topology' + (forceRefresh ? '?force_refresh=true' : '');
+
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        updateStats(data);
+        render(data);
+      })
+      .catch(function (err) {
+        overlay.classList.remove('hidden');
+        overlayMsg.textContent = 'Erreur : ' + err.message;
+        if (spinner) spinner.style.display = 'none';
+      });
+  }
+
+  // ── Bouton Redécouvrir ────────────────────────────────────────────
+  document.getElementById('btn-rediscover').addEventListener('click', function () {
+    closePanel();
+    if (simulation) simulation.stop();
+    loadTopology(true);
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────
+  loadTopology(false);
+})();
+</script>
+{% endblock %}
