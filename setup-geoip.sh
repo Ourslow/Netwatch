@@ -2,6 +2,7 @@
 # NetWatch — Setup GeoIP pipeline dans Elasticsearch
 # A lancer une seule fois apres 'docker compose up -d'
 # Usage : ./setup-geoip.sh [ES_URL]
+set -euo pipefail
 
 ES_URL=${1:-http://localhost:9200}
 

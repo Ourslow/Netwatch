@@ -4,7 +4,7 @@ import hmac
 import io
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlsplit, urlunsplit
 
@@ -858,7 +858,7 @@ def alerts_export_csv():
             "mitre_tech":   a.get("mitre_tech")   or "",
         })
 
-    filename = f"netwatch-alerts-{datetime.utcnow().strftime('%Y%m%d-%H%M')}.csv"
+    filename = f"netwatch-alerts-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv"
     resp = make_response(out.getvalue())
     resp.headers["Content-Type"]        = "text/csv; charset=utf-8"
     resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
@@ -1055,7 +1055,7 @@ def agents_page():
         "agents.html",
         agents=agents_list,
         team_state=team_state,
-        last_update=datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S UTC"),
+        last_update=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S UTC"),
     )
 
 

@@ -112,7 +112,7 @@ def detect_beacons(es, since: datetime) -> list:
     }
 
     try:
-        resp = es.search(index="zeek-*", body=query)
+        resp = es.search(index="zeek-*", **query)
     except Exception as e:
         log.error("Erreur ES beaconing : %s", e)
         return []
@@ -212,7 +212,7 @@ def detect_long_connections(es, since: datetime) -> list:
     }
 
     try:
-        resp = es.search(index="zeek-*", body=query)
+        resp = es.search(index="zeek-*", **query)
     except Exception as e:
         log.error("Erreur ES long_conn : %s", e)
         return []
@@ -281,7 +281,7 @@ def detect_dns_tunneling(es, since: datetime) -> list:
     }
 
     try:
-        resp = es.search(index="zeek-*", body=query)
+        resp = es.search(index="zeek-*", **query)
     except Exception as e:
         log.error("Erreur ES dns_tunnel : %s", e)
         return []

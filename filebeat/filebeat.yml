@@ -77,7 +77,7 @@ output.elasticsearch:
   bulk_max_size: 500
 
 setup.template.name: "netwatch"
-setup.template.pattern: "*"
+setup.template.pattern: "zeek-*,snort-*,suricata-*,netwatch-*"
 setup.template.settings:
   index.number_of_shards: 1
   index.number_of_replicas: 0
