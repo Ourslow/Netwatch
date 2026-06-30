@@ -3,22 +3,17 @@ agent: Security-agent
 canonical_id: security
 tool: "Claude Code"
 session_id: null
-state: done
-current_ticket: null
+state: working
+current_ticket: T_005
 last_ticket: T_004
-ticket_started: "2026-06-30T00:00:00Z"
-ticket_finished: "2026-06-30T00:00:00Z"
-last_activity: "2026-06-30T00:00:00Z"
+ticket_started: "2026-06-30T12:00:00Z"
+ticket_finished: null
+last_activity: "2026-06-30T12:00:00Z"
 last_commit: "9928932"
 current_ticket_skills:
-  - detecting-beaconing-patterns-with-zeek
-  - detecting-exfiltration-over-dns-with-zeek
-  - detecting-network-anomalies-with-zeek
-  - hunting-for-dns-tunneling-with-zeek
-  - detecting-lateral-movement-with-zeek
-  - configuring-suricata-for-network-monitoring
-  - detecting-ransomware-precursors-in-network
-  - detecting-command-and-control-over-dns
-  - performing-network-traffic-analysis-with-zeek
-  - hunting-for-command-and-control-beaconing
-skills_override_reason: null
+  - collecting-indicators-of-compromise
+  - analyzing-indicators-of-compromise
+  - automating-ioc-enrichment
+  - building-threat-intelligence-platform
+  - analyzing-network-traffic-for-incidents
+skills_override_reason: "T_005 IOC knowledge graph — NetworkX + elasticsearch-py"

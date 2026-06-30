@@ -1,0 +1,16 @@
+id: T_005
+title: "Proof of concept IOC knowledge graph"
+agent: Security-agent
+phase: 1
+priority: medium
+category: feature
+status: working
+created: "2026-06-30"
+started: "2026-06-30"
+branch: "agent/security/active"
+acceptance:
+  - "Créer scripts/security/ioc-graph.py : charge alertes ES → extrait entités (IPs, domaines, règles, MITRE TTPs) → génère graphe"
+  - "Exporter le graphe en JSON (nodes + edges) dans scripts/security/ioc-graph-output.json"
+  - "Utiliser NetworkX + elasticsearch-py (Understand-Anything non dispo pip)"
+  - "Documenter dans docs/understand-anything-poc.md : approche, résultats, exemple de graphe"
+  - "Le script fonctionne même si ES est vide (données de demo hardcodées en fallback)"
