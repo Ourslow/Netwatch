@@ -1,4 +1,5 @@
 import csv
+import glob
 import hmac
 import io
 import json
@@ -6,6 +7,8 @@ import os
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlsplit, urlunsplit
+
+import yaml
 
 from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import (LoginManager, UserMixin,
@@ -1000,6 +1003,54 @@ def compliance():
         }
     referentials = [{**r, "summary": _summary(r["measures"])} for r in REFERENTIALS]
     return render_template("compliance.html", referentials=referentials)
+
+
+@app.route("/agents")
+@login_required
+def agents_page():
+    """Monitoring des agents IA — lit les status.yml depuis agents-deck."""
+    _base = os.path.join(os.path.dirname(__file__), "..", "agents-deck")
+    state_file = os.path.join(_base, "team-lead", "state.yml")
+
+    # Lecture state.yml team-lead
+    team_state = {}
+    try:
+        with open(state_file, encoding="utf-8") as f:
+            team_state = yaml.safe_load(f) or {}
+    except Exception:
+        pass
+
+    # Lecture des 4 agents
+    agents_list = []
+    for agent_id in ("infra", "security", "automation", "frontend"):
+        status_path = os.path.join(_base, "agents", agent_id, "status.yml")
+        info = {
+            "id": agent_id,
+            "agent": agent_id.capitalize() + "-agent",
+            "state": "standby",
+            "current_ticket": None,
+            "last_activity": None,
+            "error": None,
+        }
+        try:
+            with open(status_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            info["agent"]          = data.get("agent",          info["agent"])
+            info["state"]          = data.get("state",          "standby")
+            info["current_ticket"] = data.get("current_ticket") or data.get("last_ticket")
+            info["last_activity"]  = data.get("last_activity")
+        except FileNotFoundError:
+            info["error"] = f"status.yml introuvable : {status_path}"
+        except Exception as exc:
+            info["error"] = str(exc)
+        agents_list.append(info)
+
+    return render_template(
+        "agents.html",
+        agents=agents_list,
+        team_state=team_state,
+        last_update=datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S UTC"),
+    )
 
 
 # ============================================================
