@@ -2,13 +2,18 @@
 # Complement des regles ET Open et des scripts Zeek
 
 # Detection ICMP sweep
-alert icmp any any -> $HOME_NET any (msg:"NETWATCH - ICMP Ping Sweep detected"; itype:8; threshold:type both, track by_src, count 10, seconds 60; sid:2000001; rev:1; classtype:network-scan;)
+# CALIBRAGE 2026-06-30 — seuil monte de 10 a 50 ICMP/60s : evite les FP mDNS/avahi/decouverte locale
+# Restriction $EXTERNAL_NET : les sweeps internes RFC1918 (avahi, LLDP) ne declenchent plus
+alert icmp $EXTERNAL_NET any -> $HOME_NET any (msg:"NETWATCH - ICMP Ping Sweep detected"; itype:8; threshold:type both, track by_src, count 50, seconds 60; sid:2000001; rev:2; classtype:network-scan;)
 
 # Detection SSH brute force
 alert ssh any any -> $HOME_NET 22 (msg:"NETWATCH - SSH Brute Force Attempt"; flow:to_server,established; threshold:type both, track by_src, count 5, seconds 60; sid:2000002; rev:1; classtype:attempted-admin;)
 
 # Detection DNS query longue (possible tunneling)
-alert dns any any -> any any (msg:"NETWATCH - Possible DNS Tunneling (long query)"; dns.query; content:"|00|"; offset:40; sid:2000003; rev:1; classtype:bad-unknown;)
+# CALIBRAGE 2026-06-30 — remplacement content:"|00|";offset:40 (faux binaire sur buffer texte dns.query)
+# Nouvelle approche : isdataat:100 detecte les noms de domaine >100 chars (indicateur de tunneling)
+# Threshold added : un nom long isole ne suffit pas, il faut une cadence soutenue
+alert dns any any -> any any (msg:"NETWATCH - Possible DNS Tunneling (long query)"; dns.query; isdataat:100; threshold:type both, track by_src, count 5, seconds 60; sid:2000003; rev:2; classtype:bad-unknown;)
 
 # Detection TLS avec version obsolete
 alert tls any any -> any any (msg:"NETWATCH - Obsolete TLS version (TLSv1.0)"; tls.version:1.0; sid:2000004; rev:1; classtype:policy-violation;)
@@ -18,4 +23,7 @@ alert tls any any -> any any (msg:"NETWATCH - Obsolete TLS version (TLSv1.1)"; t
 alert http any any -> any any (msg:"NETWATCH - Cleartext password in HTTP POST"; flow:to_server,established; http.method; content:"POST"; http.request_body; content:"password"; nocase; sid:2000006; rev:1; classtype:policy-violation;)
 
 # Detection gros transfert sortant (exfiltration)
-alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"NETWATCH - Large outbound transfer (possible exfiltration)"; flow:to_server,established; stream_size:client,>,1000000; threshold:type both, track by_src, count 1, seconds 300; sid:2000007; rev:1; classtype:policy-violation;)
+# CALIBRAGE 2026-06-30 — seuil monte de 1MB (1000000) a 50MB (52428800) : evite les 33x FP sur downloads/mises a jour OS
+# Restriction ports !80 !443 : les gros transferts HTTPS/HTTP legitimes (CDN, updates) ne declenchent plus
+# Seuls les uploads massifs vers ports non standard sur IP externe sont suspects (exfiltration reelle)
+alert tcp $HOME_NET any -> $EXTERNAL_NET ![80,443] (msg:"NETWATCH - Large outbound transfer (possible exfiltration)"; flow:to_server,established; stream_size:client,>,52428800; threshold:type both, track by_src, count 1, seconds 300; sid:2000007; rev:2; classtype:policy-violation;)
