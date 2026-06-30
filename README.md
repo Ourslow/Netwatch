@@ -9,7 +9,7 @@
 ---
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blueviolet.svg?style=for-the-badge)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker_Compose-10_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
+[![Docker](https://img.shields.io/badge/Docker_Compose-12_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
 [![École 2600](https://img.shields.io/badge/École_2600-SideQuest_MVP-22D3EE.svg?style=for-the-badge)](https://www.ecole2600.com)
 [![Axians](https://img.shields.io/badge/Axians-Vinci_Energies-E30613.svg?style=for-the-badge)](https://www.axians.fr)
 
@@ -64,7 +64,7 @@
 
 **NetWatch** est un NDR *(Network Detection & Response)* open-source qui reproduit les fonctionnalités clés d'outils commerciaux comme **Netscout nGeniusONE**, **Corelight** ou **Riverbed** — déployable en moins de 30 minutes sur n'importe quelle VM.
 
-La v2 passe de 4 à **10 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, et une couverture de 4 référentiels de conformité.
+La v2 passe de 4 à **12 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, une couverture de 4 référentiels de conformité, CrowdSec pour le blocage collaboratif et n8n pour l'automatisation des alertes.
 
 > Projet réalisé par **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — [École 2600](https://www.ecole2600.com), promo 2024-2027 — SideQuest MVP (S2 2025-2026)
 
@@ -207,7 +207,8 @@ Le portail Flask (`:5050`) centralise toutes les données en une interface unifi
 | `/audit` | Constats priorisés automatiquement, score de posture /100, recommandations |
 | `/compliance` | Matrices NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001/27002 (couvert/partiel/hors-périmètre) |
 | `/report` | Rapport de conseil PDF : bandeau couverture, KPI cards, sections numérotées |
-| `/status` | Santé des 10 services Docker en temps réel |
+| `/status` | Santé des 12 services Docker en temps réel |
+| `/agents` | Monitoring des agents IA — état, ticket en cours, dernière activité (refresh 15s) |
 | `✨ IA` | Explication des alertes via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
 > Interface disponible en **FR / EN** (switch côté client, localStorage)
@@ -384,6 +385,9 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | Métriques système | Prometheus + node-exporter | 2.51 / 1.7 |
 | Portail web | Flask | 3.x |
 | IA locale | Ollama / Mistral | — |
+| IPS collaboratif | CrowdSec | latest |
+| Automatisation alertes | n8n | 2.x |
+| Orchestration agents IA | agents-deck (Fuskerrs) | 2.0 |
 | Orchestration | Docker Compose | v2 |
 | OS cible | Ubuntu | 22.04 LTS |
 
@@ -410,7 +414,7 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 
 ```
 netwatch/
-├── docker-compose.yml              # Orchestration 10 services
+├── docker-compose.yml              # Orchestration 12 services
 ├── .env.example                    # Template de configuration
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
 ├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch
@@ -578,7 +582,7 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | Version | Statut | Contenu |
 |---------|--------|---------|
 | **v1** | ✅ Mars 2026 | Stack Docker 4 services · 4 dashboards Grafana · Scripts Zeek · Simulateur trafic |
-| **v2** | 🟢 Juin 2026 | 10 services · 11 dashboards · Portail Flask · IA locale · Validé ESXi lab Axians |
+| **v2** | 🟢 Juin 2026 | 12 services · 11 dashboards · Portail Flask · IA locale · CrowdSec · n8n alertes Teams · Agents IA · Validé ESXi lab Axians |
 | **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
 
 ---
