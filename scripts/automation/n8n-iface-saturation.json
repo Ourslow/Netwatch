@@ -1,0 +1,134 @@
+{
+  "name": "NetWatch Interface Saturation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "d5e6f7a8-0001-0001-0001-000000000001",
+      "name": "Toutes les 5 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "python3 /home/ourslow/code/netwatch/scripts/automation/iface-saturation.py 2>&1; echo \"EXIT:$?\""
+      },
+      "id": "d5e6f7a8-0002-0002-0002-000000000002",
+      "name": "Exécuter iface-saturation.py",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parser la sortie de iface-saturation.py\nconst stdout = $input.item.json.stdout || '';\nconst exitCode = $input.item.json.exitCode ?? 0;\n\n// Extraire le code de sortie depuis la sortie (echo \"EXIT:$?\")\nlet realExit = exitCode;\nconst exitMatch = stdout.match(/EXIT:(\\d+)/);\nif (exitMatch) realExit = parseInt(exitMatch[1]);\n\n// Compter les alertes déclenchées\nconst alertLines = stdout.split('\\n').filter(l => l.includes('ALERTE ['));\nconst critCount = alertLines.filter(l => l.includes('[CRITICAL]')).length;\nconst highCount = alertLines.filter(l => l.includes('[HIGH]')).length;\nconst medCount  = alertLines.filter(l => l.includes('[MEDIUM]')).length;\nconst total = critCount + highCount + medCount;\n\n// Extraire les interfaces alertées\nconst ifaces = alertLines.map(l => {\n  const m = l.match(/ALERTE \\[[A-Z]+\\] (.+) (ingress|egress): ([\\d.]+)%/);\n  return m ? { iface: m[1], direction: m[2], pct: parseFloat(m[3]) } : null;\n}).filter(Boolean);\n\n// Vérifier si Prometheus est absent\nconst promAbsent = stdout.includes('Prometheus non joignable') || stdout.includes('arrêt gracieux');\n\nconsole.log(`[iface-saturation] exit=${realExit} | alertes=${total} (crit=${critCount} high=${highCount} med=${medCount}) | prom_absent=${promAbsent}`);\n\nreturn [{\n  json: {\n    stdout,\n    exitCode: realExit,\n    total,\n    critCount,\n    highCount,\n    medCount,\n    ifaces,\n    promAbsent,\n    hasAlerts: total > 0,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "d5e6f7a8-0003-0003-0003-000000000003",
+      "name": "Parser la sortie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-alerts",
+              "leftValue": "={{ $json.hasAlerts }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d5e6f7a8-0004-0004-0004-000000000004",
+      "name": "Alertes présentes ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construire un résumé Teams si des alertes sont présentes\nconst {\n  total, critCount, highCount, medCount, ifaces, timestamp\n} = $input.item.json;\n\nconst alertColor = critCount > 0 ? 'Attention' : highCount > 0 ? 'Warning' : 'Default';\nconst emoji = critCount > 0 ? '🚨' : '⚠️';\n\n// Tableau des interfaces en alerte\nconst ifaceFacts = ifaces.length > 0\n  ? ifaces.slice(0, 5).map(i => ({\n      title: `${i.iface} (${i.direction})`,\n      value: `${i.pct.toFixed(1)}%`\n    }))\n  : [{ title: 'Interfaces', value: 'Aucune donnée' }];\n\nconst dateStr = new Date(timestamp).toLocaleString('fr-FR', {\n  timeZone: 'Europe/Paris',\n  dateStyle: 'short',\n  timeStyle: 'short'\n});\n\nconst payload = {\n  type: 'message',\n  attachments: [{\n    contentType: 'application/vnd.microsoft.card.adaptive',\n    content: {\n      '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',\n      type: 'AdaptiveCard',\n      version: '1.4',\n      body: [\n        {\n          type: 'TextBlock',\n          text: `${emoji} Saturation Interface — ${dateStr}`,\n          weight: 'Bolder',\n          size: 'Large',\n          color: alertColor,\n          wrap: true\n        },\n        {\n          type: 'FactSet',\n          facts: [\n            { title: 'Total alertes', value: String(total) },\n            { title: 'Critical',      value: String(critCount) },\n            { title: 'High',          value: String(highCount) },\n            { title: 'Medium',        value: String(medCount) }\n          ]\n        },\n        {\n          type: 'TextBlock',\n          text: 'Interfaces en alerte',\n          weight: 'Bolder',\n          size: 'Small',\n          separator: true\n        },\n        {\n          type: 'FactSet',\n          facts: ifaceFacts\n        }\n      ],\n      actions: [{\n        type: 'Action.OpenUrl',\n        title: 'Ouvrir NetWatch',\n        url: 'http://localhost:5050'\n      }]\n    }\n  }]\n};\n\nreturn [{ json: payload }];"
+      },
+      "id": "d5e6f7a8-0005-0005-0005-000000000005",
+      "name": "Construire carte Teams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TEAMS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "d5e6f7a8-0006-0006-0006-000000000006",
+      "name": "POST Teams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200]
+    }
+  ],
+  "connections": {
+    "Toutes les 5 min": {
+      "main": [[{"node": "Exécuter iface-saturation.py", "type": "main", "index": 0}]]
+    },
+    "Exécuter iface-saturation.py": {
+      "main": [[{"node": "Parser la sortie", "type": "main", "index": 0}]]
+    },
+    "Parser la sortie": {
+      "main": [[{"node": "Alertes présentes ?", "type": "main", "index": 0}]]
+    },
+    "Alertes présentes ?": {
+      "main": [
+        [{"node": "Construire carte Teams", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Construire carte Teams": {
+      "main": [[{"node": "POST Teams", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["netwatch", "saturation", "capacity"],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-30T00:00:00.000Z",
+  "versionId": "1"
+}

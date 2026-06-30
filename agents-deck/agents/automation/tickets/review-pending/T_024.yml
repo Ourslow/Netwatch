@@ -1,0 +1,111 @@
+id: T_024
+title: "Classification applicative + alertes saturation interfaces"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/app-classifier.py : enrichit les flux avec app_name/app_category — DONE"
+  - "PORT_APP_MAP 425 entrées déduplicées + 60 ZEEK_SERVICE_MAP = 485 mappings — DONE"
+  - "HTTP/HTTPS/SSH/RDP/SMB/DNS/FTP/SMTP/Teams/Zoom/MySQL/PostgreSQL/MSSQL/Redis/MongoDB/VNC/SNMP/Syslog/ES/Kafka/NTP/LDAP/Kerberos inclus — DONE"
+  - "Source 1 : ES netflow-* (dst_port) → update_by_query par port (top 50 par bytes) — DONE"
+  - "Source 2 : ES zeek-* conn.log (service Zeek + id.resp_p fallback) — DONE"
+  - "Output : app-flows-today.json {generated_at, days, total_apps, top_apps, by_category} + bulk update ES — DONE"
+  - "CLI : python3 app-classifier.py [--days 1] [--output FILE] [--dry-run] [--verbose] [--no-update] — DONE"
+  - "Route /api/app-flows dans portal/app.py : cache mémoire + fichier 5min, exécution app-classifier.py si périmé — DONE"
+  - "flows.html section 4 : Donut Chart.js top 10 catégories (couleurs distinctes) + Bar horizontal top 10 apps + badge catégorie coloré — DONE"
+  - "Chargement AJAX loadAppFlows() intégré dans loadAll() — DONE"
+  - "Refresh btn-refresh remet à zéro la section 4 — DONE"
+  - "scripts/automation/iface-saturation.py : surveille saturation SNMP via Prometheus — DONE"
+  - "Queries Prometheus : rate(ifHCInOctets/OutOctets{job=snmp}[5m])*8 + ifHighSpeed fallback — DONE"
+  - "Seuils : >80% medium, >90% high, >95% critical — DONE"
+  - "Anti-doublon : iface-saturation-history.json TTL 15min par iface+direction+seuil — DONE"
+  - "Actions : create-ticket.py (category: capacity) + Teams Adaptive Card si ≥ high — DONE"
+  - "Fallback Prometheus absent : skip gracieux avec message explicite — DONE"
+  - "CLI : python3 iface-saturation.py [--dry-run] [--verbose] [--threshold 80] [--prometheus-url] — DONE"
+  - "scripts/automation/n8n-iface-saturation.json : Schedule 5min → Execute → Parse → IF alertes → Construire carte → POST Teams — DONE"
+delivery:
+  summary: |
+    Livraison complète T_024 : classification applicative des flux + alertes saturation interfaces.
+
+    app-classifier.py : script Python ~340 lignes (stdlib pur). PORT_APP_MAP 425 entrées
+    déduplicées couvrant web (66 ports), remote-access (25), file-share (18), email (11),
+    database (40), collaboration (20), streaming (16), infrastructure (150+), security (20+).
+    ZEEK_SERVICE_MAP 60 entrées (service strings Zeek → cat). Deux passes ES :
+    (1) netflow-* agg by dst_port → update_by_query top 50 ports (painless: ne met à jour
+    que les docs sans app_name déjà présent pour éviter la double écriture) ;
+    (2) zeek-* service agg + id.resp_p fallback via painless sum(orig_bytes+resp_bytes).
+    Merge local des résultats : agrégation par app_name, tri par bytes. Output JSON :
+    {generated_at, days, total_apps, top_apps[10], by_category} → app-flows-today.json.
+    CLI complet : --days, --output, --dry-run, --verbose, --es-url, --no-update.
+
+    portal/app.py : route /api/app-flows. Cache double niveau : in-memory TTL 5 min
+    (variable globale _APP_FLOWS_CACHE) + file-backed TTL via generated_at ISO. Si périmé,
+    subprocess python3 app-classifier.py --output cache_file --days 1 avec timeout 60s.
+    Fallback read cache si subprocess échoue. Pattern identique à api_ioc_scores / api_ioc_graph.
+
+    flows.html : section 4 "Trafic applicatif" ajoutée avant section 3 (TCP). Donut Chart.js
+    top 10 catégories par bytes avec légende droite (pct%). Bar horizontal top 10 apps
+    avec couleurs par catégorie (palette CAT_COLORS cohérente avec classes CSS cat-*).
+    Tooltip enrichi (catégorie + nombre de flux). Légende badges catégories sous le graphe.
+    CSS : 10 classes .cat-<catégorie> avec couleurs distinctes.
+    loadAppFlows() intégré dans loadAll() et réinitialisation dans btn-refresh.
+
+    iface-saturation.py : script Python ~320 lignes (stdlib pur). 3 requêtes Prometheus :
+    ingress rate(ifHCInOctets[5m])*8, egress rate(ifHCOutOctets[5m])*8, vitesse nominale
+    ifHighSpeed*1e6. Fallback DEFAULT_IFACE_SPEED_BPS=1Gbps si ifHighSpeed absent.
+    Label interface : instance/ifDescr. Seuils 80/90/95% (configurable --threshold).
+    Anti-doublon : iface-saturation-history.json TTL 15min clé = iface|direction|seuil.
+    Actions : create-ticket.py JSON {category:capacity, engine:iface-saturation} +
+    Teams Adaptive Card FactSet (interface, direction, pct, Mbps) si severity ≥ high.
+    Skip gracieux si Prometheus non joignable (URLError → return None → log + exit).
+    CLI : --dry-run, --verbose, --threshold, --prometheus-url, --history-file.
+
+    n8n-iface-saturation.json : 6 nœuds. Schedule 5min → Execute Command (avec echo EXIT:$?)
+    → Code JS parse (compte alertes CRITICAL/HIGH/MEDIUM, extrait interfaces, détecte
+    Prometheus absent) → IF hasAlerts → Code JS build Teams card → HTTP Request Teams.
+    Branch false de l'IF : pas d'envoi Teams si aucune alerte.
+  technical: |
+    - scripts/automation/app-classifier.py :
+      • PORT_APP_MAP : dict[int, tuple[str,str]] 425 entrées (dédup via _seen_ports set)
+      • ZEEK_SERVICE_MAP : dict[str, tuple[str,str]] 60 entrées
+      • lookup_port(port) / lookup_zeek_service(service, fallback_port)
+      • es_request(url, method, path, body, verbose) : urllib stdlib, timeout 30s
+      • index_exists(es_url, pattern) : HEAD request
+      • query_netflow_by_port : terms agg by dst_port, size 500, sum in_bytes
+      • query_zeek_by_service : pass1 by service (painless sum orig+resp bytes),
+        pass2 by id.resp_p must_not exists service
+      • bulk_update_netflow : update_by_query top 50 ports, painless
+        "if (!ctx._source.containsKey('app_name'))" pour idempotence
+      • merge_results : dict par app_name, skip Unknown, sort by bytes
+      • build_by_category : sum bytes par cat, pct = bytes/total*100
+    - portal/app.py :
+      • _APP_FLOWS_CACHE global dict {"data", "ts"} + _APP_FLOWS_TTL=300
+      • api_app_flows() : TTL mémoire → TTL fichier → subprocess → fallback cache
+      • import time as _time_app (évite conflit avec import time existant)
+    - portal/templates/flows.html :
+      • Section 4 avant Section 3 (cohérence visuelle : app avant TCP)
+      • CAT_COLORS dict JS 10 catégories
+      • catColor(cat) / catBadge(cat) helpers JS
+      • donut-cat : doughnut Chart.js, labels custom avec pct%
+      • bar-apps : indexAxis 'y', couleurs par catégorie, tooltip afterLabel
+      • cat-legend : badges CSS catégories distinctes
+    - scripts/automation/iface-saturation.py :
+      • prometheus_query(url, query) → list[dict] | None (None = absent)
+      • parse_metric_value / get_iface_label
+      • get_iface_speeds : query ifHighSpeed → dict[label, bps]
+      • get_iface_traffic : query ingress/egress → dict[label, bps] | None
+      • evaluate_interface : calc pct, compare 80/90/95%, cooldown check
+      • action_create_ticket / action_teams : pattern identique npm-alerts.py
+      • purge_history TTL 15min par clé iface|direction|seuil
+    - scripts/automation/n8n-iface-saturation.json :
+      • UUIDs d5e6f7a8-000N-000N-000N-00000000000N
+      • Schedule : minutesInterval=5
+      • Execute : command with echo EXIT:$? pour capture exitCode réel
+      • Code parse : alertLines filter, critCount/highCount/medCount, promAbsent flag
+      • IF : condition hasAlerts===true (branche true → Teams, false → stop)
+      • Build card : top 5 interfaces, couleur Attention/Warning/Default
+      • POST Teams : $env.TEAMS_WEBHOOK_URL
+  delivered_at: "2026-06-30T16:00:00Z"
