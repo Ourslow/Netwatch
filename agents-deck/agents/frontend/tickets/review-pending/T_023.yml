@@ -1,0 +1,27 @@
+id: T_023
+title: "Page /topology : carte réseau L2/L3 D3.js avec utilisation interfaces"
+agent: Frontend-agent
+phase: 5
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+delivery: "2026-06-30"
+acceptance:
+  - "Route /topology + APIs dans portal/app.py (toutes login_required)"
+  - "GET /api/topology : topology-discover.py + cache 5min + force_refresh"
+  - "GET /api/snmp-interfaces : Prometheus ifHCIn/OutOctets + ifOperStatus → utilization %"
+  - "Template topology.html : graphe D3.js v7 force-directed, noeuds par type (SVG shapes)"
+  - "Liens colorés selon utilisation BW + épaisseur selon vitesse"
+  - "Click noeud → side panel (nom, IP, vendor, type, uptime, interfaces)"
+  - "Bouton Redécouvrir → force_refresh=true + reload"
+  - "Badge Mode démo si source contient demo"
+  - "Stats bar : devices, liens, source, dernière découverte"
+  - "Fallback demo.json si topology-discover.py absent"
+  - "Fichier static/topology-demo.json (8 nodes : 1 routeur, 2 switchs, 5 hosts)"
+  - "Entrée nav Topologie avec bi-diagram-2-fill (après Flows)"
+body: |
+  Page /topology avec carte réseau interactive L2/L3 D3.js v7.
+  Noeuds distincts par type (shapes SVG), liens colorés par utilisation
+  bande passante et épaisseur par vitesse. Side panel au click.
+  APIs topology-discover + snmp-interfaces Prometheus.

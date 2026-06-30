@@ -1258,6 +1258,187 @@ def api_catalog():
 
 
 # ---------------------------------------------------------------------------
+# Topology — T_023
+# ---------------------------------------------------------------------------
+
+import time as _time_topo  # noqa: E402
+
+_TOPOLOGY_CACHE: dict = {"data": None, "ts": 0.0}
+_TOPOLOGY_TTL   = 300  # 5 minutes
+
+
+@app.route("/topology")
+@login_required
+def topology():
+    """Page carte réseau L2/L3 — graphe D3.js force-directed."""
+    return render_template("topology.html")
+
+
+@app.route("/api/topology")
+@login_required
+def api_topology():
+    """
+    Lance topology-discover.py --output /tmp/topology.json.
+    Cache fichier 5 min. force_refresh=true invalide le cache.
+    Fallback sur static/topology-demo.json si le script est absent.
+    """
+    global _TOPOLOGY_CACHE
+
+    force_refresh = request.args.get("force_refresh", "").lower() == "true"
+    cache_path    = "/tmp/topology.json"
+    demo_path     = os.path.join(os.path.dirname(__file__), "static", "topology-demo.json")
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    now = _time_topo.monotonic()
+
+    # ---- In-memory TTL ----
+    if (not force_refresh
+            and _TOPOLOGY_CACHE["data"] is not None
+            and (now - _TOPOLOGY_CACHE["ts"]) < _TOPOLOGY_TTL):
+        return jsonify(_TOPOLOGY_CACHE["data"])
+
+    # ---- File cache check ----
+    def _cache_fresh():
+        try:
+            mtime = os.path.getmtime(cache_path)
+            return (now - mtime) < _TOPOLOGY_TTL
+        except OSError:
+            return False
+
+    def _load_json(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    if not force_refresh and _cache_fresh():
+        try:
+            data = _load_json(cache_path)
+            _TOPOLOGY_CACHE = {"data": data, "ts": now}
+            return jsonify(data)
+        except Exception:
+            pass
+
+    # ---- Locate topology-discover.py ----
+    script_candidates = [
+        os.path.join(netwatch_root, "scripts", "topology-discover.py"),
+        os.path.join(netwatch_root, "scripts", "security", "topology-discover.py"),
+        "/usr/local/bin/topology-discover.py",
+    ]
+    script = next((s for s in script_candidates if os.path.isfile(s)), None)
+
+    if script is None:
+        # Fallback: demo JSON
+        try:
+            data = _load_json(demo_path)
+            _TOPOLOGY_CACHE = {"data": data, "ts": now}
+            return jsonify(data)
+        except Exception as exc:
+            return jsonify({"error": f"topology-discover.py introuvable et pas de demo : {exc}"}), 503
+
+    # ---- Run the script ----
+    try:
+        result = subprocess.run(
+            ["python3", script, "--output", cache_path],
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            app.logger.warning(
+                "topology-discover.py exited %d: %s",
+                result.returncode,
+                (result.stderr or b"").decode(errors="replace")[:500],
+            )
+        data = _load_json(cache_path)
+        _TOPOLOGY_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+    except subprocess.TimeoutExpired:
+        app.logger.warning("topology-discover.py timed out after 60s")
+    except Exception as exc:
+        app.logger.warning("topology-discover error: %s", exc)
+
+    # Try stale cache or demo fallback
+    try:
+        data = _load_json(cache_path)
+        _TOPOLOGY_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+    except Exception:
+        pass
+    try:
+        data = _load_json(demo_path)
+        _TOPOLOGY_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 503
+
+
+@app.route("/api/snmp-interfaces")
+@login_required
+def api_snmp_interfaces():
+    """
+    Interroge Prometheus pour les métriques SNMP ifHCIn/OutOctets + ifOperStatus.
+    Retourne l'utilisation % par device + interface.
+    Fallback si Prometheus absent : {data:[], warning:"Prometheus indisponible"}.
+    """
+    prom_url = config.NETWATCH_PROMETHEUS_URL.rstrip("/")
+
+    def _prom_query(metric):
+        import urllib.request as _req
+        import urllib.parse as _parse
+        url = f"{prom_url}/api/v1/query?query={_parse.quote(metric)}"
+        with _req.urlopen(url, timeout=5) as resp:
+            return json.loads(resp.read())
+
+    try:
+        # Octets in/out
+        r_in  = _prom_query("ifHCInOctets")
+        r_out = _prom_query("ifHCOutOctets")
+        r_op  = _prom_query("ifOperStatus")
+
+        def _parse_vector(result_json):
+            out = {}
+            for item in result_json.get("data", {}).get("result", []):
+                m     = item.get("metric", {})
+                key   = (m.get("instance", m.get("agent_host", "")),
+                         m.get("ifDescr", m.get("ifIndex", "")))
+                value = float(item["value"][1])
+                out[key] = value
+            return out
+
+        in_map  = _parse_vector(r_in)
+        out_map = _parse_vector(r_out)
+        op_map  = _parse_vector(r_op)
+
+        # Merge keys
+        all_keys = set(in_map) | set(out_map)
+        interfaces = []
+        for (device, iface) in sorted(all_keys):
+            bps_in  = in_map.get((device, iface), 0) * 8
+            bps_out = out_map.get((device, iface), 0) * 8
+            op_val  = op_map.get((device, iface))
+            oper    = "up" if op_val == 1.0 else ("down" if op_val == 2.0 else "unknown")
+            # Assume 1G link if speed unknown (Prometheus doesn't always expose it inline)
+            link_bps = 1_000_000_000
+            util_in  = round(bps_in  / link_bps * 100, 1)
+            util_out = round(bps_out / link_bps * 100, 1)
+            util     = max(util_in, util_out)
+            interfaces.append({
+                "device":    device,
+                "interface": iface,
+                "oper":      oper,
+                "util_in":   util_in,
+                "util_out":  util_out,
+                "utilization": util,
+            })
+
+        return jsonify({"data": interfaces})
+
+    except Exception as exc:
+        app.logger.warning("snmp-interfaces Prometheus error: %s", exc)
+        return jsonify({"data": [], "warning": "Prometheus indisponible"})
+
+
+# ---------------------------------------------------------------------------
 # Flows — T_019
 # ---------------------------------------------------------------------------
 
