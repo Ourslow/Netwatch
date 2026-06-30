@@ -4,7 +4,7 @@ agent: Automation-agent
 phase: 3
 priority: high
 category: feature
-status: planned
+status: working
 created: "2026-06-30"
 acceptance:
   - "scripts/automation/itsm-sync.py : CLI de sync tickets NetWatch → ITSM"

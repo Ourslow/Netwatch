@@ -1,0 +1,134 @@
+{
+  "name": "NetWatch ITSM Sync — JIRA",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "f8a9b0c1-0001-0001-0001-000000000001",
+      "name": "Toutes les 10 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "python3 /home/ourslow/code/netwatch/scripts/automation/itsm-sync.py --backend jira --verbose 2>&1; echo \"EXIT:$?\""
+      },
+      "id": "f8a9b0c1-0002-0002-0002-000000000002",
+      "name": "Exécuter itsm-sync.py (JIRA)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parser la sortie de itsm-sync.py --backend jira\nconst stdout = $input.item.json.stdout || '';\nconst exitCode = $input.item.json.exitCode ?? 0;\n\n// Extraire le vrai code de sortie\nlet realExit = exitCode;\nconst exitMatch = stdout.match(/EXIT:(\\d+)/);\nif (exitMatch) realExit = parseInt(exitMatch[1]);\n\n// Extraire les clés JIRA créées (pattern PROJECT_KEY-NUMBER, ex: NOC-42, NETWATCH-7)\nconst jiraKeyPattern = /\\b([A-Z][A-Z0-9]+-\\d+)\\b/g;\nconst jiraMatches = [...stdout.matchAll(jiraKeyPattern)];\nconst jiraKeys = [...new Set(jiraMatches.map(m => m[1]))];\n\n// Extraire les compteurs depuis le résumé\nconst createdMatch = stdout.match(/Créés\\s*:\\s*(\\d+)/);\nconst failedMatch  = stdout.match(/Echecs\\s*:\\s*(\\d+)/);\nconst skippedMatch = stdout.match(/Skippés\\s*:\\s*(\\d+)/);\n\nconst createdCount = createdMatch ? parseInt(createdMatch[1]) : jiraKeys.length;\nconst failedCount  = failedMatch  ? parseInt(failedMatch[1])  : 0;\nconst skippedCount = skippedMatch ? parseInt(skippedMatch[1]) : 0;\n\n// Extraire le projet JIRA depuis la première clé (ex: NOC de NOC-42)\nconst projectKey = jiraKeys.length > 0 ? jiraKeys[0].split('-')[0] : 'NOC';\n\nconsole.log(`[jira-sync] exit=${realExit} | créés=${createdCount} | echecs=${failedCount} | skippés=${skippedCount}`);\nconsole.log(`[jira-sync] issues créées: ${jiraKeys.join(', ') || 'aucune'}`);\n\nreturn [{\n  json: {\n    stdout,\n    exitCode: realExit,\n    createdCount,\n    failedCount,\n    skippedCount,\n    jiraKeys,\n    projectKey,\n    hasCreated: createdCount > 0,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "f8a9b0c1-0003-0003-0003-000000000003",
+      "name": "Parser la sortie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-created",
+              "leftValue": "={{ $json.hasCreated }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f8a9b0c1-0004-0004-0004-000000000004",
+      "name": "Issues créées ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construire la carte Teams pour JIRA\nconst {\n  createdCount, failedCount, skippedCount, jiraKeys, projectKey, timestamp\n} = $input.item.json;\n\nconst dateStr = new Date(timestamp).toLocaleString('fr-FR', {\n  timeZone: 'Europe/Paris',\n  dateStyle: 'short',\n  timeStyle: 'short'\n});\n\n// Liste des issues créées (max 10)\nconst keyList = jiraKeys.slice(0, 10).join(', ');\nconst keyMore = jiraKeys.length > 10 ? ` (+${jiraKeys.length - 10} autres)` : '';\n\nconst payload = {\n  type: 'message',\n  attachments: [{\n    contentType: 'application/vnd.microsoft.card.adaptive',\n    content: {\n      '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',\n      type: 'AdaptiveCard',\n      version: '1.4',\n      body: [\n        {\n          type: 'TextBlock',\n          text: `NetWatch → JIRA [${projectKey}] — ${dateStr}`,\n          weight: 'Bolder',\n          size: 'Large',\n          color: 'Accent',\n          wrap: true\n        },\n        {\n          type: 'TextBlock',\n          text: `${createdCount} issue(s) créée(s) dans JIRA [${projectKey}]`,\n          size: 'Medium',\n          wrap: true\n        },\n        {\n          type: 'FactSet',\n          facts: [\n            { title: 'Créées',   value: String(createdCount) },\n            { title: 'Echecs',   value: String(failedCount) },\n            { title: 'Skippées', value: String(skippedCount) },\n            { title: 'Issues',   value: keyList + keyMore || 'N/A' }\n          ]\n        }\n      ],\n      actions: [{\n        type: 'Action.OpenUrl',\n        title: 'Ouvrir NetWatch',\n        url: 'http://localhost:5050'\n      }]\n    }\n  }]\n};\n\nreturn [{ json: payload }];"
+      },
+      "id": "f8a9b0c1-0005-0005-0005-000000000005",
+      "name": "Construire carte Teams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TEAMS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "f8a9b0c1-0006-0006-0006-000000000006",
+      "name": "POST Teams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200]
+    }
+  ],
+  "connections": {
+    "Toutes les 10 min": {
+      "main": [[{"node": "Exécuter itsm-sync.py (JIRA)", "type": "main", "index": 0}]]
+    },
+    "Exécuter itsm-sync.py (JIRA)": {
+      "main": [[{"node": "Parser la sortie", "type": "main", "index": 0}]]
+    },
+    "Parser la sortie": {
+      "main": [[{"node": "Issues créées ?", "type": "main", "index": 0}]]
+    },
+    "Issues créées ?": {
+      "main": [
+        [{"node": "Construire carte Teams", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Construire carte Teams": {
+      "main": [[{"node": "POST Teams", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["netwatch", "itsm", "jira"],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-30T00:00:00.000Z",
+  "versionId": "1"
+}
