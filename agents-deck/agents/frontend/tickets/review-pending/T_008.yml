@@ -4,7 +4,7 @@ agent: Frontend-agent
 phase: 1
 priority: medium
 category: feature
-status: planned
+status: review-pending
 created: "2026-06-30"
 acceptance:
   - "Nouvelle route /agents dans portal/app.py — login_required"
