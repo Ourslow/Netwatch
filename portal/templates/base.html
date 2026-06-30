@@ -125,6 +125,12 @@
     <div class="nav-section" data-i18n="nav_report_sec">Rapport</div>
     <ul class="nav nav-pills flex-column gap-1">
       <li class="nav-item">
+        <a href="{{ url_for('exec_page') }}"
+           class="nav-link {% if request.endpoint == 'exec_page' %}active{% endif %}">
+          <i class="bi bi-speedometer2"></i> <span>Exec</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('report') }}"
            class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"
            target="_blank">
@@ -221,6 +227,7 @@
     { icon: 'bi-clipboard2-check',    label: 'Conformité',           url: '/compliance',  hint: 'NIS2 · NIST · ISO' },
     { icon: 'bi-robot',               label: 'Agents IA',            url: '/agents',      hint: 'Statut des agents' },
     { icon: 'bi-diagram-3',           label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
+    { icon: 'bi-speedometer2',        label: 'Dashboard Exec',       url: '/exec',        hint: 'RSSI · posture · KPIs' },
     { icon: 'bi-file-earmark-text',   label: 'Rapport exécutif',     url: '/report',      hint: 'PDF', blank: true },
   ];
   var IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;

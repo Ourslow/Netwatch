@@ -1083,8 +1083,7 @@ def api_ioc_scores():
         try:
             with open(cache_file, encoding="utf-8") as f:
                 cached = json.load(f)
-            # Check file-level TTL via meta.generated_at
-            from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+            from datetime import datetime as _dt, timezone as _tz
             gen = cached.get("meta", {}).get("generated_at", "")
             if gen:
                 age = (_dt.now(_tz.utc) - _dt.fromisoformat(gen)).total_seconds()
@@ -1121,7 +1120,6 @@ def api_ioc_scores():
 
     except subprocess.TimeoutExpired:
         app.logger.warning("ioc-score.py timed out after 60s")
-        # Try stale cache
         try:
             with open(cache_file, encoding="utf-8") as f:
                 data = json.load(f)
@@ -1137,6 +1135,46 @@ def api_ioc_scores():
             return jsonify(data)
         except Exception:
             return jsonify({"error": str(exc)}), 503
+
+
+# ---------------------------------------------------------------------------
+# Dashboard exécutif RSSI  (T_013)
+# ---------------------------------------------------------------------------
+
+@app.route("/exec")
+@login_required
+def exec_page():
+    """Dashboard exécutif RSSI — posture, KPIs, top règles, sparkline."""
+    stats, es_error = es_client.get_exec_stats()
+
+    services, _ = nw_health.check_all(
+        es_url         = config.NETWATCH_ES_URL,
+        grafana_url    = config.NETWATCH_GRAFANA_URL,
+        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
+        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
+        ollama_url     = config.OLLAMA_URL,
+    )
+    up_count   = sum(1 for s in services if s["status"] == "up")
+    uptime_pct = round(up_count / len(services) * 100) if services else 0
+
+    return render_template(
+        "exec.html",
+        stats        = stats,
+        error        = es_error,
+        services     = services,
+        uptime_pct   = uptime_pct,
+        generated_at = datetime.now().strftime("%d/%m/%Y %H:%M"),
+    )
+
+
+@app.route("/api/exec-stats")
+@login_required
+def api_exec_stats():
+    """Données brutes du dashboard exécutif (JSON)."""
+    stats, error = es_client.get_exec_stats()
+    if error:
+        return jsonify({"error": error, **stats}), 200
+    return jsonify(stats)
 
 
 @app.route("/agents")

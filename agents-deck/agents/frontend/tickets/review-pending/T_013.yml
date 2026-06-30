@@ -1,0 +1,25 @@
+id: T_013
+title: "Page /exec : dashboard exécutif RSSI"
+agent: Frontend-agent
+phase: 1
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+delivery: "2026-06-30"
+acceptance:
+  - "Route /exec + API /api/exec-stats dans portal/app.py (login_required)"
+  - "Score de posture /100 : base 100, -5×critiques (cap -40), -2×high (cap -20), -1×règles uniques (cap -20)"
+  - "KPI cards : total alertes 24h, critiques 24h, IPs bloquées (GET autoblock /blocked), uptime (% services healthy)"
+  - "Top 5 règles déclenchées 24h avec badge sévérité"
+  - "Top 3 IPs sources suspectes (nb alertes, moteur)"
+  - "Sparkline 7j évolution alertes (Chart.js)"
+  - "Bouton Exporter PDF (window.print() avec CSS print)"
+  - "Entrée nav Exec avec icône bi-speedometer2"
+  - "Design sobre lisible par un RSSI en 30s"
+body: |
+  Dashboard exécutif RSSI sur /exec avec score de posture,
+  KPI cards, top règles, top IPs suspectes, sparkline 7 jours
+  et export PDF via window.print().
+  API /api/exec-stats expose toutes les données en JSON.
+  Nouvelle fonction get_exec_stats() dans es_client.py.

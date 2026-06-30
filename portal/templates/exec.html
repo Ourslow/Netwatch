@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Exécutif — NetWatch Portal{% endblock %}
+{% block page_title %}<i class="bi bi-speedometer2 me-2"></i>Dashboard Exécutif{% endblock %}
+
+{% block head %}
+<style>
+/* ── Exec-specific ── */
+.exec-score-ring {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 6px solid var(--border-strong);
+  background: var(--bg-inset);
+  position: relative;
+  flex-shrink: 0;
+}
+.exec-score-ring .score-value {
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-strong);
+}
+.exec-score-ring .score-label {
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-top: .15rem;
+}
+.score-excellent { border-color: var(--ok);   color: var(--ok);   }
+.score-good      { border-color: var(--accent); color: var(--accent); }
+.score-warning   { border-color: var(--warn);  color: var(--warn); }
+.score-critical  { border-color: var(--crit);  color: var(--crit); }
+
+.exec-kpi-card {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  height: 100%;
+  transition: border-color .15s;
+}
+.exec-kpi-card:hover { border-color: var(--border-strong); }
+.exec-kpi-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .9px;
+  color: var(--text-dim);
+}
+.exec-kpi-value {
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--text-strong);
+}
+.exec-kpi-sub {
+  font-size: .78rem;
+  color: var(--text-muted);
+}
+.exec-kpi-icon {
+  font-size: 1.5rem;
+  opacity: .65;
+}
+
+.sev-badge {
+  display: inline-block;
+  padding: .15rem .55rem;
+  border-radius: var(--r-pill);
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.sev-1 { background: var(--crit-soft);  color: var(--crit);   border: 1px solid rgba(255,77,94,.25); }
+.sev-2 { background: var(--med-soft);   color: var(--med);    border: 1px solid rgba(245,165,36,.25); }
+.sev-3 { background: var(--ok-soft);    color: var(--ok);     border: 1px solid rgba(46,230,166,.2); }
+
+.rule-bar-wrap {
+  height: 4px;
+  background: var(--bg-inset);
+  border-radius: 99px;
+  margin-top: .3rem;
+  overflow: hidden;
+}
+.rule-bar-inner {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+}
+
+.ip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.ip-row:last-child { border-bottom: none; }
+.ip-addr {
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  color: var(--text-strong);
+}
+.ip-engine {
+  font-size: .68rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: .1rem .45rem;
+  border-radius: var(--r-pill);
+}
+
+/* Print styles */
+@media print {
+  .sidebar, .topbar, .no-print { display: none !important; }
+  .main-content { margin: 0 !important; }
+  .content-area { padding: 1rem !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card, .exec-kpi-card { border: 1px solid #ccc !important; background: #fff !important; }
+  .exec-score-ring { border-color: #333 !important; }
+  .exec-score-ring .score-value,
+  .exec-kpi-value { color: #000 !important; }
+  .exec-kpi-label, .exec-kpi-sub { color: #555 !important; }
+  h5, h6, p, span, small { color: #000 !important; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size:.78rem">
+  <i class="bi bi-clock me-1"></i>{{ generated_at }}
+</span>
+<button onclick="window.print()" class="btn btn-sm btn-outline-secondary no-print">
+  <i class="bi bi-printer me-1"></i>Exporter PDF
+</button>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>Elasticsearch non joignable — données indisponibles. {{ error }}</div>
+</div>
+{% endif %}
+
+<!-- ── Score de posture + légende ── -->
+<div class="card mb-4" style="border-color: var(--border-strong)">
+  <div class="card-body d-flex align-items-center gap-4 flex-wrap">
+
+    {% set score = stats.posture_score | default(0) %}
+    {% if score >= 80 %}
+      {% set ring_cls = "score-excellent" %}
+      {% set score_label_txt = "Excellent" %}
+    {% elif score >= 60 %}
+      {% set ring_cls = "score-good" %}
+      {% set score_label_txt = "Correct" %}
+    {% elif score >= 40 %}
+      {% set ring_cls = "score-warning" %}
+      {% set score_label_txt = "Dégradé" %}
+    {% else %}
+      {% set ring_cls = "score-critical" %}
+      {% set score_label_txt = "Critique" %}
+    {% endif %}
+
+    <div class="exec-score-ring {{ ring_cls }}">
+      <span class="score-value">{{ score }}</span>
+      <span class="score-label">/100</span>
+    </div>
+
+    <div class="flex-grow-1">
+      <h5 class="mb-1">
+        Score de posture
+        <span class="ms-2 fs-6 fw-normal text-muted">{{ score_label_txt }}</span>
+      </h5>
+      <p class="text-muted mb-2" style="font-size:.83rem">
+        Base 100 — pénalités : −5 × alertes critiques (plafond −40),
+        −2 × alertes élevées (plafond −20), −1 × règle unique (plafond −20)
+      </p>
+      <div class="d-flex gap-4 flex-wrap" style="font-size:.8rem">
+        <span class="text-muted">
+          Critiques 24h :
+          <strong class="text-danger">{{ stats.critical_24h | default(0) }}</strong>
+          <span class="text-dim ms-1">(−{{ [stats.critical_24h | default(0) * 5, 40] | min }})</span>
+        </span>
+        <span class="text-muted">
+          Élevées 24h :
+          <strong style="color:var(--warn)">{{ stats.high_24h | default(0) }}</strong>
+          <span class="text-dim ms-1">(−{{ [stats.high_24h | default(0) * 2, 20] | min }})</span>
+        </span>
+        <span class="text-muted">
+          Règles uniques :
+          <strong class="text-body">{{ stats.unique_rules_count | default(0) }}</strong>
+          <span class="text-dim ms-1">(−{{ [stats.unique_rules_count | default(0), 20] | min }})</span>
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── KPI Cards ── -->
+<div class="row g-3 mb-4">
+
+  <!-- Total alertes 24h -->
+  <div class="col-6 col-md-3">
+    <div class="exec-kpi-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <span class="exec-kpi-label">Alertes 24h</span>
+        <i class="bi bi-shield-exclamation exec-kpi-icon" style="color:var(--accent)"></i>
+      </div>
+      <div class="exec-kpi-value">{{ stats.total_24h | default(0) }}</div>
+      <div class="exec-kpi-sub">total toutes sévérités</div>
+    </div>
+  </div>
+
+  <!-- Critiques 24h -->
+  <div class="col-6 col-md-3">
+    <div class="exec-kpi-card" style="border-color:{% if stats.critical_24h | default(0) > 0 %}rgba(255,77,94,.3){% else %}var(--border){% endif %}">
+      <div class="d-flex justify-content-between align-items-start">
+        <span class="exec-kpi-label">Critiques 24h</span>
+        <i class="bi bi-exclamation-octagon-fill exec-kpi-icon" style="color:var(--crit)"></i>
+      </div>
+      <div class="exec-kpi-value" style="color:{% if stats.critical_24h | default(0) > 0 %}var(--crit){% else %}var(--text-strong){% endif %}">
+        {{ stats.critical_24h | default(0) }}
+      </div>
+      <div class="exec-kpi-sub">sévérité 1 / haute priorité</div>
+    </div>
+  </div>
+
+  <!-- IPs bloquées -->
+  <div class="col-6 col-md-3">
+    <div class="exec-kpi-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <span class="exec-kpi-label">IPs bloquées</span>
+        <i class="bi bi-shield-fill-x exec-kpi-icon" style="color:var(--med)"></i>
+      </div>
+      <div class="exec-kpi-value">{{ stats.blocked_count | default(0) }}</div>
+      <div class="exec-kpi-sub">AutoBlock actif</div>
+    </div>
+  </div>
+
+  <!-- Uptime services -->
+  <div class="col-6 col-md-3">
+    <div class="exec-kpi-card" style="border-color:{% if uptime_pct == 100 %}rgba(46,230,166,.3){% elif uptime_pct > 50 %}rgba(245,165,36,.25){% else %}rgba(255,77,94,.3){% endif %}">
+      <div class="d-flex justify-content-between align-items-start">
+        <span class="exec-kpi-label">Uptime services</span>
+        <i class="bi bi-activity exec-kpi-icon" style="color:{% if uptime_pct == 100 %}var(--ok){% elif uptime_pct > 50 %}var(--warn){% else %}var(--crit){% endif %}"></i>
+      </div>
+      <div class="exec-kpi-value" style="color:{% if uptime_pct == 100 %}var(--ok){% elif uptime_pct > 50 %}var(--warn){% else %}var(--crit){% endif %}">
+        {{ uptime_pct }}%
+      </div>
+      <div class="exec-kpi-sub">
+        {{ services | selectattr('status', 'eq', 'up') | list | length }} / {{ services | length }} services healthy
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Sparkline + Top règles + Top IPs ── -->
+<div class="row g-3">
+
+  <!-- Sparkline 7j -->
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-3">
+          <i class="bi bi-graph-up me-2" style="color:var(--accent)"></i>Évolution alertes — 7 derniers jours
+        </h6>
+        <canvas id="sparklineChart" height="130"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top 5 règles -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-3">
+          <i class="bi bi-list-stars me-2" style="color:var(--accent)"></i>Top 5 règles déclenchées (24h)
+        </h6>
+        {% if stats.top_rules %}
+          {% set max_rule_count = stats.top_rules | map(attribute='count') | max %}
+          {% for rule in stats.top_rules %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <span class="text-muted" style="font-size:.78rem; line-height:1.3; word-break:break-word; flex:1">
+                {{ rule.rule }}
+              </span>
+              <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+                <span class="sev-badge sev-{{ rule.severity }}">
+                  {% if rule.severity == 1 %}critique{% elif rule.severity == 2 %}élevée{% else %}faible{% endif %}
+                </span>
+                <span class="fw-mono text-muted" style="font-size:.7rem">{{ rule.count }}×</span>
+              </div>
+            </div>
+            <div class="rule-bar-wrap">
+              <div class="rule-bar-inner" style="width:{{ (rule.count / max_rule_count * 100) | round }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted text-center py-3" style="font-size:.83rem">
+            <i class="bi bi-inbox me-2"></i>Aucune règle déclenchée sur 24h
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top 3 IPs suspectes -->
+  <div class="col-12 col-lg-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-3">
+          <i class="bi bi-geo-alt me-2" style="color:var(--accent)"></i>Top 3 IPs sources (24h)
+        </h6>
+        {% if stats.top_ips %}
+          {% for ip in stats.top_ips %}
+          <div class="ip-row">
+            <div>
+              <a href="/ip/{{ ip.ip }}" class="ip-addr">{{ ip.ip }}</a>
+              <div class="d-flex gap-2 mt-1">
+                <span class="ip-engine">{{ ip.engine }}</span>
+                <span class="text-muted" style="font-size:.72rem">{{ ip.count }} alertes</span>
+              </div>
+            </div>
+            <span class="fw-mono text-muted" style="font-size:.85rem">{{ ip.count }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted text-center py-3" style="font-size:.83rem">
+            <i class="bi bi-inbox me-2"></i>Aucune IP source détectée
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Services mini-status ── -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <span class="text-muted" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.8px">
+            Services
+          </span>
+          {% for svc in services %}
+          <span class="d-flex align-items-center gap-1" style="font-size:.78rem">
+            <span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:
+              {% if svc.status == 'up' %}var(--ok){% elif svc.status == 'degraded' %}var(--warn){% else %}var(--crit){% endif %}">
+            </span>
+            <span class="text-muted">{{ svc.name }}</span>
+          </span>
+          {% endfor %}
+          <a href="{{ url_for('status') }}" class="ms-auto text-muted no-print" style="font-size:.75rem">
+            <i class="bi bi-arrow-right me-1"></i>Détail
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var raw = {{ stats.sparkline_7d | tojson | safe }};
+
+  var labels = raw.map(function (d) {
+    if (!d.t) return '';
+    var dt = new Date(d.t);
+    return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+  });
+  var counts = raw.map(function (d) { return d.count; });
+
+  var ctx = document.getElementById('sparklineChart');
+  if (!ctx) return;
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Alertes',
+        data: counts,
+        fill: true,
+        tension: 0.4,
+        borderColor: 'rgba(34,211,238,.85)',
+        backgroundColor: 'rgba(34,211,238,.08)',
+        pointBackgroundColor: 'rgba(34,211,238,.9)',
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#121b2b',
+          borderColor: '#1e2a3c',
+          borderWidth: 1,
+          titleColor: '#d6e0ec',
+          bodyColor: '#7d8ba0',
+          callbacks: {
+            label: function (ctx) { return ' ' + ctx.parsed.y + ' alertes'; },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid:  { color: 'rgba(30,42,60,.7)' },
+          ticks: { color: '#57647a', font: { size: 11 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid:  { color: 'rgba(30,42,60,.7)' },
+          ticks: {
+            color: '#57647a',
+            font: { size: 11 },
+            precision: 0,
+          },
+        },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

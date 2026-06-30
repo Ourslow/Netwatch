@@ -699,6 +699,185 @@ def get_suspicious_files(size=50):
         return [], str(e)[:120]
 
 
+def get_exec_stats():
+    """
+    Statistiques pour le dashboard exécutif RSSI.
+    Retourne (data: dict, error: str|None).
+    """
+    results: dict = {}
+    err = None
+
+    # --- 1. Stats 24h : total, par sévérité, top IPs, cardinal règles ---
+    body_24h = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [{"range": {"@timestamp": {"gte": "now-24h"}}}],
+                "should": [
+                    {"term":   {"event_type": "alert"}},
+                    {"exists": {"field": "rule"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "aggs": {
+            "by_severity": {
+                "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+            },
+            "top_src_ip": {
+                "terms": {"field": "src_ip", "size": 3},
+                "aggs": {
+                    "top_engine": {
+                        "terms": {"field": "_index", "size": 1}
+                    }
+                },
+            },
+            "unique_rules": {
+                "cardinality": {"field": "alert.signature.keyword"}
+            },
+        },
+    }
+
+    try:
+        r = _es("/suricata-*,snort-*/_search", body_24h)
+        r.raise_for_status()
+        data = r.json()
+        aggs  = data.get("aggregations", {})
+        total_24h = data.get("hits", {}).get("total", {}).get("value", 0)
+
+        sev = {b["key"]: b["doc_count"]
+               for b in aggs.get("by_severity", {}).get("buckets", [])}
+
+        top_ips = []
+        for b in aggs.get("top_src_ip", {}).get("buckets", []):
+            idx_buckets = b.get("top_engine", {}).get("buckets", [])
+            engine = "suricata" if idx_buckets and "suricata" in idx_buckets[0].get("key", "") else "snort"
+            top_ips.append({"ip": b["key"], "count": b["doc_count"], "engine": engine})
+
+        unique_rules_count = int(aggs.get("unique_rules", {}).get("value", 0))
+
+        results["total_24h"]         = total_24h
+        results["critical_24h"]      = sev.get(1, 0)
+        results["high_24h"]          = sev.get(2, 0)
+        results["medium_24h"]        = sev.get(3, 0)
+        results["unique_rules_count"] = unique_rules_count
+        results["top_ips"]           = top_ips
+
+    except requests.exceptions.ConnectionError:
+        err = "Elasticsearch non joignable"
+        results.update({
+            "total_24h": 0, "critical_24h": 0, "high_24h": 0,
+            "medium_24h": 0, "unique_rules_count": 0, "top_ips": [],
+        })
+    except Exception as e:
+        err = str(e)[:80]
+        results.update({
+            "total_24h": 0, "critical_24h": 0, "high_24h": 0,
+            "medium_24h": 0, "unique_rules_count": 0, "top_ips": [],
+        })
+
+    # --- 2. Top 5 règles 24h (Suricata — champ alert.signature) ---
+    body_rules = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [{"range": {"@timestamp": {"gte": "now-24h"}}}],
+                "must": [{"term": {"event_type": "alert"}}],
+            }
+        },
+        "aggs": {
+            "top_rules": {
+                "terms": {"field": "alert.signature.keyword", "size": 5},
+                "aggs": {
+                    "min_sev": {"min": {"field": "alert.severity"}}
+                },
+            }
+        },
+    }
+
+    try:
+        r = _es("/suricata-*/_search", body_rules)
+        r.raise_for_status()
+        aggs = r.json().get("aggregations", {})
+        top_rules = []
+        for b in aggs.get("top_rules", {}).get("buckets", []):
+            sev_val = b.get("min_sev", {}).get("value")
+            sev_int = int(sev_val) if sev_val is not None else 3
+            top_rules.append({
+                "rule":     b["key"],
+                "count":    b["doc_count"],
+                "severity": sev_int,
+            })
+        results["top_rules"] = top_rules
+    except Exception:
+        results["top_rules"] = []
+
+    # --- 3. Sparkline 7 jours ---
+    body_7d = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [{"range": {"@timestamp": {"gte": "now-7d"}}}],
+                "should": [
+                    {"term":   {"event_type": "alert"}},
+                    {"exists": {"field": "rule"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "aggs": {
+            "per_day": {
+                "date_histogram": {
+                    "field":             "@timestamp",
+                    "calendar_interval": "1d",
+                    "min_doc_count":     0,
+                    "extended_bounds":   {"min": "now-7d/d", "max": "now/d"},
+                }
+            }
+        },
+    }
+
+    try:
+        r = _es("/suricata-*,snort-*/_search", body_7d)
+        r.raise_for_status()
+        buckets = (r.json().get("aggregations", {})
+                           .get("per_day", {})
+                           .get("buckets", []))
+        results["sparkline_7d"] = [
+            {"t": b.get("key_as_string", ""), "count": b.get("doc_count", 0)}
+            for b in buckets
+        ]
+    except Exception:
+        results["sparkline_7d"] = []
+
+    # --- 4. IPs bloquées (AutoBlock) ---
+    try:
+        rb = requests.get(
+            config.NETWATCH_AUTOBLOCK_URL.rstrip("/") + "/blocked",
+            timeout=3,
+        )
+        if rb.status_code == 200:
+            blocked = rb.json()
+            results["blocked_count"] = len(blocked) if isinstance(blocked, list) else 0
+        else:
+            results["blocked_count"] = 0
+    except Exception:
+        results["blocked_count"] = 0
+
+    # --- 5. Score de posture ---
+    crit   = results.get("critical_24h", 0)
+    high   = results.get("high_24h", 0)
+    unique = results.get("unique_rules_count", 0)
+
+    penalty_crit  = min(crit * 5,   40)
+    penalty_high  = min(high * 2,   20)
+    penalty_rules = min(unique * 1, 20)
+
+    results["posture_score"] = max(0, 100 - penalty_crit - penalty_high - penalty_rules)
+
+    return results, err
+
+
 def get_weird_events(size=50):
     """
     Violations et anomalies protocolaires (weird.log Zeek).
