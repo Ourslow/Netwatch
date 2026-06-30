@@ -144,7 +144,7 @@ services:
     image: grafana/grafana:10.4.0
     container_name: netwatch-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD manquant dans .env}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_UNIFIED_ALERTING_ENABLED=true
       # URL non vide par défaut : sans webhook réel, Grafana refuse de démarrer
@@ -159,7 +159,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -242,7 +242,7 @@ services:
     image: n8nio/n8n:latest
     container_name: netwatch-n8n
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     environment:
       - N8N_HOST=localhost
       - N8N_PORT=5678
@@ -253,7 +253,7 @@ services:
       # Basic auth — changer en prod
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-netwatch2026}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD manquant dans .env}
       # Timezone pour les crons
       - GENERIC_TIMEZONE=Europe/Paris
       # Webhook base URL (pour callbacks externes)
@@ -276,7 +276,7 @@ services:
     image: ollama/ollama:latest
     container_name: netwatch-ollama
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama-data:/root/.ollama
     # Modèle attendu par le portail : OLLAMA_MODEL (défaut "mistral")

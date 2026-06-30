@@ -5,7 +5,7 @@ set -euo pipefail
 
 N8N_URL="${N8N_URL:-http://localhost:5678}"
 N8N_USER="${N8N_USER:-admin}"
-N8N_PASS="${N8N_PASSWORD:-netwatch2026}"
+N8N_PASS="${N8N_PASSWORD:?N8N_PASSWORD manquant}"
 WORKFLOW_FILE="$(dirname "$0")/n8n-alertes-teams.json"
 
 echo "=== NetWatch — Deploy n8n Workflow ==="

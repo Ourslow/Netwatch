@@ -16,7 +16,11 @@ PROXMOX_PASSWORD = os.getenv("PROXMOX_PASSWORD", "")
 PROXMOX_NODE     = os.getenv("PROXMOX_NODE", "pve")
 PROXMOX_VERIFY_SSL = os.getenv("PROXMOX_VERIFY_SSL", "false").lower() == "true"
 
-FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
+_secret = os.getenv("FLASK_SECRET_KEY", "")
+if not _secret:
+    import secrets as _secrets
+    _secret = _secrets.token_hex(32)
+FLASK_SECRET_KEY = _secret
 FLASK_DEBUG      = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 PORT             = int(os.getenv("PORT", 5050))
 

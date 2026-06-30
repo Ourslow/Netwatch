@@ -470,8 +470,14 @@ def login():
         password = request.form.get("password", "")
         if _check_credentials(username, password):
             login_user(_SINGLE_USER, remember=bool(request.form.get("remember")))
-            next_page = request.args.get("next") or url_for("dashboard")
-            return redirect(next_page)
+            next_page = request.args.get("next")
+            if next_page:
+                from urllib.parse import urlparse, urljoin
+                parsed = urlparse(urljoin(request.host_url, next_page))
+                host   = urlparse(request.host_url)
+                if parsed.scheme not in ("http", "https") or parsed.netloc != host.netloc:
+                    next_page = None
+            return redirect(next_page or url_for("dashboard"))
         flash("Identifiants incorrects.", "danger")
     return render_template("login.html")
 
