@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es health health-json health-no-color help
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help
 
 ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434
@@ -26,6 +26,9 @@ install:
 
 setup-es:
 	bash setup-es.sh
+
+setup-netflow:
+	bash scripts/setup-netflow.sh
 
 # ============================================================
 # Portail Flask (sans systemd, pour dev/debug)
@@ -132,6 +135,48 @@ clean:
 	@echo "Volumes supprimés (données ES, Grafana, Prometheus effacées)"
 
 # ============================================================
+# NetFlow — simulation et test (T_017)
+# ============================================================
+
+netflow-test:
+	@echo "=== Test NetFlow — envoi de paquets UDP de simulation ==="
+	@echo ""
+	@if command -v softflowd >/dev/null 2>&1; then \
+	  echo "softflowd détecté — simulation de flux NetFlow v9 vers localhost:2055..."; \
+	  softflowd -n 127.0.0.1:2055 -v 9 -t 5 -c 20 -i lo 2>/dev/null & \
+	  SFPID=$$!; \
+	  sleep 6; \
+	  kill $$SFPID 2>/dev/null || true; \
+	  echo "Simulation softflowd terminée (20 flows envoyés)."; \
+	else \
+	  echo "softflowd absent — envoi de paquets UDP bruts via Python..."; \
+	  python3 -c " \
+import socket, struct, time, random; \
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); \
+def rand_ip(): return bytes([random.randint(1,254) for _ in range(4)]); \
+def nf9_pkt(src, dst, sport, dport, proto, pkts, byt): \
+    now = int(time.time()); \
+    sys_up = (now % 86400) * 1000; \
+    hdr = struct.pack('>HHIII', 9, 1, sys_up, now, random.randint(1,9999)); \
+    tpl = struct.pack('>HHHH HH HH HH HH HH HH HH HH HH HH HH HH', \
+        0, 28, 256, 13, \
+        8,4, 12,4, 7,2, 11,2, 4,1, 2,4, 1,4, 21,4, 22,4, 10,2, 14,2, 16,2, 17,2); \
+    flow = struct.pack('>4s4sHHBIIIIHHHH', src, dst, sport, dport, proto, pkts, byt, now-5, now, 0, 0, 0, 0); \
+    data_hdr = struct.pack('>HH', 256, 4+len(flow)); \
+    return hdr + struct.pack('>HH',0,4+len(tpl)) + tpl + data_hdr + flow; \
+flows = [nf9_pkt(rand_ip(),rand_ip(),random.randint(1024,65535),random.choice([80,443,53,22,25,3389]),random.choice([6,17]),random.randint(1,1000),random.randint(64,1500000)) for _ in range(10)]; \
+[sock.sendto(p,('127.0.0.1',2055)) for p in flows]; \
+print(f'  10 paquets NetFlow v9 envoyés vers 127.0.0.1:2055'); \
+sock.close() \
+"; \
+	fi
+	@echo ""
+	@echo "Vérification dans ES (attente 10s pour ingestion Filebeat)..."
+	@sleep 10
+	@curl -sf "$(ES)/netflow-*/_count" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'  Documents netflow-* dans ES : {d[\"count\"]}')" 2>/dev/null || echo "  Aucun index netflow-* trouvé (goflow2 en cours de démarrage ?)"
+	@echo ""
+
+# ============================================================
 # Diagnostic
 # ============================================================
 
@@ -183,4 +228,6 @@ help:
 	@echo ""
 	@echo "  make install         Installer le portail comme service systemd (root requis)"
 	@echo "  make setup-es        Configurer ES (réplicas 0, templates)"
+	@echo "  make setup-netflow   Créer template ES netflow-* + ILM policy 30 jours"
+	@echo "  make netflow-test    Envoyer des paquets NetFlow de test (softflowd ou Python)"
 	@echo ""

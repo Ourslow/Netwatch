@@ -54,6 +54,36 @@ filebeat.inputs:
       log_type: suricata
       engine: suricata
 
+  # ============================================================
+  # GOFLOW2 — NetFlow / IPFIX / sFlow (T_017)
+  # ============================================================
+  # GoFlow2 écrit du JSON sur stdout → Docker capture dans /var/lib/docker/containers/
+  # L'input type:container lit le fichier -json.log, add_docker_metadata filtre
+  # le container netwatch-goflow2, decode_json_fields extrait les champs du flux.
+  # Index cible : netflow-YYYY.MM.DD (template géré par setup-netflow.sh)
+  - type: container
+    enabled: true
+    paths:
+      - /var/lib/docker/containers/*/*-json.log
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - drop_event:
+          when:
+            not:
+              equals:
+                container.name: "netwatch-goflow2"
+      - decode_json_fields:
+          fields: ["message"]
+          target: "netflow"
+          overwrite_keys: false
+          add_error_key: true
+    fields:
+      log_type: netflow
+      engine: netflow
+    fields_under_root: true
+    index: "netflow-%{+yyyy.MM.dd}"
+
 processors:
   - add_host_metadata: ~
   - timestamp:

@@ -303,6 +303,37 @@ check_docker_container() {
   esac
 }
 
+check_goflow2() {
+  # 1. Vérifier que le container est running
+  local state
+  state=$(docker_status "netwatch-goflow2")
+
+  if [ "$state" != "running" ]; then
+    case "$state" in
+      exited) report_service "GoFlow2" "err" "container arrêté (exited)" ;;
+      absent) report_service "GoFlow2" "err" "container absent" ;;
+      *)      report_service "GoFlow2" "err" "état: ${state}" ;;
+    esac
+    return
+  fi
+
+  # 2. Vérifier la présence d'index netflow-* dans ES
+  local idx_body idx_count
+  idx_body=$(es_query "/_cat/indices/netflow-*?h=index,docs.count&s=index" 2>/dev/null) || idx_body=""
+
+  if [ -z "$idx_body" ]; then
+    # Container running mais pas encore d'index (goflow2 n'a pas encore reçu de flux)
+    report_service "GoFlow2" "warn" "running — aucun index netflow-* (aucun flux reçu ?)"
+    return
+  fi
+
+  idx_count=$(echo "$idx_body" | grep -c "netflow-" 2>/dev/null || echo "0")
+  local total_docs
+  total_docs=$(echo "$idx_body" | awk '{sum+=$2} END {print sum+0}' 2>/dev/null || echo "0")
+
+  report_service "GoFlow2" "ok" "running — ${idx_count} index netflow-* (${total_docs} docs)"
+}
+
 # ============================================================
 # Main
 # ============================================================
@@ -333,6 +364,9 @@ check_docker_container "Beacon-detect" "netwatch-beacon-detect"
 check_docker_container "Zeek"          "netwatch-zeek"
 check_docker_container "Snort"         "netwatch-snort"
 check_docker_container "Suricata"      "netwatch-suricata"
+
+# --- GoFlow2 (NetFlow / IPFIX / sFlow) ---
+check_goflow2
 
 # ============================================================
 # Résumé
