@@ -1,0 +1,66 @@
+id: T_015
+title: "n8n escalade intelligente : score≥80 → autoblock + ticket + Teams urgent"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/escalade.py : CLI qui déclenche les 3 actions sur une IP à risque — DONE"
+  - "Lit les scores depuis ioc-score.py (subprocess) ou /api/ioc-scores (HTTP fallback) ou scoring inline ES — DONE"
+  - "Filtre IPs avec score >= 80 (configurable --threshold) — DONE"
+  - "Anti-doublon escalade-history.json TTL 4h par IP — DONE"
+  - "Action 1 : POST http://localhost:5001/webhook/alert autoblock (format body conforme spec) — DONE"
+  - "Action 2 : echo '<json>' | python3 create-ticket.py ticket critical — DONE"
+  - "Action 3 : POST Teams webhook Adaptive Card rouge urgente (si TEAMS_WEBHOOK_URL) — DONE"
+  - "scripts/automation/n8n-escalade.json : Schedule 5min + Execute Command escalade.py + log output — DONE"
+  - "Section 'Escalade automatique' dans docs/n8n-setup.md — DONE"
+delivery:
+  summary: |
+    Livraison complète du pipeline d'escalade intelligente NetWatch.
+
+    escalade.py : script Python CLI 280 lignes (stdlib pur : urllib, json, subprocess,
+    argparse, datetime). Lit les scores IOC selon 3 sources en cascade : ioc-score.py
+    (subprocess, T_014), /api/ioc-scores (HTTP fallback portail), ou scoring inline ES
+    (requêtes aggregation suricata-*,snort-*,zeek-* sur 30 min, formule pondérée
+    critical×5 + high×2 + bonus multi-engine + bonus volume, plafonné 100).
+    Anti-doublon : escalade-history.json avec TTL 4h configurable (--ttl), purge
+    automatique des entrées expirées à chaque run.
+    Action 1 autoblock : POST http://localhost:5001/webhook/alert avec body spec exact
+    (labels.ip, labels.severity:critical, annotations.summary).
+    Action 2 ticket : subprocess create-ticket.py via stdin JSON (signature ESCALADE +
+    score, severity:1, engine:escalade), gestion SKIP anti-doublon natif.
+    Action 3 Teams : Adaptive Card rouge (color:Attention, size:Large) avec FactSet
+    IP/score/timestamp/actions — skip gracieux si TEAMS_WEBHOOK_URL absente.
+    Résumé final en stdout avec compteurs escaladées/ignorées/complètes.
+
+    n8n-escalade.json : workflow 6 nœuds (Schedule 5min → Execute Command → Code JS
+    parse+log → IF exitCode != 0 → Teams erreur / NoOp). Le nœud Code JS extrait les
+    IPs escaladées par regex depuis stdout et log le résumé dans n8n. Branche erreur
+    envoie une Adaptive Card d'alerte pipeline vers Teams.
+
+    docs/n8n-setup.md : section "Escalade automatique" ajoutée (~160 lignes, vue
+    d'ensemble pipeline, options CLI tableau, sources scores (priorité), scoring inline
+    formule, anti-doublon format JSON, format autoblock body, format ticket stdin,
+    format Teams card, architecture nœuds, test manuel, fichiers associés).
+  technical: |
+    - scripts/automation/escalade.py :
+      • load_history / save_history / purge_expired_history : gestion JSON TTL
+      • is_in_cooldown / record_escalation : anti-doublon par IP
+      • scores_from_ioc_score_py : subprocess ioc-score.py --output-json (T_014 compat)
+      • scores_from_api : GET /api/ioc-scores HTTP fallback
+      • scores_inline : POST ES aggs (by_ip > critical_count filter + high_count filter
+        + engines terms) sur suricata-*,snort-*,zeek-*, fenêtre 30min, formule pondérée
+      • action_autoblock : urllib POST body conforme spec ticket
+      • action_create_ticket : subprocess create-ticket.py stdin JSON, gère SKIP
+      • action_teams : urllib POST Adaptive Card rouge, skip si env absent
+      • get_scores : cascade sources avec verbose debug
+      • escalate_ip : orchestre les 3 actions, retourne dict résultat
+      • main : argparse complet, loop IPs, save history, exit non-zéro si failures
+    - scripts/automation/n8n-escalade.json : 6 nœuds, IDs UUIDs uniques b2c3d4e5-*,
+      executeCommand avec 2>&1 pour capturer stderr, Code JS parse regex stdout,
+      IF sur exitCode, HTTP Request Teams erreur conditionnelle
+    - docs/n8n-setup.md : section ajoutée en fin de fichier après rapport hebdomadaire
+      (~160 lignes, tableau options, formule scoring, formats JSON body spec, test CLI)
+  delivered_at: "2026-06-30T13:00:00Z"

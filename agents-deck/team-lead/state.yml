@@ -1,5 +1,5 @@
 schema_version: '2.0'
-last_update: '2026-06-30T11:42:29.000Z'
+last_update: '2026-06-30T11:42:44.000Z'
 agents:
   infra:
     expected_state: working
@@ -28,9 +28,9 @@ agents:
       skills_override_reason: null
     notes: Agent security — Anthropic-Cybersecurity-Skills, règles détection, MISP.
   automation:
-    expected_state: working
-    last_merged_ticket: T_011
-    last_merged_sha: 160b7d2
+    expected_state: done
+    last_merged_ticket: T_015
+    last_merged_sha: f551283
     closed_phase: null
     ticket_go:
       transmitted: false

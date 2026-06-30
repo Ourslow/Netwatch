@@ -1,31 +1,22 @@
 id: T_015
-title: "n8n escalade intelligente — IP score≥80 → autoblock + ticket critical + Teams urgent"
+title: "n8n escalade intelligente : score≥80 → autoblock + ticket + Teams urgent"
 agent: Automation-agent
-phase: 4
+phase: 3
 priority: high
 category: feature
 status: planned
 created: "2026-06-30"
 acceptance:
-  - "Créer scripts/automation/escalade.py : lit /api/ioc-scores, filtre score≥80, déclenche les actions"
-  - "Action 1 — Autoblock : POST http://localhost:5001/webhook/alert avec l'IP et la raison"
-  - "Action 2 — Ticket : appelle create-ticket.py avec priority:critical et contexte score"
-  - "Action 3 — Teams urgent : HTTP POST webhook avec Adaptive Card rouge '@channel ESCALADE'"
-  - "Anti-doublon : fichier JSON local escalade-history.json — ne ré-escalade pas la même IP dans les 4h"
-  - "Créer scripts/automation/n8n-escalade.json : workflow n8n (Schedule 5 min → HTTP /api/ioc-scores → Code JS filtre score≥80 → Execute escalade.py)"
-  - "Documenter dans docs/n8n-setup.md section escalade"
+  - "Créer scripts/automation/escalade.py : CLI qui lit les scores IOC et déclenche 3 actions sur les IPs score≥80"
+  - "Anti-doublon escalade-history.json TTL 4h par IP"
+  - "Action 1 : POST http://localhost:5001/webhook/alert → autoblock (format body spécifié)"
+  - "Action 2 : echo '<json>' | python3 create-ticket.py → ticket critical"
+  - "Action 3 : POST Teams webhook (si TEAMS_WEBHOOK_URL) → Adaptive Card rouge urgente"
+  - "Créer scripts/automation/n8n-escalade.json : Schedule 5min → Execute Command escalade.py → log output"
+  - "Section 'Escalade automatique' dans docs/n8n-setup.md"
 context: |
-  Pipeline :
-  n8n (5 min) → GET /api/ioc-scores → filtre score≥80 → escalade.py → {autoblock + ticket + Teams}
-
-  L'API /api/ioc-scores sera créée par l'agent security (T_014) en parallèle.
-  En attendant, escalade.py peut aussi appeler ioc-score.py directement en subprocess.
-
-  autoblock webhook : POST http://localhost:5001/webhook/alert
-  Body : {"ip": "1.2.3.4", "reason": "Score risque composite 87/100", "severity": "critical"}
-
-  create-ticket.py : déjà livré en Phase 2, CLI stdin JSON
-  Teams webhook : TEAMS_WEBHOOK_URL dans .env (peut être absent → skip Teams sans erreur)
-
-  escalade-history.json format : {"1.2.3.4": "2026-06-30T14:00:00Z", ...}
-  TTL 4h : si now - last_escalade < 4h → skip
+  Score source : tente d'abord ioc-score.py (subprocess), fallback /api/ioc-scores (HTTP),
+  sinon scoring minimal inline (requêtes ES directes).
+  Threshold configurable --threshold (défaut 80).
+  Autoblock body: {"alerts": [{"labels": {"ip": "<ip>", "severity": "critical"}, "annotations": {"summary": "Score risque <score>/100 — escalade automatique"}}]}
+  Teams card : AdaptiveCard rouge avec TextBlock "🚨 ESCALADE — IP X (score Y/100)" + raison.
