@@ -1,5 +1,5 @@
 schema_version: '2.0'
-last_update: '2026-06-30T12:11:51.000Z'
+last_update: '2026-06-30T12:11:52.000Z'
 agents:
   infra:
     expected_state: done
@@ -41,9 +41,9 @@ agents:
       skills_override_reason: null
     notes: Agent automation — n8n, alertes Teams, tickets agents-deck auto.
   frontend:
-    expected_state: working
-    last_merged_ticket: T_013
-    last_merged_sha: deb630c
+    expected_state: done
+    last_merged_ticket: T_019
+    last_merged_sha: bc5f34d
     closed_phase: null
     ticket_go:
       transmitted: false
