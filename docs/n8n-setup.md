@@ -179,6 +179,166 @@ docker compose logs -f n8n
 | Fichier | Description |
 |---------|-------------|
 | `docker-compose.yml` | Service `n8n` (port 5678, volume n8n-data) |
-| `scripts/automation/n8n-alertes-teams.json` | Export du workflow n8n |
+| `scripts/automation/n8n-alertes-teams.json` | Export du workflow n8n Teams |
 | `scripts/automation/deploy-n8n-workflow.sh` | Script de déploiement via API REST |
 | `docs/n8n-setup.md` | Ce fichier |
+
+---
+
+## Auto-tickets
+
+### Vue d'ensemble
+
+Le workflow **NetWatch Auto-Tickets** crée automatiquement des tickets YAML dans
+`agents-deck/agents/security/tickets/drafts/` à chaque détection d'alerte critique
+dans Elasticsearch. Le Security-agent peut ensuite prendre en charge ces tickets.
+
+**Pipeline** :
+```
+n8n Schedule (10 min)
+  → ES Query (suricata-*,snort-* | severity:critical | last 10 min)
+  → IF (hits > 0 ?)
+  → Extraire alertes (1 item par hit)
+  → Execute Command : python3 create-ticket.py
+      → agents-deck/agents/security/tickets/drafts/T_auto_YYYYMMDD_HHMMSS_<slug>.yml
+```
+
+---
+
+### Script create-ticket.py
+
+**Emplacement** : `scripts/automation/create-ticket.py`
+
+Prend une alerte JSON en stdin ou en argument et génère un ticket YAML.
+
+```bash
+# Usage basique (stdin)
+echo '<json_alerte>' | python3 scripts/automation/create-ticket.py
+
+# Avec fichier
+python3 scripts/automation/create-ticket.py --file alert.json
+
+# Dry-run (affiche sans écrire)
+echo '<json>' | python3 scripts/automation/create-ticket.py --dry-run
+
+# Répertoire drafts/ personnalisé
+echo '<json>' | python3 scripts/automation/create-ticket.py \
+  --drafts-dir /chemin/vers/drafts/
+```
+
+**Format d'entrée** : JSON Suricata EVE, Snort alert_json, ou Elasticsearch hit `_source`.
+
+**Champs extraits automatiquement** :
+
+| Champ YAML | Sources JSON essayées (dans l'ordre) |
+|------------|--------------------------------------|
+| `signature` | `alert.signature`, `msg`, `signature`, `rule.name` |
+| `src_ip` | `src_ip`, `source.ip`, `alert.src_ip` |
+| `dest_ip` | `dest_ip`, `destination.ip`, `alert.dest_ip` |
+| `timestamp` | `@timestamp`, `timestamp`, `alert.timestamp` |
+| `severity` | `alert.severity` (1→critical, 2→high), `severity`, `event.severity_label` |
+
+**Gestion anti-doublon** : avant de créer un ticket, le script parcourt tous les fichiers
+`.yml` existants dans `drafts/` et compare la signature (insensible à la casse).
+Si un ticket avec la même signature existe déjà, le script sort avec `SKIP` (exit 0)
+sans créer de doublon.
+
+**Format du ticket généré** :
+
+```yaml
+id: T_auto_20260630_142500
+title: "AUTO: ET MALWARE Meterpreter Session Detected"
+agent: Security-agent
+phase: 2
+priority: critical
+category: incident
+status: draft
+created: "2026-06-30"
+auto_generated: true
+alert:
+  src_ip: "10.10.1.50"
+  dest_ip: "192.168.1.21"
+  signature: "ET MALWARE Meterpreter Session Detected"
+  timestamp: "2026-06-30T14:25:00Z"
+  src_port: 4444
+  dest_port: 443
+  proto: "TCP"
+  engine: "suricata"
+  portal_url: "http://localhost:5050/alerts"
+acceptance:
+  - "Investiguer l'alerte : src_ip=10.10.1.50, dest_ip=192.168.1.21, contexte réseau"
+  - "Vérifier si l'IP source est dans la watchlist Zeek Intel"
+  - "Analyser les logs réseau associés dans Elasticsearch (suricata)"
+  - "Documenter les conclusions et clore ou escalader le ticket"
+```
+
+---
+
+### Workflow n8n — NetWatch Auto-Tickets
+
+**Fichier** : `scripts/automation/n8n-auto-tickets.json`
+
+#### Import dans n8n
+
+```bash
+# Import via API REST n8n
+curl -s -u admin:netwatch2026 \
+  -X POST http://localhost:5678/rest/workflows \
+  -H "Content-Type: application/json" \
+  -d @scripts/automation/n8n-auto-tickets.json
+
+# Ou via UI :
+# http://localhost:5678 → Workflows → Import from file → n8n-auto-tickets.json
+# → Activer le workflow (toggle ON)
+```
+
+#### Architecture des nœuds
+
+| Nœud | Type | Description |
+|------|------|-------------|
+| Toutes les 10 min | Schedule Trigger | Déclencheur cron toutes les 10 minutes |
+| ES — Alertes critiques | HTTP Request | POST `/_search` sur `suricata-*,snort-*`, filtre `severity:critical`, `last 10m` |
+| Alertes critiques trouvées ? | IF | Vérifie `hits.total.value > 0` |
+| Extraire les alertes | Code (JS) | Sépare les hits en items individuels |
+| Créer ticket YAML | Execute Command | `echo '<json>' \| python3 create-ticket.py` |
+| Aucune alerte critique — Stop | NoOp | Branche "pas d'alerte" |
+
+#### Requête Elasticsearch
+
+- **Indices** : `suricata-*` et `snort-*`
+- **Fenêtre temporelle** : `last 10 minutes` (`@timestamp >= now-10m`)
+- **Filtre sévérité** : `alert.severity = 1` OU `severity = critical` OU `event.severity_label = critical`
+- **Tri** : `@timestamp DESC`
+- **Limite** : 20 hits max (chaque alerte génère un ticket, anti-doublon actif)
+
+---
+
+### Test manuel
+
+```bash
+# 1. Injecter une alerte critique dans ES (via simulate-traffic.py)
+python3 simulate-traffic.py --hours 0.1 --intensity high --attack
+
+# 2. Vérifier la présence d'alertes critiques dans ES
+curl 'http://localhost:9200/suricata-*/_search?q=alert.severity:1&size=3&pretty'
+
+# 3. Tester create-ticket.py directement
+ALERT='{"@timestamp":"2026-06-30T14:25:00Z","src_ip":"10.10.1.50","dest_ip":"192.168.1.21","alert":{"signature":"ET MALWARE Test","severity":1},"event":{"module":"suricata"}}'
+echo "$ALERT" | python3 scripts/automation/create-ticket.py
+
+# 4. Vérifier le ticket créé
+ls agents-deck/agents/security/tickets/drafts/
+
+# 5. Exécution manuelle dans n8n UI :
+# http://localhost:5678 → Workflows → NetWatch Auto-Tickets → Execute Workflow
+```
+
+---
+
+### Fichiers associés (Auto-tickets)
+
+| Fichier | Description |
+|---------|-------------|
+| `scripts/automation/create-ticket.py` | Script Python de génération de tickets |
+| `scripts/automation/n8n-auto-tickets.json` | Export du workflow n8n Auto-Tickets |
+| `agents-deck/agents/security/tickets/drafts/` | Répertoire des tickets auto-générés |

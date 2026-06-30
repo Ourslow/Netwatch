@@ -1,0 +1,36 @@
+id: T_007
+title: "n8n auto-création de tickets agents-deck depuis alertes critiques"
+agent: Automation-agent
+phase: 2
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/automation/create-ticket.py : script Python stdin JSON → YAML ticket dans agents-deck/agents/security/tickets/drafts/"
+  - "Le ticket généré contient : id auto (T_auto_YYYYMMDD_HHMMSS), title, context IP src/dest, timestamp, lien portail"
+  - "Créer scripts/automation/n8n-auto-tickets.json : workflow n8n (Schedule→ES Query→IF critical→Execute Command→create-ticket.py)"
+  - "Gestion anti-doublon : vérifier signature existante dans drafts/ avant création"
+  - "Documenter dans docs/n8n-setup.md (section Auto-tickets)"
+delivery:
+  summary: |
+    Livraison complète du pipeline auto-tickets NetWatch.
+    create-ticket.py : script Python CLI prenant une alerte JSON (Suricata EVE, Snort alert_json
+    ou Elasticsearch _source) en stdin/argument et générant un ticket YAML dans
+    agents-deck/agents/security/tickets/drafts/. Gestion anti-doublon par comparaison de signature
+    (insensible à la casse) sur les fichiers existants. Tous les champs du format ticket spécifié
+    sont couverts : id T_auto_YYYYMMDD_HHMMSS, title AUTO:, agent Security-agent, priority depuis
+    severity, alert.src_ip/dest_ip/signature/timestamp/portal_url, acceptance pré-rempli.
+    n8n-auto-tickets.json : workflow 6 nœuds (Schedule 10min → ES Query critical last 10min →
+    IF hits>0 → Extraire alertes → Execute Command create-ticket.py → NoOp).
+    docs/n8n-setup.md : section Auto-tickets ajoutée (vue d'ensemble, usage CLI, format ticket,
+    architecture nœuds, requête ES, test manuel, fichiers associés).
+  technical: |
+    - scripts/automation/create-ticket.py : 200 lignes Python, argparse CLI, support multi-format
+      (Suricata/Snort/ES _source), slugify nom de fichier, gestion anti-doublon, exit codes propres
+    - scripts/automation/n8n-auto-tickets.json : workflow n8n exporté, 6 nœuds, schedule 10min,
+      requête ES bool query severity:1/critical last 10m, Code JS split hits, Execute Command stdin pipe
+    - agents-deck/agents/security/tickets/drafts/ : répertoire créé pour tickets auto-générés
+    - docs/n8n-setup.md : section "Auto-tickets" ajoutée (~120 lignes, usage CLI, format YAML,
+      architecture nœuds, test, fichiers associés)
+  delivered_at: "2026-06-30T11:30:00Z"

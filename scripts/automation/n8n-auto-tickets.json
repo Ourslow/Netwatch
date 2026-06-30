@@ -1,0 +1,169 @@
+{
+  "name": "NetWatch Auto-Tickets",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Toutes les 10 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9200/suricata-*,snort-*/_search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "{\n  \"size\": 20,\n  \"sort\": [{\"@timestamp\": {\"order\": \"desc\"}}],\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"range\": {\n            \"@timestamp\": {\n              \"gte\": \"now-10m\"\n            }\n          }\n        }\n      ],\n      \"should\": [\n        {\"term\": {\"alert.severity\": 1}},\n        {\"term\": {\"severity\": \"critical\"}},\n        {\"term\": {\"event.severity_label\": \"critical\"}}\n      ],\n      \"minimum_should_match\": 1\n    }\n  }\n}"
+      },
+      "id": "es-query-critical",
+      "name": "ES — Alertes critiques",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "hits-check",
+              "leftValue": "={{ $json.hits.total.value }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-critical-found",
+      "name": "Alertes critiques trouvées ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraire chaque alerte depuis les hits Elasticsearch\nconst hits = $input.first().json.hits.hits || [];\nconst alerts = hits.map(hit => hit._source || hit);\n\n// Retourner un item par alerte pour traitement individuel\nreturn alerts.map(alert => ({ json: alert }));"
+      },
+      "id": "extract-alerts",
+      "name": "Extraire les alertes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "command": "=echo '{{ JSON.stringify($json) }}' | python3 /home/ourslow/code/netwatch/scripts/automation/create-ticket.py"
+      },
+      "id": "execute-create-ticket",
+      "name": "Créer ticket YAML",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 220]
+    },
+    {
+      "parameters": {},
+      "id": "no-alerts-noop",
+      "name": "Aucune alerte critique — Stop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Toutes les 10 min": {
+      "main": [
+        [
+          {
+            "node": "ES — Alertes critiques",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ES — Alertes critiques": {
+      "main": [
+        [
+          {
+            "node": "Alertes critiques trouvées ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alertes critiques trouvées ?": {
+      "main": [
+        [
+          {
+            "node": "Extraire les alertes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aucune alerte critique — Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraire les alertes": {
+      "main": [
+        [
+          {
+            "node": "Créer ticket YAML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "netwatch-auto-tickets"
+  },
+  "id": "netwatch-auto-tickets",
+  "tags": ["netwatch", "auto-tickets", "security"]
+}
