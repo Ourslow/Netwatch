@@ -1,0 +1,23 @@
+id: T_026
+title: "VoIP pipeline : Zeek SIP/RTP + MOS score E-model G.107"
+agent: Security-agent
+phase: 3
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+started: null
+finished: null
+branch: "agent/security/active"
+acceptance:
+  - "zeek/local.zeek : @load policy/protocols/sip activé (génère sip.log)"
+  - "zeek/local.zeek : commentaire expliquant l'absence de policy/protocols/rtp dans Zeek 6.x"
+  - "zeek/scripts/voip-mos.zeek : calcul MOS E-model G.107 depuis plages ports RTP UDP (16384-32767 et 10000-20000)"
+  - "voip-mos.zeek : corrélation call_id SIP via sip_request/sip_reply events"
+  - "voip-mos.zeek : output voip.log avec champs ts/uid/src_ip/dst_ip/duration_s/jitter_ms/packet_loss_pct/latency_ms/mos_score/mos_level/call_id"
+  - "scripts/security/voip-quality.py : source primaire voip.log, fallback sip+conn, fallback conn UDP seul"
+  - "voip-quality.py : output JSON {avg_mos, calls_total, calls_excellent/good/fair/poor/bad, top_bad_calls, source}"
+  - "voip-quality.py : CLI --days 1 --output voip-stats.json --demo"
+  - "voip-quality.py : mode --demo sans ES, stats fictives réalistes"
+  - "portal/app.py : route /api/voip-stats avec cache 5 min (mémoire + fichier)"
+delivery: null
