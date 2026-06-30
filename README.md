@@ -9,7 +9,7 @@
 ---
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blueviolet.svg?style=for-the-badge)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker_Compose-12_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
+[![Docker](https://img.shields.io/badge/Docker_Compose-14_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
 [![École 2600](https://img.shields.io/badge/École_2600-SideQuest_MVP-22D3EE.svg?style=for-the-badge)](https://www.ecole2600.com)
 [![Axians](https://img.shields.io/badge/Axians-Vinci_Energies-E30613.svg?style=for-the-badge)](https://www.axians.fr)
 
@@ -64,7 +64,7 @@
 
 **NetWatch** est un NDR *(Network Detection & Response)* open-source qui reproduit les fonctionnalités clés d'outils commerciaux comme **Netscout nGeniusONE**, **Corelight** ou **Riverbed** — déployable en moins de 30 minutes sur n'importe quelle VM.
 
-La v2 passe de 4 à **12 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, une couverture de 4 référentiels de conformité, CrowdSec pour le blocage collaboratif et n8n pour l'automatisation des alertes.
+La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, GoFlow2 pour la collecte NetFlow/IPFIX/sFlow, SNMP exporter pour la supervision des interfaces, une couverture de 4 référentiels de conformité, CrowdSec pour le blocage collaboratif et n8n pour l'automatisation des alertes.
 
 > Projet réalisé par **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — [École 2600](https://www.ecole2600.com), promo 2024-2027 — SideQuest MVP (S2 2025-2026)
 
@@ -78,17 +78,24 @@ La v2 passe de 4 à **12 services** avec trois moteurs d'analyse IDS en parallè
 | 🧠 | **Détection comportementale** | RITA-lite : beaconing C2, connexions longues, DNS tunneling |
 | 🚫 | **Réponse automatique** | AutoBlock webhook → iptables (déclenché par Grafana) |
 | 🌐 | **Threat Intelligence** | Zeek Intel Framework — Feodo Tracker + URLhaus (auto-update) |
-| 📊 | **11 dashboards Grafana** | Réseau, DNS, HTTP/TLS, JA3/HASSH, MITRE ATT&CK, Beacon, VM health |
-| 🖥️ | **Portail web Flask** | Alertes · Audit · Compliance · Rapport PDF · IA locale (Ollama/Mistral) |
+| 📊 | **13 dashboards Grafana** | Réseau, DNS, HTTP/TLS, JA3/HASSH, MITRE ATT&CK, Beacon, VM health, SNMP interfaces, Capacity planning |
+| 🖥️ | **Portail web Flask** | Alertes · Dashboard RSSI · Flux réseau · Topologie · SLA · Audit · Compliance · Rapport PDF · IA locale |
 | 📋 | **Conformité réglementaire** | NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001 — matrices couvert/partiel |
 | 🤖 | **IA locale on-prem** | Explication des alertes via Ollama/Mistral — zéro fuite de données |
 | 🔐 | **Fingerprinting TLS/SSH** | JA3 · JA3S · HASSH via Zeek |
 | ⚡ | **Métriques système** | Prometheus + node-exporter — CPU, RAM, disque, réseau |
 | 🕸️ | **Graphe IOC interactif** | Page /graph — D3.js force-directed, zoom/pan, clic nœud, 5 types colorés |
-| 🔎 | **Enrichissement IOC** | Réputation IP AbuseIPDB + ipinfo.io — score abus, pays, ISP, cache local |
+| 🔎 | **Enrichissement IOC** | Réputation IP AbuseIPDB + ipinfo.io — score composite multi-sources, cache local |
+| 🌊 | **Analyse NetFlow / IPFIX / sFlow** | GoFlow2 collector → ES `netflow-*` — top talkers, top flux applicatifs |
+| 🖧 | **Supervision interfaces SNMP** | SNMP exporter + IF-MIB — débit, saturation, statut opérationnel |
+| 🗺️ | **Topologie réseau** | Découverte SNMP LLDP-MIB + ARP Zeek → D3.js force-directed (routeurs, switchs, firewalls, hôtes) |
+| 📈 | **Capacity planning** | `predict_linear` Prometheus — jours avant saturation par interface (rouge < 7j) |
+| 📞 | **Qualité VoIP** | Zeek SIP/RTP + MOS E-model G.107 — classification Excellent/Good/Fair/Poor/Bad |
+| 📏 | **Compliance SLA** | Page /sla — taux de conformité HTTP/DNS/RTT sur 7j, Business Hours vs Off-hours |
+| 🎟️ | **Intégration ITSM** | Sync automatique → ServiceNow (INC) ou JIRA (NOC) via n8n |
 | 🎫 | **Ticketing automatique** | n8n → YAML ticket créé automatiquement sur alerte critique ES |
 | 📅 | **Rapport hebdomadaire** | n8n cron lundi 08h00 → agrège 7j d'alertes ES → Teams Adaptive Card |
-| ⚙️ | **Health check 12 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
+| ⚙️ | **Health check 14 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
 
 ---
 
@@ -158,8 +165,16 @@ flowchart TD
 
     E["📦 Filebeat 8.13\nCollecte unifiée"] --> F
 
+    subgraph NPM ["NPM — Flux & Interfaces"]
+        NF["🌊 GoFlow2\nNetFlow · IPFIX · sFlow → netflow-*"]
+        SN["🖧 SNMP Exporter :9116\nIF-MIB · ifHCOctets · ifOperStatus"]
+    end
+
+    NF --> E
+    SN --> K
+
     subgraph STORAGE ["Stockage"]
-        F["🗄️ Elasticsearch 8.13\nzeek-* · snort-* · suricata-*"]
+        F["🗄️ Elasticsearch 8.13\nzeek-* · snort-* · suricata-* · netflow-*"]
         G["🔭 beacon-detect\nnetwatch-beacons-*"]
         H["🚫 autoblock\nnetwatch-autoblock-*"]
     end
@@ -171,9 +186,9 @@ flowchart TD
     F --> J
 
     subgraph VIZ ["Visualisation & Alertes"]
-        I["📊 Grafana 10.4\n11 dashboards · Alertes"]
-        J["🖥️ Portail Flask :5050\nAlerts · Audit · Compliance · IA"]
-        K["📈 Prometheus\n+ node-exporter"]
+        I["📊 Grafana 10.4\n13 dashboards · Alertes"]
+        J["🖥️ Portail Flask :5050\nDashboard · Flows · Topology · SLA · IA"]
+        K["📈 Prometheus\n+ node-exporter · Capacity planning"]
     end
 
     K --> I
@@ -209,10 +224,15 @@ Le portail Flask (`:5050`) centralise toutes les données en une interface unifi
 | Page | Description |
 |------|-------------|
 | `/alerts` | Alertes temps réel, sparklines, auto-refresh 30s, filtres moteur/sévérité |
+| `/exec` | Dashboard RSSI / direction — KPIs exécutifs, score IOC composite, escalade n8n |
+| `/flows` | Flux réseau (GoFlow2/NetFlow), ART applicatif, santé TCP, top apps par catégorie |
+| `/topology` | Carte réseau L2/L3 D3.js force-directed — routeurs, switchs, firewalls, hôtes |
+| `/sla` | Compliance SLA — taux HTTP/DNS/RTT sur 7j, Business Hours vs Off-hours, gauges 270° |
+| `/graph` | Graphe IOC D3.js interactif — IPs, règles, TTPs, enrichissement AbuseIPDB |
 | `/audit` | Constats priorisés automatiquement, score de posture /100, recommandations |
 | `/compliance` | Matrices NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001/27002 (couvert/partiel/hors-périmètre) |
 | `/report` | Rapport de conseil PDF : bandeau couverture, KPI cards, sections numérotées |
-| `/status` | Santé des 12 services Docker en temps réel |
+| `/status` | Santé des 14 services Docker en temps réel |
 | `/agents` | Monitoring des agents IA — état, ticket en cours, dernière activité (refresh 15s) |
 | `✨ IA` | Explication des alertes via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
@@ -283,6 +303,8 @@ docker compose ps   # 10 conteneurs attendus
 | `netwatch-suricata` | Télécharge ET Open au démarrage |
 | `netwatch-beacon-detect` | Analyse toutes les 15 minutes |
 | `netwatch-autoblock` | Webhook Grafana sur `:5001` |
+| `netwatch-goflow2` | Écoute NetFlow/IPFIX UDP `:2055`, sFlow UDP `:6343` |
+| `netwatch-snmp-exporter` | Scrape SNMP sur `:9116` — configurer `SNMP_TARGETS` dans `.env` |
 
 ### 6. Accéder aux interfaces
 
@@ -388,10 +410,13 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | Indexation | Elasticsearch | 8.13 |
 | Visualisation | Grafana | 10.4 |
 | Métriques système | Prometheus + node-exporter | 2.51 / 1.7 |
+| **Collecte NetFlow/IPFIX/sFlow** | **GoFlow2** | **latest** |
+| **Supervision SNMP interfaces** | **SNMP Exporter (prom/snmp-exporter)** | **latest** |
 | Portail web | Flask | 3.x |
 | IA locale | Ollama / Mistral | — |
 | IPS collaboratif | CrowdSec | latest |
 | Automatisation alertes | n8n | 2.x |
+| Intégration ITSM | itsm-sync.py (ServiceNow + JIRA) | — |
 | Graphe IOC | NetworkX + elasticsearch-py | 3.x / 8.x |
 | Orchestration agents IA | agents-deck (Fuskerrs) | 2.0 |
 | Orchestration | Docker Compose | v2 |
@@ -410,7 +435,14 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | Réponse automatique | AutoBlock → iptables | Cisco Stealthwatch + NAC · Palo Alto XSOAR |
 | MITRE ATT&CK | EVE JSON Suricata + Snort metadata | Darktrace · Vectra AI |
 | Threat Intelligence | Zeek Intel (Feodo + URLhaus) | Anomali · ThreatConnect · MISP |
+| **Analyse NetFlow / IPFIX / sFlow** | **GoFlow2 → ES netflow-*** | Netscout nGeniusONE · Gigamon · Riverbed |
+| **Supervision interfaces SNMP** | **SNMP Exporter + IF-MIB** | Netscout · SolarWinds NPM |
+| **Topologie réseau L2/L3** | **LLDP-MIB + ARP Zeek → D3.js** | Riverbed NetIM · SolarWinds NTM |
+| **Capacity planning** | **predict_linear Prometheus** | Netscout · PRTG · ManageEngine |
+| **Qualité VoIP** | **MOS E-model G.107 (Zeek)** | Netscout InfiniStreamNG · Empirix |
+| **Compliance SLA** | **Percentiles ES p95 → gauges** | Netscout nGeniusONE · Riverbed |
 | Corrélation multi-sources | Dashboard multi-moteurs | nGeniusONE Service Triage |
+| Intégration ITSM | ServiceNow + JIRA (itsm-sync.py) | Intégrations natives |
 | Rapport conformité | PDF automatique (Flask) | SIEM intégré |
 | Coût | **Gratuit** | 10 000 – 100 000+ €/an |
 
@@ -602,6 +634,10 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | **v2 Phase 1** | ✅ Juin 2026 | 12 services · CrowdSec · n8n alertes Teams · page /agents · calibrage 12 règles IDS · détection lateral movement |
 | **v2 Phase 2** | ✅ Juin 2026 | Fix Filebeat/ES data-stream · graphe IOC NetworkX · ticketing auto n8n → agents-deck · audit sécurité P0/P1/P2 |
 | **v2 Phase 3** | ✅ Juin 2026 | Graphe IOC D3.js /graph · enrichissement IP AbuseIPDB · rapport hebdo Teams · health-check 12 services · guide déploiement Proxmox/ESXi |
+| **v2 Phase 4** | ✅ Juin 2026 | Dashboard RSSI /exec · score IOC composite · escalade n8n intelligente · demo.sh interactif |
+| **v2 Phase 5** | ✅ Juin 2026 | GoFlow2 NetFlow/IPFIX/sFlow · page /flows · ART applicatif · TCP health · npm-alerts |
+| **v2 Phase 6** | ✅ Juin 2026 | SNMP exporter IF-MIB · topologie D3.js /topology · app-classifier 425 ports · iface-saturation |
+| **v2 Phase 7** | ✅ Juin 2026 | Capacity planning predict_linear · VoIP MOS E-model G.107 · SLA compliance /sla · ITSM ServiceNow/JIRA |
 | **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
 
 ---
