@@ -21,6 +21,8 @@
 # Scripts custom NetWatch
 @load ./scripts/port-scan-detect.zeek
 @load ./scripts/dns-entropy.zeek
+@load ./scripts/tcp-performance
+@load ./scripts/app-response-time
 
 # Intel Framework — Threat Intelligence feeds (ip_watchlist.dat, domain_watchlist.dat)
 @load frameworks/intel/seen
