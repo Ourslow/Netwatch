@@ -1,0 +1,14 @@
+id: T_002
+title: "Corriger le bug data-stream Filebeat → Elasticsearch"
+agent: Infra-agent
+phase: 1
+priority: high
+category: bugfix
+status: working
+created: "2026-06-30"
+acceptance:
+  - "Diagnostiquer pourquoi Filebeat échoue à indexer dans ES (data-stream vs index classique)"
+  - "Créer/corriger les index templates ES manquants pour zeek-*, snort-*, suricata-*"
+  - "Modifier filebeat/filebeat.yml si nécessaire"
+  - "Valider l'ingestion end-to-end : au moins 1 doc visible dans chaque index zeek-*/snort-*/suricata-*"
+  - "Documenter la cause racine et le fix dans docs/filebeat-fix.md"
