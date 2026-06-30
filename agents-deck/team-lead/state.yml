@@ -1,8 +1,8 @@
 schema_version: '2.0'
-last_update: '2026-06-30T10:45:00.000Z'
+last_update: '2026-06-30T12:00:00.000Z'
 agents:
   infra:
-    expected_state: done
+    expected_state: working
     last_merged_ticket: T_001
     last_merged_sha: ce3e4a5
     closed_phase: null
@@ -15,7 +15,7 @@ agents:
       skills_override_reason: null
     notes: Agent infra — Docker, CrowdSec, Elasticsearch, Proxmox.
   security:
-    expected_state: done
+    expected_state: review-pending
     last_merged_ticket: T_004
     last_merged_sha: 8910028
     closed_phase: null
@@ -28,7 +28,7 @@ agents:
       skills_override_reason: null
     notes: Agent security — Anthropic-Cybersecurity-Skills, règles détection, MISP.
   automation:
-    expected_state: done
+    expected_state: review-pending
     last_merged_ticket: T_006
     last_merged_sha: b33c34e
     closed_phase: null
