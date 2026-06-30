@@ -2,47 +2,63 @@
 # Complement des scripts Zeek (port-scan-detect, dns-entropy)
 
 # Detection ICMP ping sweep
-alert icmp any any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep"; itype:8; detection_filter:track by_src, count 10, seconds 60; metadata:mitre_technique T1018, mitre_tactic Reconnaissance; sid:1000001; rev:2; classtype:network-scan; )
+# CALIBRAGE 2026-06-30 — seuil monte de 10 a 50 ICMP/60s : evite les FP mDNS/avahi/decouverte locale
+alert icmp any any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep"; itype:8; detection_filter:track by_src, count 50, seconds 60; metadata:mitre_technique T1018, mitre_tactic Reconnaissance; sid:1000001; rev:3; classtype:network-scan; )
 
 # Detection tentative SSH brute force
 alert tcp any any -> $HOME_NET 22 ( msg:"NETWATCH - SSH Brute Force Attempt"; flow:to_server,established; detection_filter:track by_src, count 5, seconds 60; metadata:mitre_technique T1110.001, mitre_tactic CredentialAccess; sid:1000002; rev:2; classtype:attempted-admin; )
 
 # Detection requete DNS vers TLD suspect
-alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|xyz", nocase; sid:1000003; rev:1; classtype:bad-unknown; )
-alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|04|info", nocase; sid:1000004; rev:1; classtype:bad-unknown; )
-alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|top", nocase; sid:1000005; rev:1; classtype:bad-unknown; )
-alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD"; content:"|03|biz", nocase; sid:1000006; rev:1; classtype:bad-unknown; )
+# CALIBRAGE 2026-06-30 — ajout detection_filter count 10/60s : sans seuil, chaque requete DNS legitime
+# vers .xyz (Google Alphabet) .info (sites d'info) .biz (entreprises) declenchait une alerte
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD (.xyz)"; content:"|03|xyz", nocase; detection_filter:track by_src, count 10, seconds 60; sid:1000003; rev:2; classtype:bad-unknown; )
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD (.info)"; content:"|04|info", nocase; detection_filter:track by_src, count 10, seconds 60; sid:1000004; rev:2; classtype:bad-unknown; )
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD (.top)"; content:"|03|top", nocase; detection_filter:track by_src, count 10, seconds 60; sid:1000005; rev:2; classtype:bad-unknown; )
+alert udp any any -> any 53 ( msg:"NETWATCH - DNS Query to suspicious TLD (.biz)"; content:"|03|biz", nocase; detection_filter:track by_src, count 10, seconds 60; sid:1000006; rev:2; classtype:bad-unknown; )
 
 # Detection trafic HTTP non chiffre sur port 80 avec credentials
 alert tcp any any -> any 80 ( msg:"NETWATCH - Cleartext credentials over HTTP"; flow:to_server,established; http_method; content:"POST"; http_client_body; content:"password", nocase; metadata:mitre_technique T1040, mitre_tactic CredentialAccess; sid:1000007; rev:2; classtype:policy-violation; )
 
 # Detection exfiltration potentielle (gros upload)
-alert tcp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - Possible data exfiltration (large upload)"; flow:to_server,established; dsize:>10000; detection_filter:track by_src, count 50, seconds 60; metadata:mitre_technique T1048, mitre_tactic Exfiltration; sid:1000008; rev:2; classtype:policy-violation; )
+# CALIBRAGE 2026-06-30 — correction double bug :
+#   1) dsize:>10000 = jamais valide sur Ethernet (MTU 1500, payload max ~1460) -> corrige en dsize:>1400
+#   2) count 50/60s a 10KB = ~500KB seuil trop bas -> monte a 5000 paquets/300s (~7MB minimum)
+# Seuls les uploads massifs vers IP externe sur ports non standard sont suspects
+alert tcp $HOME_NET any -> $EXTERNAL_NET ![80,443] ( msg:"NETWATCH - Possible data exfiltration (large upload)"; flow:to_server,established; dsize:>1400; detection_filter:track by_src, count 5000, seconds 300; metadata:mitre_technique T1048, mitre_tactic Exfiltration; sid:1000008; rev:3; classtype:policy-violation; )
 
 # Detection connexion vers port non standard
-alert tcp $HOME_NET any -> $EXTERNAL_NET [!21,!22,!25,!53,!80,!110,!143,!443,!993,!995,!8080,!8443] ( msg:"NETWATCH - Connection to non-standard port"; flow:to_server,established; detection_filter:track by_src, count 3, seconds 120; metadata:mitre_technique T1571, mitre_tactic CommandAndControl; sid:1000009; rev:2; classtype:bad-unknown; )
+# CALIBRAGE 2026-06-30 — seuil monte de count 3/120s a count 20/300s : evite FP sur Steam, VoIP, jeux en ligne
+# Ajout ports communs dans la liste d'exclusion : 3389(RDP), 5900(VNC), 1194(OpenVPN), 1935(RTMP streaming)
+alert tcp $HOME_NET any -> $EXTERNAL_NET [!21,!22,!25,!53,!80,!110,!143,!443,!993,!995,!1194,!1935,!3389,!5900,!8080,!8443] ( msg:"NETWATCH - Connection to non-standard port"; flow:to_server,established; detection_filter:track by_src, count 20, seconds 300; metadata:mitre_technique T1571, mitre_tactic CommandAndControl; sid:1000009; rev:3; classtype:bad-unknown; )
 
 # Detection User-Agent suspect (outils automatises)
-alert tcp any any -> any any ( msg:"NETWATCH - Suspicious User-Agent (curl)"; flow:to_server,established; http_header; content:"User-Agent|3a| curl", nocase; sid:1000010; rev:1; classtype:bad-unknown; )
+# CALIBRAGE 2026-06-30 — ajout detection_filter count 5/60s : sans seuil, tout script bash ou pipeline CI
+# utilisant curl declenchait une alerte (package managers, monitoring, healthchecks)
+alert tcp any any -> any any ( msg:"NETWATCH - Suspicious User-Agent (curl)"; flow:to_server,established; http_header; content:"User-Agent|3a| curl", nocase; detection_filter:track by_src, count 5, seconds 60; sid:1000010; rev:2; classtype:bad-unknown; )
 
 # ============================================================
 # SURVEILLANCE SERVEUR $MONITORED_SERVER + ICMP
 # ============================================================
 
 # Ping sweep entrant (EXTERNAL -> HOME) - plus specifique que 1000001
-alert icmp $EXTERNAL_NET any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep (externe vers interne)"; itype:8; icode:0; detection_filter:track by_src, count 10, seconds 60; sid:1000011; rev:1; classtype:network-scan; )
+# CALIBRAGE 2026-06-30 — seuil monte de 10 a 50 ICMP/60s : coherent avec SID 1000001
+alert icmp $EXTERNAL_NET any -> $HOME_NET any ( msg:"NETWATCH - ICMP Ping Sweep (externe vers interne)"; itype:8; icode:0; detection_filter:track by_src, count 50, seconds 60; sid:1000011; rev:2; classtype:network-scan; )
 
 # Volume ICMP Reply sortant - threshold pour eviter le spam
-alert icmp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - ICMP Reply sortant volume eleve"; itype:0; icode:0; detection_filter:track by_src, count 20, seconds 30; sid:1000012; rev:1; classtype:network-scan; )
+# CALIBRAGE 2026-06-30 — seuil monte de 20/30s a 100/60s : un simple ping -c 30 declenchait l'alerte
+alert icmp $HOME_NET any -> $EXTERNAL_NET any ( msg:"NETWATCH - ICMP Reply sortant volume eleve"; itype:0; icode:0; detection_filter:track by_src, count 100, seconds 60; sid:1000012; rev:2; classtype:network-scan; )
 
 # Nouveaux flux TCP vers $MONITORED_SERVER (remplace alert ip sans threshold)
-alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Nouveaux flux TCP vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 3, seconds 60; sid:1000013; rev:1; classtype:network-scan; )
+# CALIBRAGE 2026-06-30 — seuil monte de 3 a 20 SYN/60s : un navigateur web ouvre 3-6 SYN par page chargee
+alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Nouveaux flux TCP vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 20, seconds 60; sid:1000013; rev:2; classtype:network-scan; )
 
 # Acces HTTP vers $MONITORED_SERVER - seuil haut pour eviter faux positifs sur trafic legitime
 alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER 80 ( msg:"NETWATCH - Acces HTTP volume eleve vers $MONITORED_SERVER"; flow:to_server,established; detection_filter:track by_src, count 50, seconds 60; sid:1000014; rev:1; classtype:policy-violation; )
 
 # Tentative connexion SSH vers $MONITORED_SERVER (SYN uniquement = tentative, pas session etablie)
-alert tcp any any -> $MONITORED_SERVER 22 ( msg:"NETWATCH - Tentative SSH vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 1, seconds 60; sid:1000015; rev:1; classtype:attempted-admin; )
+# CALIBRAGE 2026-06-30 — seuil monte de 1 a 5 SYN/60s : count 1 = chaque connexion SSH legitime d'admin declenchait
+# une alerte. 5 SYN en 60s reste agressif pour un attaquant tout en tolerant les retries normaux
+alert tcp any any -> $MONITORED_SERVER 22 ( msg:"NETWATCH - Tentative SSH vers $MONITORED_SERVER"; flags:S; detection_filter:track by_src, count 5, seconds 60; sid:1000015; rev:2; classtype:attempted-admin; )
 
 # Scan de ports SYN cible vers $MONITORED_SERVER
 alert tcp $EXTERNAL_NET any -> $MONITORED_SERVER any ( msg:"NETWATCH - Scan de ports SYN vers serveur surveille"; flags:S; detection_filter:track by_src, count 15, seconds 10; metadata:mitre_technique T1046, mitre_tactic Reconnaissance; sid:1000016; rev:2; classtype:network-scan; )
