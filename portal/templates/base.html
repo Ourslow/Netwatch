@@ -143,6 +143,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('sla') }}"
+           class="nav-link {% if request.endpoint == 'sla' %}active{% endif %}">
+          <i class="bi bi-patch-check"></i> <span>SLA</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('report') }}"
            class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"
            target="_blank">
@@ -242,6 +248,7 @@
     { icon: 'bi-diagram-2-fill',      label: 'Topologie',            url: '/topology',    hint: 'Carte réseau L2/L3 · LLDP' },
     { icon: 'bi-bezier2',             label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
     { icon: 'bi-speedometer2',        label: 'Dashboard Exec',       url: '/exec',        hint: 'RSSI · posture · KPIs' },
+    { icon: 'bi-patch-check',         label: 'SLA Compliance',       url: '/sla',         hint: 'HTTP · DNS · RTT · Business Hours' },
     { icon: 'bi-file-earmark-text',   label: 'Rapport exécutif',     url: '/report',      hint: 'PDF', blank: true },
   ];
   var IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
