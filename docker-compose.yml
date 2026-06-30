@@ -210,6 +210,31 @@ services:
     restart: unless-stopped
 
   # ============================================================
+  # DETECTION ET BLOCAGE COLLABORATIF (CrowdSec)
+  # ============================================================
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: netwatch-crowdsec
+    environment:
+      # Collections installées au premier démarrage du container.
+      # Note: crowdsecurity/zeek n'existe pas dans le hub officiel (juin 2026).
+      # Zeek logs lus via parsers syslog intégrés à crowdsecurity/linux.
+      # crowdsecurity/suricata gère le format EVE JSON natif de Suricata.
+      - COLLECTIONS=crowdsecurity/linux crowdsecurity/nginx crowdsecurity/suricata
+      - CUSTOM_HOSTNAME=netwatch-crowdsec
+    volumes:
+      # Config d'acquisition des sources de logs
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      # Base de données CrowdSec (décisions, bouncers, métriques)
+      - crowdsec-db:/var/lib/crowdsec/data
+      # Logs Zeek (read-only) — volume partagé avec le service zeek
+      - zeek-logs:/zeek/logs:ro
+      # Logs Suricata EVE JSON (read-only) — volume partagé avec le service suricata
+      - suricata-logs:/var/log/suricata:ro
+    restart: unless-stopped
+
+  # ============================================================
   # ASSISTANT IA LOCAL (explication d'alertes, résumé exécutif)
   # ============================================================
 
@@ -232,3 +257,5 @@ volumes:
   grafana-data:
   prometheus-data:
   ollama-data:
+  # Volume persistant pour la base de données CrowdSec (décisions, bouncers)
+  crowdsec-db:

@@ -1,0 +1,28 @@
+# ============================================================
+# CrowdSec — Acquisition de logs (acquis.yaml)
+# Monté dans le container à /etc/crowdsec/acquis.yaml
+# ============================================================
+
+# --- Logs Zeek (conn, http, dns, ssl, weird, files) ---
+filenames:
+  - /zeek/logs/conn.log
+  - /zeek/logs/http.log
+  - /zeek/logs/dns.log
+  - /zeek/logs/ssl.log
+  - /zeek/logs/weird.log
+  - /zeek/logs/files.log
+labels:
+  type: zeek
+---
+# --- Logs Suricata EVE JSON ---
+filenames:
+  - /var/log/suricata/eve.json
+labels:
+  type: suricata-ecs
+---
+# --- Logs syslog système (linux collection) ---
+filenames:
+  - /var/log/auth.log
+  - /var/log/syslog
+labels:
+  type: syslog
