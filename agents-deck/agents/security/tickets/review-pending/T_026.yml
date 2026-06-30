@@ -1,0 +1,79 @@
+id: T_026
+title: "VoIP pipeline : Zeek SIP/RTP + MOS score E-model G.107"
+agent: Security-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30"
+finished: "2026-06-30"
+branch: "agent/security/active"
+acceptance:
+  - "zeek/local.zeek : @load policy/protocols/sip activé (génère sip.log)"
+  - "zeek/local.zeek : commentaire expliquant l'absence de policy/protocols/rtp dans Zeek 6.x"
+  - "zeek/scripts/voip-mos.zeek : calcul MOS E-model G.107 depuis plages ports RTP UDP (16384-32767 et 10000-20000)"
+  - "voip-mos.zeek : corrélation call_id SIP via sip_request/sip_reply events"
+  - "voip-mos.zeek : output voip.log avec champs ts/uid/src_ip/dst_ip/duration_s/jitter_ms/packet_loss_pct/latency_ms/mos_score/mos_level/call_id"
+  - "scripts/security/voip-quality.py : source primaire voip.log, fallback sip+conn, fallback conn UDP seul"
+  - "voip-quality.py : output JSON {avg_mos, calls_total, calls_excellent/good/fair/poor/bad, top_bad_calls, source}"
+  - "voip-quality.py : CLI --days 1 --output voip-stats.json --demo"
+  - "voip-quality.py : mode --demo sans ES, stats fictives réalistes"
+  - "portal/app.py : route /api/voip-stats avec cache 5 min (mémoire + fichier)"
+delivery:
+  summary: |
+    T_026 livré : pipeline VoIP complet (Zeek SIP + MOS E-model G.107).
+
+    zeek/local.zeek : @load policy/protocols/sip ajouté (génère sip.log avec
+    call_id, méthode, URI, src/dst). Commentaire documentant l'absence de
+    policy/protocols/rtp dans Zeek 6.x (pas d'analyzer RTP natif dans les
+    sources officielles zeek/zeek) ; les métriques RTP sont approximées.
+
+    zeek/scripts/voip-mos.zeek : module VOIP_MOS qui génère voip.log.
+    Détecte les flux UDP dans les plages de ports RTP (16384-32767 RFC 3550
+    et 10000-20000 plage alternative Cisco/Avaya). Pour chaque flux ≥ 1s :
+    - packet_loss_pct : (expected_pkts_50pps - actual_pkts) / expected × 100
+    - latency_ms : RTT conn.log / 2 si disponible, sinon 20 ms LAN par défaut
+    - jitter_ms : 2 ms baseline + 0.5 ms × loss_pct (sans analyzer RTP natif)
+    - MOS : formule E-model G.107 complète avec Id, Ie, R, clamp [1.0, 5.0]
+    - mos_level : excellent/good/fair/poor/bad (ITU-T P.800.1)
+    - call_id : via table sip_call_ids indexée par (src_ip, dst_ip) depuis
+      les events sip_request et sip_reply (expire après 5 min d'inactivité)
+
+    scripts/security/voip-quality.py : pipeline ES avec 3 niveaux de fallback.
+    Source 1 (voip_log) : cherche les champs mos_score directs dans zeek-*.
+    Source 2 (sip_conn) : croise sip.log (call_id, paires IP) avec conn.log
+    UDP (plages RTP, durée ≥ 1s, estimation RTT+loss), recalcule MOS E-model.
+    Source 3 (conn_udp) : conn.log UDP seul sans SIP. Mode --demo : 48 appels
+    fictifs avec distribution réaliste (LAN bon, LAN ok, WAN bon/dégradé, bad).
+    Output JSON : avg_mos, calls_total, calls_{excellent,good,fair,poor,bad},
+    top_bad_calls (10 pires), generated_at, source label.
+
+    portal/app.py : route /api/voip-stats avec double cache (in-memory + fichier
+    voip-stats-cache.json, TTL 5 min). Pattern identique aux autres endpoints
+    ES du portail (ioc-scores, app-flows, topology). Timeout 60s, fallback
+    stale cache en cas d'erreur.
+  technical: |
+    - zeek/local.zeek : ligne @load policy/protocols/sip + @load ./scripts/voip-mos
+    - zeek/scripts/voip-mos.zeek : module VOIP_MOS, export Info record (11 champs),
+      table sip_call_ids[addr,addr] &read_expire=5min, fonctions calc_mos() et
+      mos_label(), events zeek_init / sip_request / sip_reply /
+      connection_state_remove (filtre UDP, plage ports, durée ≥1s)
+    - conn.log port comparison : dp >= 16384/udp && dp <= 32767/udp (comparaison
+      native Zeek port type avec protocole udp)
+    - scripts/security/voip-quality.py : stdlib pure (urllib, json, argparse,
+      logging, random, math), aucune dépendance externe
+    - es_post() : urllib.request.Request POST JSON, timeout 15s
+    - fetch_from_voip_log() : filtre log_type:voip OR zeek.log_type:voip OR
+      exists mos_score, retourne None si vide
+    - fetch_from_sip_conn() : query sip (call_id), query conn UDP, cross-join
+      par paire IP → dict ip_pair_to_call
+    - fetch_from_conn_udp() : conn UDP seul, _in_rtp_range(port) sur src+dst
+    - aggregate() : avg_mos, counts par level, top_bad_calls sorted by mos asc
+    - demo_stats() : seed 42, 48 appels, random.choices avec weights
+      [30,15,25,20,10] pour 5 scénarios de qualité
+    - portal/app.py : _VOIP_STATS_CACHE dict + _VOIP_STATS_TTL=300,
+      import time as _time_voip, route /api/voip-stats @login_required,
+      subprocess.run(["python3", script, "--output", cache_file, "--days", "1"],
+      timeout=60), voip-stats-cache.json dans scripts/security/
+  delivered_at: "2026-06-30T15:00:00Z"

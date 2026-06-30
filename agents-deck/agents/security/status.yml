@@ -3,18 +3,18 @@ agent: Security-agent
 canonical_id: security
 tool: Claude Code
 session_id: null
-state: working
+state: review-pending
 current_ticket: T_026
 last_ticket: T_022
-ticket_started: '2026-06-30T14:00:00Z'
-ticket_finished: '2026-06-30T14:30:00Z'
-last_activity: '2026-06-30T14:08:09Z'
+ticket_started: '2026-06-30T15:00:00Z'
+ticket_finished: '2026-06-30T15:30:00Z'
+last_activity: '2026-06-30T15:30:00Z'
 last_commit: null
 current_ticket_skills:
 - analyzing-network-traffic-with-wireshark
 - detecting-network-anomalies-with-zeek
 - performing-network-traffic-analysis-with-zeek
 - performing-network-packet-capture-analysis
-- scanning-network-with-nmap-advanced
-skills_override_reason: T_022 Découverte topologie L2/L3 SNMP LLDP-MIB + ARP Zeek
-  → topology-discover.py + topology.json
+- configuring-suricata-for-network-monitoring
+skills_override_reason: T_026 VoIP pipeline Zeek SIP/RTP + MOS E-model G.107 →
+  voip-mos.zeek + voip-quality.py + /api/voip-stats

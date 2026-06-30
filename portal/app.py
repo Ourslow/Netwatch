@@ -1608,6 +1608,102 @@ def api_app_flows():
 
 
 # ============================================================
+# VoIP Quality Stats  (T_026)
+# ============================================================
+
+import time as _time_voip  # noqa: E402
+
+_VOIP_STATS_CACHE: dict = {"data": None, "ts": 0.0}
+_VOIP_STATS_TTL   = 300  # 5 minutes
+
+
+@app.route("/api/voip-stats")
+@login_required
+def api_voip_stats():
+    """
+    Qualité VoIP : MOS E-model G.107 depuis voip.log / sip.log / conn.log UDP.
+
+    Exécute voip-quality.py (avec fallback automatique entre les 3 sources ES)
+    et retourne un JSON :
+      {avg_mos, calls_total, calls_excellent, calls_good, calls_fair,
+       calls_poor, calls_bad, top_bad_calls, generated_at, source}
+
+    Cache en mémoire + fichier JSON (TTL 5 min).
+    """
+    global _VOIP_STATS_CACHE
+
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_file    = os.path.join(netwatch_root, "scripts", "security", "voip-stats-cache.json")
+    script        = os.path.join(netwatch_root, "scripts", "security", "voip-quality.py")
+
+    now = _time_voip.monotonic()
+
+    # ── Cache mémoire ──
+    if _VOIP_STATS_CACHE["data"] is not None and (now - _VOIP_STATS_CACHE["ts"]) < _VOIP_STATS_TTL:
+        return jsonify(_VOIP_STATS_CACHE["data"])
+
+    # ── Cache fichier ──
+    def _load_file():
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                cached = json.load(f)
+            from datetime import datetime as _dt, timezone as _tz
+            gen = cached.get("generated_at", "")
+            if gen:
+                age = (_dt.now(_tz.utc) - _dt.fromisoformat(gen)).total_seconds()
+                if age < _VOIP_STATS_TTL:
+                    return cached
+        except Exception:
+            pass
+        return None
+
+    cached = _load_file()
+    if cached is not None:
+        _VOIP_STATS_CACHE = {"data": cached, "ts": now}
+        return jsonify(cached)
+
+    # ── Exécution voip-quality.py ──
+    try:
+        result = subprocess.run(
+            ["python3", script, "--output", cache_file, "--days", "1"],
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            app.logger.warning(
+                "voip-quality.py exited %d: %s",
+                result.returncode,
+                (result.stderr or b"").decode(errors="replace")[:500],
+            )
+
+        with open(cache_file, encoding="utf-8") as f:
+            data = json.load(f)
+
+        _VOIP_STATS_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+
+    except subprocess.TimeoutExpired:
+        app.logger.warning("voip-quality.py timed out after 60s")
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception as exc:
+            return jsonify({"error": f"Timeout — pas de cache : {exc}"}), 503
+
+    except Exception as exc:
+        app.logger.warning("api_voip_stats error: %s", exc)
+        try:
+            with open(cache_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception:
+            return jsonify({"error": str(exc)}), 503
+
+
+# ============================================================
 # Erreurs HTTP
 # ============================================================
 
