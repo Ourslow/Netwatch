@@ -1,0 +1,849 @@
+{
+  "meta": {
+    "generated_at": "2026-06-30T08:54:09.879910+00:00",
+    "source": "elasticsearch:http://localhost:9200",
+    "alert_count_processed": 572,
+    "node_count": 51,
+    "edge_count": 40,
+    "node_types": [
+      "rule",
+      "ip_src",
+      "mitre_ttp",
+      "ip_dst"
+    ],
+    "enriched_at": "2026-06-30T09:19:56.785680+00:00",
+    "enrichment_source": "ipinfo",
+    "enriched_count": 8,
+    "skipped_private": 21
+  },
+  "nodes": [
+    {
+      "id": "ip_src::172.31.114.173",
+      "type": "ip_src",
+      "label": "172.31.114.173",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 58,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::160.79.104.10",
+      "type": "ip_dst",
+      "label": "160.79.104.10",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "US",
+        "org": "AS399358 Anthropic, PBC",
+        "hostname": null,
+        "city": "San Francisco",
+        "region": "California",
+        "enriched_at": "2026-06-30T09:19:55.005497+00:00"
+      }
+    },
+    {
+      "id": "rule::NETWATCH - Large outbound transfer (possible exfiltration)",
+      "type": "rule",
+      "label": "NETWATCH - Large outbound transfer (possible exfiltration)",
+      "shape": "diamond",
+      "category": "Unknown Classtype",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_dst::192.168.15.2",
+      "type": "ip_dst",
+      "label": "192.168.15.2",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "type": "rule",
+      "label": "NETWATCH - ICMP Ping Sweep detected",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_dst::34.149.66.137",
+      "type": "ip_dst",
+      "label": "34.149.66.137",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "US",
+        "org": "AS396982 Google LLC",
+        "hostname": "137.66.149.34.bc.googleusercontent.com",
+        "city": "Kansas City",
+        "region": "Missouri",
+        "enriched_at": "2026-06-30T09:19:55.231038+00:00"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.89",
+      "type": "ip_dst",
+      "label": "192.168.15.89",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_src::192.168.1.100",
+      "type": "ip_src",
+      "label": "192.168.1.100",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 1,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::10.0.0.1",
+      "type": "ip_dst",
+      "label": "10.0.0.1",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::ET SCAN Nmap SYN Scan",
+      "type": "rule",
+      "label": "ET SCAN Nmap SYN Scan",
+      "shape": "diamond",
+      "category": "Attempted Information Leak",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_dst::192.168.15.24",
+      "type": "ip_dst",
+      "label": "192.168.15.24",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.1",
+      "type": "ip_dst",
+      "label": "192.168.15.1",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.6",
+      "type": "ip_dst",
+      "label": "192.168.15.6",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.157",
+      "type": "ip_dst",
+      "label": "192.168.15.157",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.5",
+      "type": "ip_dst",
+      "label": "192.168.15.5",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.55",
+      "type": "ip_dst",
+      "label": "192.168.15.55",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::192.168.15.3",
+      "type": "ip_dst",
+      "label": "192.168.15.3",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_src::117.18.0.55",
+      "type": "ip_src",
+      "label": "117.18.0.55",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 2,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "HK",
+        "org": "AS152194 CTG Server Limited",
+        "hostname": null,
+        "city": "Hong Kong",
+        "region": "Hong Kong",
+        "enriched_at": "2026-06-30T09:19:55.498965+00:00"
+      }
+    },
+    {
+      "id": "ip_dst::10.10.7.88",
+      "type": "ip_dst",
+      "label": "10.10.7.88",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::ET POLICY Python-urllib User-Agent",
+      "type": "rule",
+      "label": "ET POLICY Python-urllib User-Agent",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1071",
+      "type": "mitre_ttp",
+      "label": "Command and Control (T1071)",
+      "tactic": "Command and Control",
+      "technique": "T1071",
+      "shape": "square",
+      "color": "#FF6666"
+    },
+    {
+      "id": "ip_src::177.71.0.82",
+      "type": "ip_src",
+      "label": "177.71.0.82",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 1,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "BR",
+        "org": "AS28667 VERO S.A",
+        "hostname": "82.0.71.177.in-addr.arpa.verointernet.com.br",
+        "city": "Pirassununga",
+        "region": "São Paulo",
+        "enriched_at": "2026-06-30T09:19:55.728556+00:00"
+      }
+    },
+    {
+      "id": "ip_dst::172.31.250.188",
+      "type": "ip_dst",
+      "label": "172.31.250.188",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "type": "rule",
+      "label": "NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1027",
+      "type": "mitre_ttp",
+      "label": "Defense Evasion (T1027)",
+      "tactic": "Defense Evasion",
+      "technique": "T1027",
+      "shape": "square",
+      "color": "#9370DB"
+    },
+    {
+      "id": "ip_dst::10.10.7.150",
+      "type": "ip_dst",
+      "label": "10.10.7.150",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "type": "rule",
+      "label": "ET SCAN Possible Nmap User-Agent Observed",
+      "shape": "diamond",
+      "category": "network-scan",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1595",
+      "type": "mitre_ttp",
+      "label": "Reconnaissance (T1595)",
+      "tactic": "Reconnaissance",
+      "technique": "T1595",
+      "shape": "square",
+      "color": "#FF9999"
+    },
+    {
+      "id": "ip_src::175.45.179.12",
+      "type": "ip_src",
+      "label": "175.45.179.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 1,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "KP",
+        "org": "AS131279 Ryugyong-dong",
+        "hostname": null,
+        "city": "Pyongyang",
+        "region": "Pyongyang",
+        "enriched_at": "2026-06-30T09:19:55.967398+00:00"
+      }
+    },
+    {
+      "id": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "type": "rule",
+      "label": "NETWATCH - Cleartext password in HTTP POST",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1552",
+      "type": "mitre_ttp",
+      "label": "Credential Access (T1552)",
+      "tactic": "Credential Access",
+      "technique": "T1552",
+      "shape": "square",
+      "color": "#FF8C00"
+    },
+    {
+      "id": "ip_src::188.165.200.12",
+      "type": "ip_src",
+      "label": "188.165.200.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 1,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "FR",
+        "org": "AS16276 OVH SAS",
+        "hostname": "ns209994.ovh.net",
+        "city": "Lille",
+        "region": "Hauts-de-France",
+        "enriched_at": "2026-06-30T09:19:56.318014+00:00"
+      }
+    },
+    {
+      "id": "ip_dst::10.10.7.221",
+      "type": "ip_dst",
+      "label": "10.10.7.221",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_src::10.10.1.50",
+      "type": "ip_src",
+      "label": "10.10.1.50",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 2,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::172.16.0.1",
+      "type": "ip_dst",
+      "label": "172.16.0.1",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::ET TROJAN Metasploit Meterpreter reverse shell",
+      "type": "rule",
+      "label": "ET TROJAN Metasploit Meterpreter reverse shell",
+      "shape": "diamond",
+      "category": "Trojan Activity",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_src::192.168.100.200",
+      "type": "ip_src",
+      "label": "192.168.100.200",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 1,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::8.8.8.8",
+      "type": "ip_dst",
+      "label": "8.8.8.8",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "US",
+        "org": "AS15169 Google LLC",
+        "hostname": "dns.google",
+        "city": "Mountain View",
+        "region": "California",
+        "enriched_at": "2026-06-30T09:19:56.557089+00:00"
+      }
+    },
+    {
+      "id": "rule::ET DNS Query for Known Malware Domain",
+      "type": "rule",
+      "label": "ET DNS Query for Known Malware Domain",
+      "shape": "diamond",
+      "category": "Potentially Bad Traffic",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_src::192.168.1.15",
+      "type": "ip_src",
+      "label": "192.168.1.15",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 2,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "ip_dst::185.220.101.1",
+      "type": "ip_dst",
+      "label": "185.220.101.1",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "DE",
+        "org": "AS60729 Stiftung Erneuerbare Freiheit",
+        "hostname": "berlin01.tor-exit.artikel10.org",
+        "city": "Berlin",
+        "region": "State of Berlin",
+        "enriched_at": "2026-06-30T09:19:56.785612+00:00"
+      }
+    },
+    {
+      "id": "rule::ET TOR Known Tor Exit Node Traffic",
+      "type": "rule",
+      "label": "ET TOR Known Tor Exit Node Traffic",
+      "shape": "diamond",
+      "category": "Misc Attack",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::ET TROJAN Meterpreter reverse shell",
+      "type": "rule",
+      "label": "ET TROJAN Meterpreter reverse shell",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::ET TOR Known Tor Exit Node",
+      "type": "rule",
+      "label": "ET TOR Known Tor Exit Node",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_src::192.168.1.21",
+      "type": "ip_src",
+      "label": "192.168.1.21",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 3,
+      "enrichment": {
+        "source": "skipped",
+        "reason": "private_ip"
+      }
+    },
+    {
+      "id": "rule::NETWATCH - ICMP Ping Sweep",
+      "type": "rule",
+      "label": "NETWATCH - ICMP Ping Sweep",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(icmp4) ICMP ping Nmap",
+      "type": "rule",
+      "label": "(icmp4) ICMP ping Nmap",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(ssl) invalid server HELLO without client HELLO detected",
+      "type": "rule",
+      "label": "(ssl) invalid server HELLO without client HELLO detected",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(ipv4) IPv4 packet to broadcast dest address",
+      "type": "rule",
+      "label": "(ipv4) IPv4 packet to broadcast dest address",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(ipv4) IPv4 packet from 'current net' source address",
+      "type": "rule",
+      "label": "(ipv4) IPv4 packet from 'current net' source address",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(ipv4) IPv4 option set",
+      "type": "rule",
+      "label": "(ipv4) IPv4 option set",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    }
+  ],
+  "edges": [
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "rule::NETWATCH - Large outbound transfer (possible exfiltration)",
+      "relation": "triggered",
+      "weight": 33
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::160.79.104.10",
+      "relation": "communicated_with",
+      "weight": 30
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 25
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.2",
+      "relation": "communicated_with",
+      "weight": 14
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::34.149.66.137",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.89",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.24",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.1",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.6",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.157",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.5",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.55",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::172.31.114.173",
+      "target": "ip_dst::192.168.15.3",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "target": "mitre_ttp::T1595",
+      "relation": "maps_to_ttp",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.1.100",
+      "target": "rule::ET SCAN Nmap SYN Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.1.100",
+      "target": "ip_dst::10.0.0.1",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "rule::ET POLICY Python-urllib User-Agent",
+      "target": "mitre_ttp::T1071",
+      "relation": "maps_to_ttp",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "target": "mitre_ttp::T1027",
+      "relation": "maps_to_ttp",
+      "weight": 1
+    },
+    {
+      "source": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "target": "mitre_ttp::T1595",
+      "relation": "maps_to_ttp",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "target": "mitre_ttp::T1552",
+      "relation": "maps_to_ttp",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::10.10.1.50",
+      "target": "rule::ET TROJAN Metasploit Meterpreter reverse shell",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::10.10.1.50",
+      "target": "ip_dst::172.16.0.1",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::10.10.1.50",
+      "target": "rule::ET TROJAN Meterpreter reverse shell",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.100.200",
+      "target": "rule::ET DNS Query for Known Malware Domain",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.100.200",
+      "target": "ip_dst::8.8.8.8",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.1.15",
+      "target": "rule::ET TOR Known Tor Exit Node Traffic",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.1.15",
+      "target": "ip_dst::185.220.101.1",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::192.168.1.15",
+      "target": "rule::ET TOR Known Tor Exit Node",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.1.21",
+      "target": "rule::NETWATCH - Large outbound transfer (possible exfiltration)",
+      "relation": "triggered",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::192.168.1.21",
+      "target": "ip_dst::160.79.104.10",
+      "relation": "communicated_with",
+      "weight": 3
+    }
+  ]
+}
