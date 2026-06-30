@@ -1,0 +1,310 @@
+{
+  "uid": "netwatch-capacity",
+  "title": "NetWatch — Capacity Planning",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "tags": ["netwatch", "snmp", "capacity"],
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "label": "Équipement",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": {
+          "query": "label_values(netwatch:iface_bytes_rate, instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "sort": 1,
+        "current": {}
+      }
+    ]
+  },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Alertes Saturation",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Interfaces critiques (<7j)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "count(netwatch:iface_days_to_saturation{instance=~\"$device\"} < 7) or vector(0)",
+          "instant": true,
+          "legendFormat": "Critiques",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Interfaces sous tension (7-30j)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "count(netwatch:iface_days_to_saturation{instance=~\"$device\"} >= 7 and netwatch:iface_days_to_saturation{instance=~\"$device\"} <= 30) or vector(0)",
+          "instant": true,
+          "legendFormat": "Sous tension",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Table de saturation",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "panels": []
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Interfaces — Jours avant saturation",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Utilisation %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 70 },
+                  { "color": "red", "value": 90 }
+                ]
+              }},
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Jours avant saturation" },
+            "properties": [
+              { "id": "unit", "value": "d" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "orange", "value": 7 },
+                  { "color": "green", "value": 30 }
+                ]
+              }},
+              { "id": "color", "value": { "mode": "thresholds" } },
+              { "id": "decimals", "value": 1 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Débit actuel (bytes/s)" },
+            "properties": [
+              { "id": "unit", "value": "Bps" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Croissance/j (bytes/s)" },
+            "properties": [
+              { "id": "unit", "value": "Bps" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [
+              { "id": "custom.hidden", "value": true }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "Jours avant saturation", "desc": false }],
+        "footer": { "show": false }
+      },
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "Débit actuel (bytes/s)",
+              "Value #B": "Utilisation %",
+              "Value #C": "Croissance/j (bytes/s)",
+              "Value #D": "Jours avant saturation",
+              "ifDescr": "Interface",
+              "instance": "Équipement"
+            },
+            "indexByName": {
+              "Équipement": 0,
+              "Interface": 1,
+              "Débit actuel (bytes/s)": 2,
+              "Utilisation %": 3,
+              "Croissance/j (bytes/s)": 4,
+              "Jours avant saturation": 5
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "netwatch:iface_bytes_rate{instance=~\"$device\"}",
+          "instant": true,
+          "legendFormat": "{{instance}} — {{ifDescr}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "netwatch:iface_bytes_rate{instance=~\"$device\"} / (ifHighSpeed{job=\"snmp\",instance=~\"$device\"} * 125000) * 100",
+          "instant": true,
+          "legendFormat": "{{instance}} — {{ifDescr}}",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "netwatch:iface_growth_rate_7d{instance=~\"$device\"} * 86400",
+          "instant": true,
+          "legendFormat": "{{instance}} — {{ifDescr}}",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "netwatch:iface_days_to_saturation{instance=~\"$device\"}",
+          "instant": true,
+          "legendFormat": "{{instance}} — {{ifDescr}}",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Tendance & Prédiction (30j)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Évolution débit + predict_linear 30j",
+      "description": "Courbe pleine : historique 30j. Courbe pointillée : projection linéaire 30j à partir des tendances 7j.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 21 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": { "fill": "dash", "dash": [10, 6] }
+              },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "displayName", "value": "Prédiction 30j" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "max"]
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "netwatch:iface_bytes_rate{instance=~\"$device\"}",
+          "legendFormat": "Historique — {{instance}} {{ifDescr}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "predict_linear(netwatch:iface_bytes_rate{instance=~\"$device\"}[7d], 30 * 86400)",
+          "legendFormat": "Prédiction 30j — {{instance}} {{ifDescr}}",
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}

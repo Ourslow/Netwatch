@@ -1,0 +1,23 @@
+groups:
+  - name: capacity_planning
+    # Évaluation toutes les 5 minutes : cohérent avec le scrape SNMP interval
+    interval: 5m
+    rules:
+      # Débit entrant actuel sur chaque interface (bytes/s)
+      - record: netwatch:iface_bytes_rate
+        expr: rate(ifHCInOctets{job="snmp"}[5m])
+
+      # Taux de croissance du débit sur 7 jours (bytes/s par seconde)
+      # Valeur positive = trafic en hausse, négative = en baisse
+      - record: netwatch:iface_growth_rate_7d
+        expr: deriv(rate(ifHCInOctets{job="snmp"}[5m])[7d:5m])
+
+      # Jours avant saturation de l'interface
+      # Formule : (capacité_restante) / (croissance_quotidienne)
+      # clamp_min sur le dénominateur : évite la division par zéro quand trafic stable
+      # clamp_min sur le résultat : retourne 0 (pas ∞) si déjà saturé ou en décroissance
+      - record: netwatch:iface_days_to_saturation
+        expr: clamp_min(
+          (ifHighSpeed{job="snmp"} * 125000 - rate(ifHCInOctets{job="snmp"}[5m]))
+          / clamp_min(deriv(rate(ifHCInOctets{job="snmp"}[5m])[7d:5m]) * 86400, 0.001),
+          0)

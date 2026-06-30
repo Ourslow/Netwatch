@@ -4,8 +4,9 @@ agent: Infra-agent
 phase: 7
 priority: high
 category: feature
-status: planned
+status: working
 created: "2026-06-30"
+started: "2026-06-30T16:00:00Z"
 acceptance:
   - "prometheus/rules/capacity.yml : 3 recording rules (netwatch:iface_bytes_rate, netwatch:iface_growth_rate_7d, netwatch:iface_days_to_saturation)"
   - "prometheus/prometheus.yml : rule_files block ajouté (/etc/prometheus/rules/*.yml)"
