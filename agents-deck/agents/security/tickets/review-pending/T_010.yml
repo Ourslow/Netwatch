@@ -1,0 +1,36 @@
+id: T_010
+title: "Enrichissement IOC : réputation IP via AbuseIPDB + ipinfo.io"
+agent: Security-agent
+phase: 1
+priority: medium
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30"
+finished: "2026-06-30"
+branch: "agent/security/active"
+acceptance:
+  - "scripts/security/ioc-enrich.py : lit ioc-graph-output.json, enrichit chaque nœud IP"
+  - "AbuseIPDB (si ABUSEIPDB_API_KEY défini) : abuseConfidenceScore, countryCode, isp, usageType, totalReports"
+  - "ipinfo.io (fallback sans clé) : country, org, hostname"
+  - "Cache JSON : scripts/security/ioc-enrich-cache.json — évite de requêter 2x la même IP"
+  - "Output : scripts/security/ioc-graph-enriched.json — même format + champ enrichment:{} dans chaque node IP"
+  - "IPs privées ignorées (RFC 1918 + loopback)"
+  - "docs/ioc-enrichment.md : setup, exemples, intégration avec ioc-graph.py"
+delivery:
+  summary: |
+    IOC enrichment livré avec double source de réputation IP. ioc-enrich.py charge
+    ioc-graph-output.json, enrichit chaque nœud ip_src/ip_dst public via AbuseIPDB
+    (si ABUSEIPDB_API_KEY présent) ou ipinfo.io en fallback (0 dépendance externe).
+    Cache JSON persistant, filtre RFC 1918 intégré, rate limit 100ms.
+    Sur données live : 8 IPs publiques enrichies, 21 IPs privées ignorées (ipinfo.io).
+  technical: |
+    - scripts/security/ioc-enrich.py : script principal (stdlib Python uniquement,
+      argparse, urllib, ipaddress, AbuseIPDB v2 + ipinfo.io, cache JSON, RFC 1918 filter)
+    - scripts/security/ioc-graph-enriched.json : graphe enrichi (51 nodes, champ
+      enrichment:{} ajouté sur chaque node IP)
+    - scripts/security/ioc-enrich-cache.json : cache 8 entrées (IPs publiques vues)
+    - docs/ioc-enrichment.md : setup AbuseIPDB/ipinfo.io, CLI usage, format JSON,
+      table plages ignorées, pipeline ioc-graph.py → ioc-enrich.py
+    - IPs notables : 185.220.101.1 (Tor), 117.18.0.55 (HK CTG Server), 177.71.0.82 (BR TIM)
+  delivered_at: "2026-06-30T14:00:00Z"
