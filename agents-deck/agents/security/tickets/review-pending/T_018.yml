@@ -1,0 +1,54 @@
+id: T_018
+title: "Zeek wire data : RTT, retransmissions, ART applicatif"
+agent: Security-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30"
+finished: "2026-06-30"
+branch: "agent/security/active"
+acceptance:
+  - "zeek/scripts/tcp-performance.zeek : event connection_state_remove → log RTT, retransmits, zero-window dans tcp_perf.log"
+  - "Champs : ts, uid, id, proto, rtt_orig_ms, rtt_resp_ms, retransmits_orig, retransmits_resp, zero_windows_orig, zero_windows_resp, syn_ack_ms, history, conn_state"
+  - "zeek/scripts/app-response-time.zeek : ART HTTP (http_request→http_reply), DNS (rtt built-in), TLS (ssl_client_hello→ssl_server_hello) → art.log"
+  - "Champs art.log : ts, uid, src_ip, src_port, dst_ip, dst_port, service, art_ms, detail"
+  - "scripts/security/tls-cert-monitor.py : lit zeek-* ES, détecte expiry <30j/7j, self-signed, ciphers faibles, TLS<1.2, output JSON"
+  - "CLI : python3 tls-cert-monitor.py [--days 1] [--output certs.json] [--demo]"
+  - "zeek/local.zeek : @load ./scripts/tcp-performance et @load ./scripts/app-response-time ajoutés"
+delivery:
+  summary: |
+    T_018 livré : 2 scripts Zeek + 1 script Python de monitoring TLS.
+
+    tcp-performance.zeek logue les métriques TCP (RTT, retransmissions, zero-window,
+    syn_ack_ms approximatif, history, conn_state) dans tcp_perf.log via le module
+    TCP_PERF. Le RTT est extrait de c$conn$rtt (built-in Zeek) converti en ms ;
+    les zero-windows sont déduits du champ history ('w'=orig, 'W'=resp).
+
+    app-response-time.zeek calcule l'ART applicatif pour HTTP (delta http_request /
+    http_reply), DNS (rtt built-in relu depuis dns_end) et TLS (delta ssl_client_hello /
+    ssl_server_hello). Tout est agrégé dans art.log via le module ART.
+
+    tls-cert-monitor.py interroge ES zeek-* sur la fenêtre --days, analyse les champs
+    ssl.*, détecte expiry dans 30j (warning) / 7j (critical), self-signed, ciphers faibles
+    (RC4/DES/3DES/EXPORT/NULL/anon) et TLS < 1.2. Output JSON trié par sévérité décroissante.
+    Exit code 2=critical, 1=warning/high, 0=ok. Mode --demo intégré si ES indisponible.
+
+    zeek/local.zeek mis à jour avec les deux @load.
+  technical: |
+    - zeek/scripts/tcp-performance.zeek : module TCP_PERF, export Info record (13 champs &log),
+      event zeek_init() crée le stream tcp_perf, event connection_state_remove filtre sur tcp,
+      extrait rtt via interval_to_double(c$conn$rtt)*1000, retransmits depuis orig_retrans_pkts/
+      resp_retrans_pkts, zero-window via regex /w/ et /W/ sur c$conn$history,
+      syn_ack_ms approché via c$conn$duration si <1000ms
+    - zeek/scripts/app-response-time.zeek : module ART, tables http_req_ts/http_req_detail/
+      tls_hello_ts/tls_hello_sni avec create_expire=30sec, events http_request+http_reply
+      (delta en ms), dns_end (c$dns$rtt built-in), ssl_client_hello+ssl_server_hello (delta ms)
+    - scripts/security/tls-cert-monitor.py : stdlib pure (urllib, json, argparse, datetime),
+      elasticsearch-py optionnel (fallback urllib), query ES size 5000 sur zeek-*/ssl.*,
+      parse_expiry() supporte 3 formats, is_weak_cipher() + is_old_tls(), deduplicate() par
+      (sni, issuer) garde le plus sévère, sev_order critical>high>warning>ok, demo_records()
+      intégré avec 4 cas de test (ok, expiry5j+self-signed, RC4+TLS1.1+expiry25j, expired)
+    - zeek/local.zeek : 2 lignes @load ajoutées après dns-entropy.zeek
+  delivered_at: "2026-06-30T14:30:00Z"

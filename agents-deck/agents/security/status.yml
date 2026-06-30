@@ -3,18 +3,17 @@ agent: Security-agent
 canonical_id: security
 tool: Claude Code
 session_id: null
-state: working
-current_ticket: T_018
-last_ticket: T_014
-ticket_started: '2026-06-30T13:38:00Z'
-ticket_finished: '2026-06-30T13:45:00Z'
-last_activity: '2026-06-30T11:58:12Z'
+state: review-pending
+current_ticket: null
+last_ticket: T_018
+ticket_started: '2026-06-30T14:00:00Z'
+ticket_finished: '2026-06-30T14:30:00Z'
+last_activity: '2026-06-30T14:30:00Z'
 last_commit: null
 current_ticket_skills:
-- analyzing-indicators-of-compromise
-- collecting-indicators-of-compromise
-- building-threat-intelligence-platform
-- implementing-threat-intelligence-enrichment-in-splunk
+- analyzing-network-traffic-with-wireshark
 - detecting-network-anomalies-with-zeek
-skills_override_reason: T_014 IOC composite risk scoring — ioc-score.py + /api/ioc-scores
-  + ioc-graph enrichment
+- performing-network-traffic-analysis-with-zeek
+- analyzing-tls-certificate-transparency-logs
+skills_override_reason: T_018 Zeek wire data RTT/retransmits/ART — tcp-performance.zeek
+  + app-response-time.zeek + tls-cert-monitor.py
