@@ -3,12 +3,12 @@ agent: Security-agent
 canonical_id: security
 tool: Claude Code
 session_id: null
-state: done
-current_ticket: null
+state: working
+current_ticket: T_018
 last_ticket: T_014
 ticket_started: '2026-06-30T13:38:00Z'
 ticket_finished: '2026-06-30T13:45:00Z'
-last_activity: '2026-06-30T11:42:29Z'
+last_activity: '2026-06-30T11:59:12Z'
 last_commit: null
 current_ticket_skills:
 - analyzing-indicators-of-compromise
