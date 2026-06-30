@@ -1,0 +1,228 @@
+{
+  "devices": [
+    {
+      "id": "rtr-core",
+      "name": "router-core-01",
+      "ip": "192.168.1.1",
+      "mac": "cc:46:d6:01:00:01",
+      "type": "router",
+      "vendor": "Cisco",
+      "interfaces": [
+        {
+          "port": "Gi0/0",
+          "speed": 1000,
+          "neighbor": "sw-core-01"
+        },
+        {
+          "port": "Gi0/1",
+          "speed": 1000,
+          "neighbor": "sw-access-01"
+        },
+        {
+          "port": "Gi0/2",
+          "speed": 1000,
+          "neighbor": null
+        }
+      ]
+    },
+    {
+      "id": "sw-core-01",
+      "name": "switch-core-01",
+      "ip": "192.168.1.2",
+      "mac": "00:1a:2b:3c:4d:5e",
+      "type": "switch",
+      "vendor": "Cisco",
+      "interfaces": [
+        {
+          "port": "Gi0/1",
+          "speed": 1000,
+          "neighbor": "router-core-01"
+        },
+        {
+          "port": "Gi0/2",
+          "speed": 1000,
+          "neighbor": "switch-access-01"
+        },
+        {
+          "port": "Gi0/3",
+          "speed": 100,
+          "neighbor": "host-fin-01"
+        },
+        {
+          "port": "Gi0/4",
+          "speed": 100,
+          "neighbor": "host-srv-01"
+        }
+      ]
+    },
+    {
+      "id": "sw-access-01",
+      "name": "switch-access-01",
+      "ip": "192.168.1.3",
+      "mac": "00:0b:86:ab:cd:ef",
+      "type": "switch",
+      "vendor": "Aruba",
+      "interfaces": [
+        {
+          "port": "Gi0/1",
+          "speed": 1000,
+          "neighbor": "router-core-01"
+        },
+        {
+          "port": "Fa0/1",
+          "speed": 100,
+          "neighbor": "host-pc-01"
+        },
+        {
+          "port": "Fa0/2",
+          "speed": 100,
+          "neighbor": "host-pc-02"
+        },
+        {
+          "port": "Fa0/3",
+          "speed": 100,
+          "neighbor": "host-pc-03"
+        }
+      ]
+    },
+    {
+      "id": "host-fin-01",
+      "name": "host-fin-01",
+      "ip": "192.168.1.10",
+      "mac": "44:a8:42:10:00:01",
+      "type": "host",
+      "vendor": "Dell",
+      "interfaces": [
+        {
+          "port": "eth0",
+          "speed": 100,
+          "neighbor": "switch-core-01"
+        }
+      ]
+    },
+    {
+      "id": "host-srv-01",
+      "name": "host-srv-01",
+      "ip": "192.168.1.11",
+      "mac": "00:50:56:11:22:33",
+      "type": "host",
+      "vendor": "VMware",
+      "interfaces": [
+        {
+          "port": "eth0",
+          "speed": 1000,
+          "neighbor": "switch-core-01"
+        }
+      ]
+    },
+    {
+      "id": "host-pc-01",
+      "name": "host-pc-01",
+      "ip": "192.168.2.10",
+      "mac": "b0:83:fe:20:00:01",
+      "type": "host",
+      "vendor": "Dell",
+      "interfaces": [
+        {
+          "port": "eth0",
+          "speed": 100,
+          "neighbor": "switch-access-01"
+        }
+      ]
+    },
+    {
+      "id": "host-pc-02",
+      "name": "host-pc-02",
+      "ip": "192.168.2.11",
+      "mac": "00:17:08:30:00:02",
+      "type": "host",
+      "vendor": "HP",
+      "interfaces": [
+        {
+          "port": "eth0",
+          "speed": 100,
+          "neighbor": "switch-access-01"
+        }
+      ]
+    },
+    {
+      "id": "host-pc-03",
+      "name": "host-pc-03",
+      "ip": "192.168.2.12",
+      "mac": "fc:15:b4:40:00:03",
+      "type": "host",
+      "vendor": "HP",
+      "interfaces": [
+        {
+          "port": "eth0",
+          "speed": 100,
+          "neighbor": "switch-access-01"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "src": "rtr-core",
+      "src_port": "Gi0/0",
+      "dst": "sw-core-01",
+      "dst_port": "Gi0/1",
+      "speed": 1000
+    },
+    {
+      "src": "rtr-core",
+      "src_port": "Gi0/1",
+      "dst": "sw-access-01",
+      "dst_port": "Gi0/1",
+      "speed": 1000
+    },
+    {
+      "src": "sw-core-01",
+      "src_port": "Gi0/3",
+      "dst": "host-fin-01",
+      "dst_port": "eth0",
+      "speed": 100
+    },
+    {
+      "src": "sw-core-01",
+      "src_port": "Gi0/4",
+      "dst": "host-srv-01",
+      "dst_port": "eth0",
+      "speed": 1000
+    },
+    {
+      "src": "sw-access-01",
+      "src_port": "Fa0/1",
+      "dst": "host-pc-01",
+      "dst_port": "eth0",
+      "speed": 100
+    },
+    {
+      "src": "sw-access-01",
+      "src_port": "Fa0/2",
+      "dst": "host-pc-02",
+      "dst_port": "eth0",
+      "speed": 100
+    },
+    {
+      "src": "sw-access-01",
+      "src_port": "Fa0/3",
+      "dst": "host-pc-03",
+      "dst_port": "eth0",
+      "speed": 100
+    },
+    {
+      "src": "sw-core-01",
+      "src_port": "Gi0/2",
+      "dst": "sw-access-01",
+      "dst_port": "Gi0/2",
+      "speed": 1000
+    }
+  ],
+  "stats": {
+    "devices": 8,
+    "links": 8,
+    "discovered_at": "2026-06-30T12:23:03Z",
+    "source": "demo"
+  }
+}

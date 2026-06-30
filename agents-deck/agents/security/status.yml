@@ -3,17 +3,18 @@ agent: Security-agent
 canonical_id: security
 tool: Claude Code
 session_id: null
-state: working
+state: review-pending
 current_ticket: T_022
-last_ticket: T_018
+last_ticket: T_022
 ticket_started: '2026-06-30T14:00:00Z'
 ticket_finished: '2026-06-30T14:30:00Z'
-last_activity: '2026-06-30T12:19:17Z'
+last_activity: '2026-06-30T14:30:00Z'
 last_commit: null
 current_ticket_skills:
 - analyzing-network-traffic-with-wireshark
 - detecting-network-anomalies-with-zeek
 - performing-network-traffic-analysis-with-zeek
-- analyzing-tls-certificate-transparency-logs
-skills_override_reason: T_018 Zeek wire data RTT/retransmits/ART — tcp-performance.zeek
-  + app-response-time.zeek + tls-cert-monitor.py
+- performing-network-packet-capture-analysis
+- scanning-network-with-nmap-advanced
+skills_override_reason: T_022 Découverte topologie L2/L3 SNMP LLDP-MIB + ARP Zeek
+  → topology-discover.py + topology.json

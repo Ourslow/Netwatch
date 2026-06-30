@@ -4,9 +4,9 @@ agent: Security-agent
 phase: 3
 priority: high
 category: feature
-status: planned
+status: working
 created: "2026-06-30"
-started: null
+started: "2026-06-30"
 finished: null
 branch: "agent/security/active"
 acceptance:
