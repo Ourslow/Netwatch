@@ -1,0 +1,26 @@
+id: T_016
+title: "Script de démo client interactif (5 min, pipeline complet)"
+agent: Infra-agent
+phase: 4
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+delivery: "2026-06-30"
+acceptance:
+  - "Réécrire demo.sh : 5 étapes numérotées, pauses interactives, output coloré"
+  - "[1/5] Stack Health : appelle scripts/health-check.sh — tous les services verts"
+  - "[2/5] Simulation trafic : python3 simulate-traffic.py --hours 1 --intensity medium --attack (background, 10s puis stop)"
+  - "[3/5] Détection : requête ES curl → top 3 règles déclenchées avec count"
+  - "[4/5] Graphe IOC : python3 scripts/security/ioc-graph.py → stats (nœuds, edges, top IP)"
+  - "[5/5] Score de risque : python3 scripts/security/ioc-score.py --days 1 si disponible, sinon message Phase 4"
+  - "Option --auto : pas de pause ENTRÉE, sleep 3s entre étapes"
+  - "Option --step N : commencer à l'étape N"
+  - "Durée --auto < 5 minutes"
+  - "Makefile : target demo-client → bash demo.sh --auto"
+context: |
+  Le demo.sh existant est orienté déploiement (démarrage stack, attente ES, etc.).
+  Il faut le réécrire pour une démo client : pipeline NDR complet en 5 étapes,
+  style visuel soigné, pauses interactives, options --auto et --step N.
+  Les scripts ioc-graph.py et health-check.sh existent déjà.
+  ioc-score.py n'existe pas encore (Phase 4) → message dédié.
