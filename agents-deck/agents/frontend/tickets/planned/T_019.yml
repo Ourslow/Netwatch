@@ -1,0 +1,37 @@
+id: T_019
+title: "Page /flows — top talkers bandwidth, ART par application, timeline NetFlow"
+agent: Frontend-agent
+phase: 5
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Route /flows dans portal/app.py (login_required)"
+  - "API /api/flows-stats : top 10 src_ip par bytes (index netflow-*), top 10 dst_ip, top ports, timeline 24h (bar chart 1h buckets)"
+  - "API /api/art-stats : ART moyen par service (HTTP/DNS/TLS) depuis zeek art.log ou ES, p50/p95/p99"
+  - "API /api/tcp-perf : RTT moyen, top 10 IPs avec retransmissions élevées, zero-windows"
+  - "Template flows.html : 3 sections — Flux réseau (top talkers + timeline), Performance applicative (ART p50/p95/p99 par service), Santé TCP (RTT, retransmits)"
+  - "Graphique donut : top 10 talkers par bytes (Chart.js)"
+  - "Graphique bar horizontal : top 10 ports par volume"
+  - "Graphique ligne : timeline 24h du volume total en bytes"
+  - "Tableau ART : service | p50 | p95 | p99 | requêtes | statut (vert/orange/rouge selon seuils)"
+  - "Entrée nav 'Flows' avec icône bi-diagram-3"
+context: |
+  Cette page est l'équivalent de la vue 'Top Talkers' + 'Response Time' de nGeniusONE.
+
+  Si l'index netflow-* n'existe pas encore (GoFlow2 T_017 pas encore actif) :
+  - fallback sur Zeek conn.log (orig_bytes + resp_bytes par src_ip)
+  - afficher un banner "GoFlow2 non connecté — données depuis Zeek conn.log"
+
+  Seuils ART (configurables dans config.py) :
+  - HTTP : vert <200ms, orange 200-500ms, rouge >500ms
+  - DNS : vert <50ms, orange 50-200ms, rouge >200ms
+  - TLS : vert <300ms, orange 300-800ms, rouge >800ms
+
+  Seuils TCP :
+  - Retransmissions : vert <1%, orange 1-3%, rouge >3%
+  - RTT : vert <50ms, orange 50-150ms, rouge >150ms
+
+  Les APIs peuvent fallback gracieusement si les index n'existent pas
+  (retourner {data: [], warning: "index netflow-* introuvable"}).

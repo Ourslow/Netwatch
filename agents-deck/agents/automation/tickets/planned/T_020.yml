@@ -1,0 +1,38 @@
+id: T_020
+title: "Alertes performance réseau — seuils RTT/retransmit + rapport NPM daily"
+agent: Automation-agent
+phase: 5
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/automation/npm-alerts.py : surveille RTT, retransmissions, ART et déclenche alertes si seuils dépassés"
+  - "Seuils : RTT > 150ms → alerte medium, RTT > 300ms → alerte high ; retransmits > 3% → alerte medium, >10% → critical ; ART HTTP > 500ms → alerte medium"
+  - "Source : ES indices zeek-* (conn.log fields : rtt, orig_retransmits) + art.log si disponible"
+  - "Actions : créer ticket via create-ticket.py (category: performance) + Teams webhook si sévérité high/critical"
+  - "Anti-doublon : même logique que escalade.py — history JSON TTL 1h par IP+métrique"
+  - "Créer scripts/automation/daily-npm-report.py : rapport quotidien NPM — top 5 talkers, RTT p95, ART p95 HTTP/DNS, nb alertes perf"
+  - "Output daily-npm-report.py : JSON + affichage console coloré + save dans reports/npm-YYYY-MM-DD.json"
+  - "Workflow n8n scripts/automation/n8n-npm-daily.json : Schedule 08h00 → Execute daily-npm-report.py → Teams summary card"
+context: |
+  Complément naturel de T_017 (GoFlow2) et T_018 (wire data Zeek).
+
+  npm-alerts.py — requête ES pour les dernières 5 minutes :
+  - RTT : avg sur zeek-* / conn.log champ rtt (millisecondes)
+  - Retransmissions : sum orig_retransmits / sum orig_pkts (ratio %)
+  - ART HTTP : avg sur art.log (si scripté par T_018), sinon zeek http.log
+
+  daily-npm-report.py — fenêtre 24h :
+  - Top talkers : terms agg src_ip sur netflow-* (bytes) ou zeek conn.log
+  - RTT p95 : percentiles agg sur conn.log
+  - ART p95 HTTP/DNS/TLS : percentiles agg sur art.log
+  - Volume total : sum bytes 24h
+  - Comparaison J-1 : % variation
+
+  Format Teams daily card :
+  📊 Rapport NPM — 30/06/2026
+  Top talker : 192.168.1.42 (2.3 GB)
+  RTT p95 : 45ms ✓
+  ART HTTP p95 : 180ms ✓
+  Alertes perf : 2 (1 high, 1 medium)

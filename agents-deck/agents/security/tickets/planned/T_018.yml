@@ -1,0 +1,42 @@
+id: T_018
+title: "Zeek wire data — RTT, retransmissions, ART (Application Response Time)"
+agent: Security-agent
+phase: 5
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer zeek/scripts/tcp-performance.zeek : extrait RTT, retransmits, zero-window, MSS depuis TCP"
+  - "Champs exportés : orig_rtt_avg_ms, resp_rtt_avg_ms, orig_retransmits, resp_retransmits, zero_windows, syn_ack_delta_ms, conn_state"
+  - "Créer zeek/scripts/app-response-time.zeek : mesure ART depuis HTTP (request→response), DNS (query→reply), TLS (ClientHello→ServerHello)"
+  - "Champs ART : service (http/dns/tls), art_ms (latence ms), method, status_code, host, query"
+  - "Output JSON vers logs/tcp_perf.log et logs/art.log (format Zeek standard)"
+  - "Créer scripts/security/tls-cert-monitor.py : scan zeek ssl.log → alerte certificats expirant dans 30j, self-signed, ciphers faibles (RC4, DES, MD5, export)"
+  - "Output tls-cert-monitor.py : JSON [{host, issuer, expiry_days, issues:[], severity}]"
+  - "Intégrer les 2 nouveaux scripts dans zeek/local.zeek (@load)"
+context: |
+  Zeek a accès aux données TCP brutes et peut calculer RTT depuis les timestamps
+  des paquets SYN/SYN-ACK. Les scripts Zeek utilisent le framework built-in :
+
+  # RTT depuis conn.log (déjà partiellement dispo) :
+  event connection_state_remove(c: connection) {
+      local rtt = c$conn$rtt;  # déjà calculé par Zeek
+  }
+
+  # ART HTTP depuis http.log :
+  event http_reply(c: connection, version: string, code: count, reason: string) {
+      # delta entre http_request et http_reply
+  }
+
+  # ART DNS depuis dns.log :
+  event dns_end(c: connection, msg: dns_msg) {
+      # RTT déjà dans dns.log (rtt field)
+  }
+
+  TLS cert monitoring : Zeek ssl.log a les champs :
+  - validation_status, cert_chain_fuids, subject, issuer, not_valid_after
+  - cipher → détecter RC4/DES/EXPORT
+
+  Les métriques wire data sont le coeur de Netscout nGeniusONE et Riverbed SteelCentral.
+  C'est LE différenciateur NPM par rapport à un simple IDS.

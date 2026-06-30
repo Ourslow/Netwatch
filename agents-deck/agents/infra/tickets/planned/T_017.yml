@@ -1,0 +1,37 @@
+id: T_017
+title: "GoFlow2 — collecteur NetFlow/IPFIX/sFlow → Elasticsearch"
+agent: Infra-agent
+phase: 5
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Ajouter service goflow2 dans docker-compose.yml (image netsampler/goflow2, port UDP 2055 NetFlow, 6343 sFlow, 4739 IPFIX)"
+  - "Config goflow2 : output ES vers localhost:9200, index netflow-YYYY.MM.DD"
+  - "Mapping ES pour les champs NetFlow : src_ip, dst_ip, src_port, dst_port, protocol, bytes, packets, duration, in_iface, out_iface, src_as, dst_as, next_hop"
+  - "Script setup-netflow.sh : crée l'index template ES netflow-* avec mapping optimisé + ILM 30 jours"
+  - "Intégrer dans scripts/health-check.sh (check port UDP 2055 + index netflow-* dans ES)"
+  - "Makefile : target netflow-test → envoie un paquet NetFlow de test via softflowd ou nfgen"
+  - "Documenter dans docs/netflow-setup.md : config routeur/switch Cisco + HP + simulation avec softflowd"
+context: |
+  GoFlow2 est le collecteur NetFlow/IPFIX/sFlow open-source le plus mature.
+  Il reçoit des exports de flux depuis les switchs/routeurs et les pousse vers ES/Kafka.
+
+  Image Docker : netsampler/goflow2:latest
+  Config YAML goflow2 :
+    listen:
+      - addr: "0.0.0.0:2055"   # NetFlow v5/v9
+        transport: netflow
+      - addr: "0.0.0.0:4739"   # IPFIX
+        transport: netflow
+      - addr: "0.0.0.0:6343"   # sFlow
+        transport: sflow
+    producer:
+      type: kafka  # ou direct ES via logstash/filebeat
+
+  Alternative plus simple : output JSON vers stdout → Filebeat → ES
+  (évite la dépendance Kafka, cohérent avec le reste du stack)
+
+  Index ES : netflow-{YYYY.MM.DD}
+  Simulation sans switch physique : softflowd -i lo -n 127.0.0.1:2055
