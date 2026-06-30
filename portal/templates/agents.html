@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Agents IA — NetWatch Portal{% endblock %}
+
+{% block page_title %}Agents IA{% endblock %}
+
+{% block topbar_actions %}
+<span class="badge bg-dark text-muted" id="agents-last-update" style="font-size:.72rem">
+  <i class="bi bi-arrow-repeat me-1"></i>{{ last_update }}
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Cartes synthèse par état ── #}
+  {% set counts = {'working': 0, 'review': 0, 'done': 0, 'standby': 0} %}
+  {% for a in agents %}
+    {% if a.state in counts %}{% set _ = counts.update({a.state: counts[a.state] + 1}) %}{% endif %}
+  {% endfor %}
+
+  <div class="col-12">
+    <div class="row g-3">
+      <div class="col-sm-6 col-lg-3">
+        <div class="card bg-dark border-0 h-100">
+          <div class="card-body d-flex align-items-center gap-3">
+            <span class="badge rounded-pill bg-primary fs-5 px-3 py-2">{{ counts['working'] }}</span>
+            <div>
+              <div class="fw-semibold">Working</div>
+              <div class="text-muted small">En cours de travail</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <div class="card bg-dark border-0 h-100">
+          <div class="card-body d-flex align-items-center gap-3">
+            <span class="badge rounded-pill bg-warning text-dark fs-5 px-3 py-2">{{ counts['review'] }}</span>
+            <div>
+              <div class="fw-semibold">Review</div>
+              <div class="text-muted small">En attente de revue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <div class="card bg-dark border-0 h-100">
+          <div class="card-body d-flex align-items-center gap-3">
+            <span class="badge rounded-pill bg-success fs-5 px-3 py-2">{{ counts['done'] }}</span>
+            <div>
+              <div class="fw-semibold">Done</div>
+              <div class="text-muted small">Terminé</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <div class="card bg-dark border-0 h-100">
+          <div class="card-body d-flex align-items-center gap-3">
+            <span class="badge rounded-pill bg-secondary fs-5 px-3 py-2">{{ counts['standby'] }}</span>
+            <div>
+              <div class="fw-semibold">Standby</div>
+              <div class="text-muted small">En attente</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Tableau des agents ── #}
+  <div class="col-12">
+    <div class="card bg-dark border-0">
+      <div class="card-header d-flex align-items-center justify-content-between border-bottom border-secondary">
+        <span class="fw-semibold"><i class="bi bi-robot me-2 text-info"></i>État des agents</span>
+        <span class="text-muted small" id="agents-countdown">Actualisation dans <span id="agents-timer">15</span>s</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0 align-middle">
+            <thead class="border-bottom border-secondary">
+              <tr>
+                <th class="ps-4" style="width:140px">Agent</th>
+                <th style="width:140px">État</th>
+                <th>Ticket actif</th>
+                <th>Dernière activité</th>
+                <th class="pe-4 text-end" style="width:80px">Détail</th>
+              </tr>
+            </thead>
+            <tbody id="agents-tbody">
+              {% for agent in agents %}
+              {% set state = agent.state | lower %}
+              <tr>
+                {# Nom #}
+                <td class="ps-4">
+                  <span class="fw-semibold text-info font-monospace">{{ agent.id }}</span>
+                  <div class="text-muted" style="font-size:.75rem">{{ agent.agent }}</div>
+                </td>
+
+                {# Badge état #}
+                <td>
+                  {% if state == 'working' %}
+                    <span class="badge bg-primary">
+                      <i class="bi bi-arrow-repeat me-1"></i>working
+                    </span>
+                  {% elif state in ('review', 'review-pending') %}
+                    <span class="badge bg-warning text-dark">
+                      <i class="bi bi-eye me-1"></i>review
+                    </span>
+                  {% elif state == 'done' %}
+                    <span class="badge bg-success">
+                      <i class="bi bi-check-circle me-1"></i>done
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary">
+                      <i class="bi bi-pause-circle me-1"></i>standby
+                    </span>
+                  {% endif %}
+                  {% if agent.error %}
+                    <i class="bi bi-exclamation-triangle text-warning ms-1" title="{{ agent.error }}"></i>
+                  {% endif %}
+                </td>
+
+                {# Ticket actif #}
+                <td>
+                  {% if agent.current_ticket %}
+                    <span class="badge bg-dark border border-secondary font-monospace">{{ agent.current_ticket }}</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+
+                {# Dernière activité #}
+                <td class="text-muted small font-monospace">
+                  {{ agent.last_activity if agent.last_activity else '—' }}
+                </td>
+
+                {# Lien YAML #}
+                <td class="pe-4 text-end">
+                  <span class="text-muted" style="font-size:.72rem" title="agents-deck/agents/{{ agent.id }}/status.yml">
+                    <i class="bi bi-file-code"></i>
+                  </span>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">Aucun agent trouvé</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── State team-lead ── #}
+  {% if team_state %}
+  <div class="col-12">
+    <div class="card bg-dark border-0">
+      <div class="card-header border-bottom border-secondary">
+        <span class="fw-semibold"><i class="bi bi-diagram-3 me-2 text-warning"></i>Team-lead · state.yml</span>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for agent_id, meta in team_state.get('agents', {}).items() %}
+          <div class="col-sm-6 col-lg-3">
+            <div class="p-3 rounded border border-secondary" style="background:rgba(255,255,255,.03)">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="fw-semibold text-info font-monospace">{{ agent_id }}</span>
+                {% set es = meta.get('expected_state', 'standby') %}
+                {% if es == 'working' %}
+                  <span class="badge bg-primary">{{ es }}</span>
+                {% elif es in ('review', 'review-pending') %}
+                  <span class="badge bg-warning text-dark">{{ es }}</span>
+                {% elif es == 'done' %}
+                  <span class="badge bg-success">{{ es }}</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ es }}</span>
+                {% endif %}
+              </div>
+              <div class="text-muted small">
+                {{ meta.get('notes', '') | truncate(80) }}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var INTERVAL = 15;
+  var timer    = document.getElementById('agents-timer');
+  var lastUpd  = document.getElementById('agents-last-update');
+  var remaining = INTERVAL;
+
+  function pad(n) { return n < 10 ? '0' + n : n; }
+
+  function tick() {
+    remaining--;
+    if (timer) timer.textContent = remaining;
+    if (remaining <= 0) {
+      remaining = INTERVAL;
+      refresh();
+    }
+  }
+
+  function refresh() {
+    fetch('/agents', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) {
+        if (r.ok) {
+          // Rechargement complet de la page pour mettre à jour le tableau
+          window.location.reload();
+        }
+      })
+      .catch(function () {
+        // silencieux — on réessaiera au prochain tick
+      });
+  }
+
+  setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}
