@@ -1,0 +1,49 @@
+id: T_022
+title: "Découverte topologie réseau — SNMP CDP/LLDP walker + ARP Zeek → topology.json"
+agent: Security-agent
+phase: 6
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/security/topology-discover.py : découvre la topologie L2/L3 depuis SNMP + ARP Zeek"
+  - "Source 1 — SNMP CDP (Cisco) : lire lldpRemSysName, lldpRemPortId, lldpLocalPortId (LLDP-MIB) via pysnmp ou snmpwalk subprocess"
+  - "Source 2 — SNMP ARP table : ipNetToMediaPhysAddress (IP-MIB) → table IP↔MAC par équipement"
+  - "Source 3 — Zeek ARP logs : index ES zeek-* champs arp.src_ip, arp.src_mac, arp.dst_ip → enrichit la table MAC"
+  - "Output topology.json : {devices:[{id,name,ip,mac,type(router/switch/host),vendor,interfaces:[]}], links:[{src_device,src_port,dst_device,dst_port,speed,utilization_pct}], discovered_at}"
+  - "Détection vendor depuis MAC OUI (3 premiers octets → lookup table IEEE intégrée pour Cisco/HP/Juniper/Dell/VMware)"
+  - "CLI : python3 topology-discover.py [--targets 192.168.1.1,192.168.1.2] [--community public] [--output topology.json] [--demo]"
+  - "Mode --demo : génère une topologie fictive réaliste (5 devices, 8 links) sans SNMP réel"
+context: |
+  LLDP-MIB OIDs clés :
+  - lldpRemSysName    : 1.0.8802.1.1.2.1.4.1.1.9
+  - lldpRemPortDescr  : 1.0.8802.1.1.2.1.4.1.1.8
+  - lldpLocPortId     : 1.0.8802.1.1.2.1.3.7.1.3
+
+  CDP (Cisco proprietary, OID 1.3.6.1.4.1.9.9.23) — fallback si LLDP absent.
+
+  pysnmp : bibliothèque pure Python pour SNMP v1/v2c/v3
+  Alternative : subprocess snmpwalk (package snmp) si pysnmp non dispo.
+
+  Enrichissement depuis ES Zeek :
+  - Index zeek-* / log_type=arp
+  - Champs : src_ip, src_mac, dst_ip, @timestamp
+  - Permet de découvrir les hosts même sans SNMP sur eux
+
+  Format topology.json exemple :
+  {
+    "devices": [
+      {"id": "sw-core", "name": "switch-core-01", "ip": "192.168.1.1",
+       "type": "switch", "vendor": "Cisco", "interfaces": [
+         {"port": "GigabitEthernet0/1", "speed": 1000, "utilization_pct": 45.2}
+       ]}
+    ],
+    "links": [
+      {"src": "sw-core", "src_port": "Gi0/1", "dst": "sw-access-01",
+       "dst_port": "Gi0/24", "speed": 1000}
+    ]
+  }
+
+  SNMP targets depuis .env : SNMP_TARGETS=192.168.1.1,192.168.1.2
+  Community depuis .env : SNMP_COMMUNITY=public

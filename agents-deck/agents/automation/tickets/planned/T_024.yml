@@ -1,0 +1,45 @@
+id: T_024
+title: "Classification applicative — port→app mapping sur GoFlow2/Zeek + alertes saturation"
+agent: Automation-agent
+phase: 6
+priority: medium
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/automation/app-classifier.py : enrichit les flux avec le nom de l'application"
+  - "Table port→app intégrée (400+ entrées) : HTTP(80,8080), HTTPS(443,8443), SSH(22), RDP(3389), SMB(445), DNS(53), Teams(3478/3479), Zoom(8801-8802), Office365(443+domaine), etc."
+  - "Source : netflow-* (dst_port) OU zeek conn.log (service field + id.resp_p)"
+  - "Output : index ES netflow-apps-YYYY.MM.DD avec champ app_name, app_category (productivity/security/remote/streaming/database/unknown)"
+  - "API /api/app-flows dans portal/app.py : top 10 applications par bytes, donut par catégorie, timeline 24h par app (top 5)"
+  - "Mettre à jour portal/templates/flows.html : ajouter section 'Trafic applicatif' avec donut catégories + tableau top apps"
+  - "Créer scripts/automation/iface-saturation.py : surveille utilisation interfaces depuis Prometheus SNMP (ifHCOctets), alerte si >80%"
+  - "iface-saturation.py actions : ticket (category: capacity) + Teams alerte si >90% pendant 5min"
+  - "Workflow n8n scripts/automation/n8n-iface-saturation.json : Schedule 5min → Execute iface-saturation.py"
+context: |
+  Table port→app (extrait) :
+  PORT_APP_MAP = {
+    # Web
+    80: ("HTTP", "web"), 443: ("HTTPS", "web"), 8080: ("HTTP-Alt", "web"),
+    # Remote access
+    22: ("SSH", "remote"), 3389: ("RDP", "remote"), 5900: ("VNC", "remote"),
+    # Microsoft
+    445: ("SMB", "file-share"), 135: ("RPC", "infrastructure"),
+    3478: ("Teams/STUN", "collaboration"), 3479: ("Teams/UDP", "collaboration"),
+    # Mail
+    25: ("SMTP", "email"), 587: ("SMTP-TLS", "email"), 993: ("IMAPS", "email"),
+    # DB
+    3306: ("MySQL", "database"), 5432: ("PostgreSQL", "database"), 1433: ("MSSQL", "database"),
+    # Streaming
+    1935: ("RTMP", "streaming"), 554: ("RTSP", "streaming"),
+    # Security/Infra
+    161: ("SNMP", "infrastructure"), 514: ("Syslog", "infrastructure"),
+    9200: ("Elasticsearch", "infrastructure"), 5601: ("Kibana", "infrastructure"),
+  }
+
+  Pour iface-saturation.py :
+  Prometheus query : rate(ifHCInOctets{job="snmp"}[5m]) * 8 / on(ifDescr) ifSpeed * 100
+  Si Prometheus non dispo → skip gracieusement (log warning).
+
+  La section "Trafic applicatif" dans /flows est une 4ème section sous les 3 existantes.
+  Utiliser un donut Chart.js pour les catégories et un bar chart horizontal pour les top apps.

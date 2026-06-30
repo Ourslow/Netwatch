@@ -1,0 +1,36 @@
+id: T_023
+title: "Page /topology — carte réseau L2/L3 interactive D3.js avec utilisation interfaces"
+agent: Frontend-agent
+phase: 6
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Route /topology + API /api/topology dans portal/app.py (login_required)"
+  - "API /api/topology : exécute topology-discover.py (cache fichier topology.json TTL 5min), retourne {devices, links, stats}"
+  - "API /api/snmp-interfaces : interroge Prometheus /api/v1/query pour ifHCIn/OutOctets + ifOperStatus par device, retourne utilization % par interface"
+  - "Template topology.html : graphe D3.js force-directed adapté à la topologie réseau"
+  - "Types de noeuds distincts : router (triangle rouge), switch (carré bleu), host (cercle gris), firewall (hexagone orange), unknown (cercle blanc)"
+  - "Liens colorés selon utilisation : vert <50%, orange 50-80%, rouge >80% — épaisseur proportionnelle à la vitesse du lien"
+  - "Click noeud → side panel : nom, IP, vendor, uptime SNMP, interfaces avec utilisation %, statut"
+  - "Bouton 'Redécouvrir' → appel API avec force_refresh=true (ignore cache)"
+  - "Badge 'Demo mode' si topology.json vient du mode --demo"
+  - "Entrée nav 'Topologie' avec icône bi-diagram-2-fill"
+context: |
+  Inspiré de la page /graph (IOC D3.js) déjà livrée en Phase 3.
+  Réutiliser la même structure : zoom/pan, drag nodes, side panel.
+
+  Différences vs /graph :
+  - Noeuds = équipements réseau (pas des IPs d'alertes)
+  - Liens = liens physiques/logiques (pas des relations IOC)
+  - Couleur des liens = utilisation bande passante (live depuis Prometheus/SNMP)
+  - Layout : hierarchical suggestif (routeur en haut, switchs au milieu, hosts en bas)
+
+  Fallback si Prometheus SNMP non dispo : afficher topologie sans couleur utilisation
+  + badge "Métriques SNMP indisponibles".
+
+  Fallback si topology-discover.py absent (T_022 pas encore mergé) :
+  → charger topology-demo.json depuis static/ pour montrer la page fonctionnelle.
+
+  /api/topology params : ?force_refresh=true pour invalider le cache
