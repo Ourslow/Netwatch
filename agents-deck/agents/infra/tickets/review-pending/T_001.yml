@@ -4,7 +4,7 @@ agent: Infra-agent
 phase: 1
 priority: high
 category: feature
-status: drafts
+status: review-pending
 created: "2026-06-29"
 acceptance:
   - "Ajouter le service crowdsec au docker-compose.yml avec image crowdsecurity/crowdsec:latest"
