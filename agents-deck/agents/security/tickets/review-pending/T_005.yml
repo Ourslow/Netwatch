@@ -1,0 +1,32 @@
+id: T_005
+title: "Proof of concept IOC knowledge graph"
+agent: Security-agent
+phase: 1
+priority: medium
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30"
+finished: "2026-06-30"
+branch: "agent/security/active"
+acceptance:
+  - "Créer scripts/security/ioc-graph.py : charge alertes ES → extrait entités (IPs, domaines, règles, MITRE TTPs) → génère graphe"
+  - "Exporter le graphe en JSON (nodes + edges) dans scripts/security/ioc-graph-output.json"
+  - "Utiliser NetworkX + elasticsearch-py (Understand-Anything non dispo pip)"
+  - "Documenter dans docs/understand-anything-poc.md : approche, résultats, exemple de graphe"
+  - "Le script fonctionne même si ES est vide (données de demo hardcodées en fallback)"
+delivery:
+  summary: |
+    IOC knowledge graph PoC livré avec NetworkX + elasticsearch-py (Understand-Anything absent de PyPI).
+    Script ioc-graph.py connecte ES 8.13, interroge suricata-* (72 alertes) et snort-* (500 alertes),
+    extrait 5 types d'entités (ip_src, ip_dst, rule, domain, mitre_ttp) et génère un graphe orienté
+    exporté en JSON. Sur données live : 51 nœuds, 40 edges, 4 MITRE TTPs détectées
+    (T1071 C2, T1595 Recon, T1552 Credential, T1027 DefEvasion). Fallback demo intégré.
+  technical: |
+    - scripts/security/ioc-graph.py : script principal (argparse, NetworkX DiGraph, ES 8.x client,
+      normalisation Suricata/Snort, 5 types nœuds, 5 types edges avec weights, export JSON)
+    - scripts/security/ioc-graph-output.json : graphe exporté depuis ES live (572 alertes, 51 nodes, 40 edges)
+    - docs/understand-anything-poc.md : documentation approche, résultats, exemple JSON, guide usage
+    - Requires: pip install networkx "elasticsearch>=8.0.0,<9.0.0"
+    - Insight clé : 172.31.114.173 = 58 alertes Suricata → exfiltration probable vers 160.79.104.10
+  delivered_at: "2026-06-30T12:00:00Z"

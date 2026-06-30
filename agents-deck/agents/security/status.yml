@@ -3,11 +3,11 @@ agent: Security-agent
 canonical_id: security
 tool: "Claude Code"
 session_id: null
-state: working
+state: review-pending
 current_ticket: T_005
 last_ticket: T_004
 ticket_started: "2026-06-30T12:00:00Z"
-ticket_finished: null
+ticket_finished: "2026-06-30T12:00:00Z"
 last_activity: "2026-06-30T12:00:00Z"
 last_commit: "9928932"
 current_ticket_skills:
