@@ -1109,4 +1109,10 @@ def server_error(e):
 # ============================================================
 
 if __name__ == "__main__":
+    import logging as _logging
+    if not config.PORTAL_PASSWORD:
+        _logging.warning(
+            "⚠️  PORTAL_PASSWORD non défini — toute tentative de connexion sera refusée. "
+            "Définissez la variable d'environnement PORTAL_PASSWORD pour activer l'accès."
+        )
     app.run(host="0.0.0.0", port=config.PORT, debug=config.FLASK_DEBUG)

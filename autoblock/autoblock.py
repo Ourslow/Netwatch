@@ -152,6 +152,7 @@ def expire_blocks():
 
 def block_ip(ip: str, reason: str, severity: str) -> dict:
     """Tente de bloquer une IP. Retourne le resultat de l'operation."""
+    event_to_log = None
     with state_lock:
         expire_blocks()
 
@@ -175,8 +176,7 @@ def block_ip(ip: str, reason: str, severity: str) -> dict:
         if success:
             blocked_ips[ip] = expires_at
             block_timestamps.append(datetime.now(timezone.utc))
-
-            event = {
+            event_to_log = {
                 "@timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_type":  "autoblock",
                 "action":      "block",
@@ -187,14 +187,18 @@ def block_ip(ip: str, reason: str, severity: str) -> dict:
                 "duration_min": BLOCK_DURATION_MIN,
                 "dry_run":     DRY_RUN
             }
-            log_event(event)
+            result = {"status": "blocked", "ip": ip,
+                      "expires": expires_at.isoformat(), "dry_run": DRY_RUN}
+        else:
+            result = {"status": "error", "ip": ip, "reason": "iptables_failed"}
 
-            log.warning("BLOQUE %s | raison=%s | expire=%s",
-                        ip, reason, expires_at.strftime("%H:%M"))
-            return {"status": "blocked", "ip": ip,
-                    "expires": expires_at.isoformat(), "dry_run": DRY_RUN}
+    # log_event hors du lock — appel ES (timeout=5s) sans bloquer les webhooks concurrents
+    if event_to_log:
+        log_event(event_to_log)
+        log.warning("BLOQUE %s | raison=%s | expire=%s",
+                    ip, result["expires"][:19], "")
 
-        return {"status": "error", "ip": ip, "reason": "iptables_failed"}
+    return result
 
 
 def log_event(event: dict):
