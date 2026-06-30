@@ -16,8 +16,10 @@ import json
 import argparse
 import logging
 import sys
+import subprocess
 from datetime import datetime, timezone
 from collections import defaultdict
+from pathlib import Path
 
 try:
     import networkx as nx
@@ -439,6 +441,63 @@ def graph_to_json(G: "nx.DiGraph", source: str, alert_count: int) -> dict:
     }
 
 
+def load_risk_scores(script_dir: "Path", es_url: str, demo: bool) -> dict:
+    """
+    Call ioc-score.py and return a dict mapping {ip: {score, level, ...}}.
+    Falls back to an empty dict on any failure (non-blocking).
+    """
+    _script = script_dir / "ioc-score.py"
+    if not _script.exists():
+        log.warning("ioc-score.py not found at %s — skipping risk scores", _script)
+        return {}
+
+    cmd = ["python3", str(_script)]
+    if demo:
+        cmd.append("--demo")
+    else:
+        cmd.extend(["--es-url", es_url])
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            log.warning("ioc-score.py exited %d: %s",
+                        result.returncode, result.stderr.decode(errors="replace")[:300])
+        data = json.loads(result.stdout.decode(errors="replace"))
+        scores_list = data.get("scores", [])
+        return {rec["ip"]: rec for rec in scores_list}
+    except Exception as exc:
+        log.warning("Could not compute risk scores: %s", exc)
+        return {}
+
+
+def enrich_nodes_with_scores(G: "nx.DiGraph", scores: dict) -> None:
+    """Inject risk_score and risk_level into ip_src / ip_dst nodes."""
+    for node_id, attrs in G.nodes(data=True):
+        ntype = attrs.get("type", "")
+        if ntype not in ("ip_src", "ip_dst"):
+            continue
+        ip = attrs.get("label", "")
+        if not ip:
+            # Derive IP from node_id (format: "ip_src::1.2.3.4")
+            parts = node_id.split("::", 1)
+            ip = parts[1] if len(parts) == 2 else ""
+        rec = scores.get(ip)
+        if rec:
+            G.nodes[node_id]["risk_score"] = rec["score"]
+            G.nodes[node_id]["risk_level"] = rec["level"]
+            G.nodes[node_id]["risk_engines"] = rec.get("engines", [])
+            G.nodes[node_id]["risk_top_rule"] = rec.get("top_rule", "")
+            G.nodes[node_id]["risk_mitre_ttps"] = rec.get("mitre_ttps", [])
+        else:
+            G.nodes[node_id]["risk_score"] = 0
+            G.nodes[node_id]["risk_level"] = "unknown"
+
+
 def print_graph_stats(G: "nx.DiGraph") -> None:
     """Print a human-readable summary of the graph."""
     log.info("--- Graph Statistics ---")
@@ -490,6 +549,8 @@ def main() -> None:
                         help="Force use of demo data even if ES is available")
     parser.add_argument("--max-alerts", type=int, default=500,
                         help="Max alerts to fetch from ES (default: 500)")
+    parser.add_argument("--no-scores", action="store_true",
+                        help="Skip risk score enrichment (avoids subprocess call to ioc-score.py)")
     args = parser.parse_args()
 
     if not NX_AVAILABLE:
@@ -515,6 +576,19 @@ def main() -> None:
     # --- Build graph ---
     log.info("Building IOC knowledge graph from %d alerts ...", len(alerts))
     G = build_graph(alerts)
+
+    # --- Enrich IP nodes with risk scores (T_014) ---
+    if not args.no_scores:
+        _script_dir = Path(__file__).resolve().parent
+        log.info("Computing IOC risk scores via ioc-score.py ...")
+        risk_scores = load_risk_scores(_script_dir, args.es_url, args.demo)
+        if risk_scores:
+            enrich_nodes_with_scores(G, risk_scores)
+            log.info("Risk scores injected into %d IP(s)", len(risk_scores))
+        else:
+            log.info("No risk scores available — IP nodes will have risk_score=0")
+            enrich_nodes_with_scores(G, {})
+
     print_graph_stats(G)
 
     # --- Export JSON ---
