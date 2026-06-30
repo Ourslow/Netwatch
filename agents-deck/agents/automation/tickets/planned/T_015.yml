@@ -1,0 +1,22 @@
+id: T_015
+title: "n8n escalade intelligente : score≥80 → autoblock + ticket + Teams urgent"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "Créer scripts/automation/escalade.py : CLI qui lit les scores IOC et déclenche 3 actions sur les IPs score≥80"
+  - "Anti-doublon escalade-history.json TTL 4h par IP"
+  - "Action 1 : POST http://localhost:5001/webhook/alert → autoblock (format body spécifié)"
+  - "Action 2 : echo '<json>' | python3 create-ticket.py → ticket critical"
+  - "Action 3 : POST Teams webhook (si TEAMS_WEBHOOK_URL) → Adaptive Card rouge urgente"
+  - "Créer scripts/automation/n8n-escalade.json : Schedule 5min → Execute Command escalade.py → log output"
+  - "Section 'Escalade automatique' dans docs/n8n-setup.md"
+context: |
+  Score source : tente d'abord ioc-score.py (subprocess), fallback /api/ioc-scores (HTTP),
+  sinon scoring minimal inline (requêtes ES directes).
+  Threshold configurable --threshold (défaut 80).
+  Autoblock body: {"alerts": [{"labels": {"ip": "<ip>", "severity": "critical"}, "annotations": {"summary": "Score risque <score>/100 — escalade automatique"}}]}
+  Teams card : AdaptiveCard rouge avec TextBlock "🚨 ESCALADE — IP X (score Y/100)" + raison.
