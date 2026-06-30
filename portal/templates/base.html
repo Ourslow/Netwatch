@@ -59,9 +59,15 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('flows') }}"
+           class="nav-link {% if request.endpoint == 'flows' %}active{% endif %}">
+          <i class="bi bi-diagram-3"></i> <span>Flows</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('graph') }}"
            class="nav-link {% if request.endpoint == 'graph' %}active{% endif %}">
-          <i class="bi bi-diagram-3"></i> <span>Graphe IOC</span>
+          <i class="bi bi-bezier2"></i> <span>Graphe IOC</span>
         </a>
       </li>
       <li class="nav-item">
@@ -226,7 +232,8 @@
     { icon: 'bi-bar-chart-steps',     label: 'Comparaison',          url: '/compare',     hint: 'OS vs Commercial' },
     { icon: 'bi-clipboard2-check',    label: 'Conformité',           url: '/compliance',  hint: 'NIS2 · NIST · ISO' },
     { icon: 'bi-robot',               label: 'Agents IA',            url: '/agents',      hint: 'Statut des agents' },
-    { icon: 'bi-diagram-3',           label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
+    { icon: 'bi-diagram-3',           label: 'Flows',                url: '/flows',       hint: 'Top talkers · ART · TCP' },
+    { icon: 'bi-bezier2',             label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
     { icon: 'bi-speedometer2',        label: 'Dashboard Exec',       url: '/exec',        hint: 'RSSI · posture · KPIs' },
     { icon: 'bi-file-earmark-text',   label: 'Rapport exécutif',     url: '/report',      hint: 'PDF', blank: true },
   ];

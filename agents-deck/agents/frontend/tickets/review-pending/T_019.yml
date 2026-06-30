@@ -1,0 +1,23 @@
+id: T_019
+title: "Page /flows : top talkers, ART, performance TCP"
+agent: Frontend-agent
+phase: 1
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+delivery: "2026-06-30"
+acceptance:
+  - "Route /flows + 3 APIs (login_required) dans portal/app.py"
+  - "API /api/flows-stats : top 10 src/dst/ports, timeline 24h (netflow-* fallback zeek-*)"
+  - "API /api/art-stats : p50/p95/p99 HTTP/DNS/TLS (art.log ou conn.log fallback)"
+  - "API /api/tcp-perf : avg/p95 RTT, top 10 retransmit IPs, zero-windows count"
+  - "Template flows.html : donut talkers, bar ports, ligne timeline, tableau ART, gauge RTT, top retrans"
+  - "Badges couleur : HTTP vert<200ms/orange 200-500ms/rouge>500ms, DNS vert<50ms/orange 50-200ms/rouge>200ms"
+  - "Banner warning si source=zeek (GoFlow2 non connecté)"
+  - "Entrée nav Flows avec icône bi-diagram-3"
+  - "Retourne {data:[], warning} sans 500 si index ES absent"
+body: |
+  Page /flows pour l'analyse des flux réseau avec top talkers, ART
+  (Application Response Time) et santé TCP. 3 APIs JSON + template
+  Chart.js. Fallback automatique netflow→zeek si GoFlow2 absent.

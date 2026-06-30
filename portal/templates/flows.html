@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+{% block title %}Analyse des flux — NetWatch Portal{% endblock %}
+{% block page_title %}<i class="bi bi-diagram-3 me-2"></i>Analyse des flux{% endblock %}
+
+{% block head %}
+<style>
+/* ── Flows-specific ── */
+.flows-section-title {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+}
+
+.art-badge {
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+  padding: .2rem .6rem;
+  border-radius: var(--r-pill);
+  font-size: .76rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.art-ok      { background: rgba(46,230,166,.15); color: var(--ok);   border: 1px solid rgba(46,230,166,.25); }
+.art-warn    { background: rgba(245,165,36,.12); color: var(--warn); border: 1px solid rgba(245,165,36,.25); }
+.art-crit    { background: rgba(255,77,94,.12);  color: var(--crit); border: 1px solid rgba(255,77,94,.25); }
+.art-na      { background: var(--bg-inset); color: var(--text-dim);  border: 1px solid var(--border); }
+
+.rtt-badge   { background: rgba(46,230,166,.15); color: var(--ok);   border: 1px solid rgba(46,230,166,.25); }
+.rtt-warn    { background: rgba(245,165,36,.12); color: var(--warn); border: 1px solid rgba(245,165,36,.25); }
+.rtt-crit    { background: rgba(255,77,94,.12);  color: var(--crit); border: 1px solid rgba(255,77,94,.25); }
+
+.gauge-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gauge-center {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.gauge-val {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.gauge-sub {
+  font-size: .65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-top: .2rem;
+}
+
+.ip-mono {
+  font-family: var(--font-mono);
+  font-size: .83rem;
+  color: var(--accent);
+}
+
+.kpi-zw {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+}
+.kpi-zw-val {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+}
+.kpi-zw-label {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .9px;
+  color: var(--text-dim);
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  color: var(--text-dim);
+  font-size: .83rem;
+}
+
+.chart-title {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: .75rem;
+}
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button id="btn-refresh" class="btn btn-sm btn-outline-secondary" title="Rafraîchir">
+  <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Banner warning source=zeek ── -->
+<div id="flows-warning" class="alert d-flex align-items-center gap-2 mb-4 d-none"
+     style="background:rgba(245,165,36,.1);border-color:rgba(245,165,36,.3);color:var(--warn)">
+  <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+  <div id="flows-warning-msg" style="font-size:.85rem"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 1 — Flux réseau                             -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="flows-section-title"><i class="bi bi-diagram-3 me-2" style="color:var(--accent)"></i>Flux réseau <span class="ms-2" id="flows-source-badge"></span></h6>
+
+    <div class="row g-4">
+
+      <!-- Donut top 10 talkers (src) -->
+      <div class="col-12 col-lg-4">
+        <div class="chart-title">Top 10 sources (bytes)</div>
+        <div id="donut-src-wrap">
+          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+        </div>
+      </div>
+
+      <!-- Bar horizontal top ports -->
+      <div class="col-12 col-lg-4">
+        <div class="chart-title">Top 10 ports</div>
+        <div id="bar-ports-wrap">
+          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+        </div>
+      </div>
+
+      <!-- Ligne timeline 24h -->
+      <div class="col-12 col-lg-4">
+        <div class="chart-title">Volume 24h (bytes/heure)</div>
+        <div id="line-tl-wrap">
+          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 2 — Performance applicative (ART)          -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="flows-section-title"><i class="bi bi-speedometer me-2" style="color:var(--accent)"></i>Performance applicative — Application Response Time</h6>
+
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr style="font-size:.78rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.7px">
+          <th style="width:80px">Service</th>
+          <th>p50 (médian)</th>
+          <th>p95</th>
+          <th>p99</th>
+          <th class="text-end">Échantillons</th>
+          <th style="width:120px">Seuils</th>
+        </tr>
+      </thead>
+      <tbody id="art-tbody">
+        <tr>
+          <td colspan="6" class="text-center py-3">
+            <span class="text-muted" style="font-size:.83rem">
+              <i class="bi bi-hourglass-split me-2"></i>Chargement…
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="mt-2 d-flex flex-wrap gap-3" style="font-size:.72rem;color:var(--text-dim)">
+      <span><span class="art-badge art-ok">val</span> HTTP &lt;200 ms</span>
+      <span><span class="art-badge art-warn">val</span> HTTP 200–500 ms</span>
+      <span><span class="art-badge art-crit">val</span> HTTP &gt;500 ms</span>
+      <span class="ms-2"><span class="art-badge art-ok">val</span> DNS &lt;50 ms</span>
+      <span><span class="art-badge art-warn">val</span> DNS 50–200 ms</span>
+      <span><span class="art-badge art-crit">val</span> DNS &gt;200 ms</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 3 — Santé TCP                              -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="flows-section-title"><i class="bi bi-activity me-2" style="color:var(--accent)"></i>Santé TCP</h6>
+
+    <div class="row g-4">
+
+      <!-- Gauge RTT moyen -->
+      <div class="col-12 col-md-4 d-flex flex-column align-items-center">
+        <div class="chart-title w-100 text-center">RTT moyen</div>
+        <div class="gauge-wrap" style="width:200px">
+          <canvas id="gauge-rtt" width="200" height="160"></canvas>
+          <div class="gauge-center">
+            <div class="gauge-val" id="gauge-rtt-val">—</div>
+            <div class="gauge-sub">RTT moyen</div>
+          </div>
+        </div>
+        <div class="mt-2 text-center" style="font-size:.78rem;color:var(--text-muted)">
+          p95 : <span id="gauge-rtt-p95" class="font-monospace">—</span>
+        </div>
+        <div class="mt-3 d-flex flex-wrap justify-content-center gap-2" style="font-size:.71rem;color:var(--text-dim)">
+          <span style="color:var(--ok)"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>&lt;50 ms</span>
+          <span style="color:var(--warn)"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>50–150 ms</span>
+          <span style="color:var(--crit)"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>&gt;150 ms</span>
+        </div>
+      </div>
+
+      <!-- Top IPs retransmissions -->
+      <div class="col-12 col-md-5">
+        <div class="chart-title">Top IPs — retransmissions</div>
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr style="font-size:.75rem;color:var(--text-dim)">
+              <th>IP source</th>
+              <th>% retrans</th>
+              <th class="text-end">Connexions</th>
+            </tr>
+          </thead>
+          <tbody id="retrans-tbody">
+            <tr>
+              <td colspan="3" class="text-center py-2">
+                <span class="text-muted" style="font-size:.8rem">
+                  <i class="bi bi-hourglass-split me-2"></i>Chargement…
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="mt-2 d-flex flex-wrap gap-3" style="font-size:.71rem;color:var(--text-dim)">
+          <span style="color:var(--ok)"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>&lt;1 %</span>
+          <span style="color:var(--warn)"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>1–3 %</span>
+          <span style="color:var(--crit)"><i class="bi bi-circle-fill me-1" style="font-size:.5rem"></i>&gt;3 %</span>
+        </div>
+      </div>
+
+      <!-- Zero-windows -->
+      <div class="col-12 col-md-3 d-flex flex-column">
+        <div class="chart-title">Zero-windows</div>
+        <div class="kpi-zw flex-grow-1">
+          <i class="bi bi-pause-circle" style="font-size:2rem;color:var(--warn);opacity:.75"></i>
+          <div class="kpi-zw-val" id="zw-count">—</div>
+          <div class="kpi-zw-label">connexions TCP (24h)</div>
+          <div class="text-muted mt-1" style="font-size:.72rem">history contenant W ou w</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  'use strict';
+
+  /* ─── Palette de couleurs ─────────────────────────────── */
+  var COLORS = [
+    'rgba(34,211,238,.8)',  'rgba(94,231,251,.75)',  'rgba(56,189,248,.75)',
+    'rgba(129,140,248,.75)','rgba(167,139,250,.75)', 'rgba(232,121,249,.75)',
+    'rgba(251,191,36,.8)',  'rgba(52,211,153,.75)',  'rgba(248,113,113,.8)',
+    'rgba(251,146,60,.75)'
+  ];
+
+  var CHART_BASE = {
+    plugins: {
+      legend:  { display: false },
+      tooltip: {
+        backgroundColor: '#121b2b',
+        borderColor: '#1e2a3c',
+        borderWidth: 1,
+        titleColor: '#d6e0ec',
+        bodyColor:  '#7d8ba0',
+      }
+    }
+  };
+
+  /* ─── Helpers ─────────────────────────────────────────── */
+  function fmtBytes(b) {
+    if (!b || b === 0) return '0 B';
+    var u = ['B','KB','MB','GB','TB'];
+    var i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return b.toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+  }
+
+  function artBadge(ms, lo, hi) {
+    if (ms === null || ms === undefined)
+      return '<span class="art-badge art-na">N/A</span>';
+    var cls = ms < lo ? 'art-ok' : ms < hi ? 'art-warn' : 'art-crit';
+    return '<span class="art-badge ' + cls + '">' + ms.toFixed(1) + ' ms</span>';
+  }
+
+  function pctBadge(pct) {
+    var cls = pct < 1 ? 'art-ok' : pct < 3 ? 'art-warn' : 'art-crit';
+    return '<span class="art-badge ' + cls + '">' + pct.toFixed(1) + ' %</span>';
+  }
+
+  function rttColor(ms) {
+    if (ms === null || ms === undefined) return '#57647a';
+    return ms < 50 ? '#2ee6a6' : ms < 150 ? '#f5a524' : '#ff4d5e';
+  }
+
+  /* ─── Section 1 : Flux réseau ──────────────────────────── */
+  function loadFlows() {
+    fetch('/api/flows-stats')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        /* Warning banner */
+        if (d.warning) {
+          var el = document.getElementById('flows-warning');
+          document.getElementById('flows-warning-msg').textContent = d.warning;
+          el.classList.remove('d-none');
+        }
+
+        /* Source badge */
+        var srcBadge = document.getElementById('flows-source-badge');
+        if (d.source === 'netflow') {
+          srcBadge.innerHTML = '<span class="badge" style="background:rgba(46,230,166,.15);color:var(--ok);border:1px solid rgba(46,230,166,.25);font-size:.68rem">GoFlow2</span>';
+        } else if (d.source === 'zeek') {
+          srcBadge.innerHTML = '<span class="badge" style="background:rgba(245,165,36,.1);color:var(--warn);border:1px solid rgba(245,165,36,.25);font-size:.68rem">Zeek fallback</span>';
+        }
+
+        /* Donut top sources */
+        var srcLabels = (d.top_src || []).map(function (x) { return x.ip; });
+        var srcBytes  = (d.top_src || []).map(function (x) { return x.bytes; });
+        var donutWrap = document.getElementById('donut-src-wrap');
+        donutWrap.innerHTML = '<canvas id="donut-src" height="220"></canvas>';
+        if (srcLabels.length) {
+          new Chart(document.getElementById('donut-src'), {
+            type: 'doughnut',
+            data: {
+              labels: srcLabels,
+              datasets: [{ data: srcBytes, backgroundColor: COLORS, borderWidth: 1, borderColor: '#0a0e16' }]
+            },
+            options: Object.assign({}, CHART_BASE, {
+              plugins: Object.assign({}, CHART_BASE.plugins, {
+                legend: {
+                  display: true, position: 'right',
+                  labels: { font: { size: 10 }, color: '#7d8ba0', boxWidth: 10, padding: 8 }
+                },
+                tooltip: Object.assign({}, CHART_BASE.plugins.tooltip, {
+                  callbacks: { label: function (ctx) { return ' ' + fmtBytes(ctx.parsed); } }
+                })
+              })
+            })
+          });
+        } else {
+          donutWrap.innerHTML = '<div class="chart-loading text-muted"><i class="bi bi-inbox me-2"></i>Aucune donnée</div>';
+        }
+
+        /* Bar top ports */
+        var portLabels = (d.top_ports || []).map(function (x) { return x.port; });
+        var portBytes  = (d.top_ports || []).map(function (x) { return x.bytes; });
+        var barWrap = document.getElementById('bar-ports-wrap');
+        barWrap.innerHTML = '<canvas id="bar-ports" height="220"></canvas>';
+        if (portLabels.length) {
+          new Chart(document.getElementById('bar-ports'), {
+            type: 'bar',
+            data: {
+              labels: portLabels,
+              datasets: [{
+                label: 'Bytes',
+                data: portBytes,
+                backgroundColor: 'rgba(34,211,238,.45)',
+                borderColor:     'rgba(34,211,238,.8)',
+                borderWidth: 1,
+              }]
+            },
+            options: Object.assign({}, CHART_BASE, {
+              indexAxis: 'y',
+              scales: {
+                x: {
+                  grid:  { color: 'rgba(30,42,60,.7)' },
+                  ticks: { color: '#57647a', font: { size: 10 },
+                           callback: function (v) { return fmtBytes(v); } }
+                },
+                y: {
+                  grid:  { color: 'rgba(30,42,60,.5)' },
+                  ticks: { color: '#7d8ba0', font: { size: 10 } }
+                }
+              }
+            })
+          });
+        } else {
+          barWrap.innerHTML = '<div class="chart-loading text-muted"><i class="bi bi-inbox me-2"></i>Aucune donnée</div>';
+        }
+
+        /* Line timeline */
+        var tlLabels = (d.timeline || []).map(function (x) {
+          if (!x.t) return '';
+          return new Date(x.t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        });
+        var tlBytes = (d.timeline || []).map(function (x) { return x.bytes; });
+        var tlWrap = document.getElementById('line-tl-wrap');
+        tlWrap.innerHTML = '<canvas id="line-tl" height="220"></canvas>';
+        new Chart(document.getElementById('line-tl'), {
+          type: 'line',
+          data: {
+            labels: tlLabels,
+            datasets: [{
+              label: 'Bytes',
+              data: tlBytes,
+              fill: true,
+              tension: 0.3,
+              borderColor:      'rgba(34,211,238,.85)',
+              backgroundColor:  'rgba(34,211,238,.07)',
+              pointRadius: 2,
+              pointHoverRadius: 4,
+              borderWidth: 2,
+            }]
+          },
+          options: Object.assign({}, CHART_BASE, {
+            scales: {
+              x: {
+                grid:  { color: 'rgba(30,42,60,.7)' },
+                ticks: {
+                  color: '#57647a', font: { size: 9 },
+                  maxTicksLimit: 8, maxRotation: 0,
+                }
+              },
+              y: {
+                beginAtZero: true,
+                grid:  { color: 'rgba(30,42,60,.7)' },
+                ticks: {
+                  color: '#57647a', font: { size: 10 },
+                  callback: function (v) { return fmtBytes(v); }
+                }
+              }
+            }
+          })
+        });
+      })
+      .catch(function (err) {
+        console.error('flows-stats:', err);
+        ['donut-src-wrap','bar-ports-wrap','line-tl-wrap'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.innerHTML = '<div class="chart-loading text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Erreur</div>';
+        });
+      });
+  }
+
+  /* ─── Section 2 : ART ───────────────────────────────────── */
+  function loadART() {
+    fetch('/api/art-stats')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        var rows = [
+          { key: 'http', label: 'HTTP',  lo: 200,  hi: 500,  hint: '&lt;200 / 200–500 / &gt;500 ms' },
+          { key: 'dns',  label: 'DNS',   lo: 50,   hi: 200,  hint: '&lt;50 / 50–200 / &gt;200 ms' },
+          { key: 'tls',  label: 'TLS',   lo: 200,  hi: 500,  hint: '&lt;200 / 200–500 / &gt;500 ms' },
+        ];
+        var html = rows.map(function (row) {
+          var svc = d[row.key] || {};
+          return '<tr>'
+            + '<td><span class="badge" style="background:var(--accent-soft);color:var(--accent);font-size:.75rem">'
+            +   row.label + '</span></td>'
+            + '<td>' + artBadge(svc.p50, row.lo, row.hi) + '</td>'
+            + '<td>' + artBadge(svc.p95, row.lo, row.hi) + '</td>'
+            + '<td>' + artBadge(svc.p99, row.lo, row.hi) + '</td>'
+            + '<td class="text-end text-muted" style="font-size:.8rem;font-family:var(--font-mono)">'
+            +   (svc.count || 0).toLocaleString('fr-FR') + '</td>'
+            + '<td style="font-size:.68rem;color:var(--text-dim)">' + row.hint + '</td>'
+            + '</tr>';
+        }).join('');
+        document.getElementById('art-tbody').innerHTML = html;
+      })
+      .catch(function (err) {
+        console.error('art-stats:', err);
+        document.getElementById('art-tbody').innerHTML =
+          '<tr><td colspan="6" class="text-center text-danger py-2" style="font-size:.83rem">'
+          + '<i class="bi bi-exclamation-triangle me-2"></i>Erreur chargement ART</td></tr>';
+      });
+  }
+
+  /* ─── Section 3 : TCP perf ──────────────────────────────── */
+  function loadTCP() {
+    fetch('/api/tcp-perf')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        /* ── Gauge RTT ── */
+        var avgMs = d.avg_rtt_ms;
+        var p95Ms = d.p95_rtt_ms;
+        var gaugeMax = 500;
+        var gaugeVal = avgMs !== null && avgMs !== undefined
+          ? Math.min(parseFloat(avgMs), gaugeMax) : 0;
+        var col = rttColor(avgMs);
+
+        document.getElementById('gauge-rtt-val').textContent =
+          avgMs !== null && avgMs !== undefined ? avgMs.toFixed(1) + ' ms' : '—';
+        document.getElementById('gauge-rtt-val').style.color = col;
+        document.getElementById('gauge-rtt-p95').textContent =
+          p95Ms !== null && p95Ms !== undefined ? p95Ms.toFixed(1) + ' ms' : '—';
+
+        new Chart(document.getElementById('gauge-rtt'), {
+          type: 'doughnut',
+          data: {
+            datasets: [{
+              data: [gaugeVal, gaugeMax - gaugeVal],
+              backgroundColor: [col, 'rgba(26,35,50,.7)'],
+              borderWidth: 0,
+            }]
+          },
+          options: {
+            cutout: '72%',
+            circumference: 270,
+            rotation: 135,
+            responsive: false,
+            plugins: {
+              legend:  { display: false },
+              tooltip: { enabled: false },
+            }
+          }
+        });
+
+        /* ── Retransmission IPs ── */
+        var ips = d.top_retransmit_ips || [];
+        var tbody = document.getElementById('retrans-tbody');
+        if (!ips.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="3" class="text-center py-2 text-muted" style="font-size:.8rem">'
+            + '<i class="bi bi-check-circle me-1" style="color:var(--ok)"></i>'
+            + 'Aucune retransmission détectée</td></tr>';
+        } else {
+          tbody.innerHTML = ips.map(function (ip) {
+            return '<tr>'
+              + '<td><a href="/ip/' + ip.ip + '" class="ip-mono">' + ip.ip + '</a></td>'
+              + '<td>' + pctBadge(ip.retransmit_pct) + '</td>'
+              + '<td class="text-end text-muted" style="font-size:.8rem;font-family:var(--font-mono)">'
+              +   ip.count.toLocaleString('fr-FR') + '</td>'
+              + '</tr>';
+          }).join('');
+        }
+
+        /* ── Zero-windows ── */
+        var zw = d.zero_windows_count || 0;
+        var zwEl = document.getElementById('zw-count');
+        zwEl.textContent = zw.toLocaleString('fr-FR');
+        zwEl.style.color = zw > 1000 ? 'var(--crit)' : zw > 100 ? 'var(--warn)' : 'var(--text-strong)';
+      })
+      .catch(function (err) {
+        console.error('tcp-perf:', err);
+        document.getElementById('retrans-tbody').innerHTML =
+          '<tr><td colspan="3" class="text-center text-danger py-2" style="font-size:.8rem">'
+          + '<i class="bi bi-exclamation-triangle me-2"></i>Erreur chargement</td></tr>';
+        document.getElementById('zw-count').textContent = '?';
+      });
+  }
+
+  /* ─── Init + Refresh ────────────────────────────────────── */
+  function loadAll() {
+    loadFlows();
+    loadART();
+    loadTCP();
+  }
+
+  loadAll();
+
+  document.getElementById('btn-refresh').addEventListener('click', function () {
+    /* Reset loading states */
+    ['donut-src-wrap','bar-ports-wrap','line-tl-wrap'].forEach(function (id) {
+      document.getElementById(id).innerHTML =
+        '<div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>';
+    });
+    document.getElementById('art-tbody').innerHTML =
+      '<tr><td colspan="6" class="text-center py-3 text-muted" style="font-size:.83rem">'
+      + '<i class="bi bi-hourglass-split me-2"></i>Chargement…</td></tr>';
+    document.getElementById('retrans-tbody').innerHTML =
+      '<tr><td colspan="3" class="text-center py-2 text-muted" style="font-size:.8rem">'
+      + '<i class="bi bi-hourglass-split me-2"></i>Chargement…</td></tr>';
+    document.getElementById('zw-count').textContent = '—';
+    document.getElementById('gauge-rtt-val').textContent = '—';
+    document.getElementById('gauge-rtt-p95').textContent = '—';
+    document.getElementById('flows-warning').classList.add('d-none');
+    Chart.getChart('gauge-rtt') && Chart.getChart('gauge-rtt').destroy();
+    loadAll();
+  });
+
+})();
+</script>
+{% endblock %}

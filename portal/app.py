@@ -1257,6 +1257,47 @@ def api_catalog():
     return jsonify(load_catalog())
 
 
+# ---------------------------------------------------------------------------
+# Flows — T_019
+# ---------------------------------------------------------------------------
+
+@app.route("/flows")
+@login_required
+def flows():
+    """Page analyse des flux réseau — top talkers, ART, TCP health."""
+    return render_template("flows.html")
+
+
+@app.route("/api/flows-stats")
+@login_required
+def api_flows_stats():
+    """Top talkers, top ports, timeline 24h (netflow-* ou zeek-* fallback)."""
+    data, error = es_client.get_flows_stats()
+    if error and not data.get("source"):
+        return jsonify({"error": error}), 503
+    return jsonify(data)
+
+
+@app.route("/api/art-stats")
+@login_required
+def api_art_stats():
+    """ART p50/p95/p99 par service HTTP/DNS/TLS."""
+    data, error = es_client.get_art_stats()
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify(data)
+
+
+@app.route("/api/tcp-perf")
+@login_required
+def api_tcp_perf():
+    """Métriques santé TCP : RTT, retransmissions, zero-windows."""
+    data, error = es_client.get_tcp_perf()
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify(data)
+
+
 # ============================================================
 # Erreurs HTTP
 # ============================================================

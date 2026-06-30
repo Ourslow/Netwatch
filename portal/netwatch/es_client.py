@@ -17,6 +17,7 @@ Structure normalisée :
   }
 """
 
+import math
 import re
 import requests
 from datetime import datetime, timezone
@@ -911,3 +912,484 @@ def get_weird_events(size=50):
         return [], "Elasticsearch non joignable"
     except Exception as e:
         return [], str(e)[:120]
+
+
+# ------------------------------------------------------------------ #
+# Flows — T_019                                                        #
+# ------------------------------------------------------------------ #
+
+def _index_exists(pattern):
+    """Retourne True si le pattern d'index contient au moins un document."""
+    try:
+        r = _es(f"/{pattern}/_count", method="get")
+        if r.status_code in (400, 404):
+            return False
+        r.raise_for_status()
+        return r.json().get("count", 0) > 0
+    except Exception:
+        return False
+
+
+def get_flows_stats():
+    """
+    Top talkers (src/dst), top proto/ports, timeline 24h.
+    Utilise netflow-* si disponible, sinon zeek-* conn.log.
+    Retourne (data: dict, error: str|None).
+    """
+    _empty = {
+        "top_src": [], "top_dst": [], "top_ports": [], "timeline": [],
+        "source": "unknown", "warning": "index introuvable",
+    }
+
+    # ── 1. Essayer netflow-* (GoFlow2) ──
+    if _index_exists("netflow-*"):
+        body = {
+            "size": 0,
+            "query": {"range": {"@timestamp": {"gte": "now-24h"}}},
+            "aggs": {
+                "top_src": {
+                    "terms": {"field": "src_addr", "size": 10},
+                    "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
+                },
+                "top_dst": {
+                    "terms": {"field": "dst_addr", "size": 10},
+                    "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
+                },
+                "top_ports": {
+                    "terms": {
+                        "script": {
+                            "source": (
+                                "def p = doc.containsKey('proto') && doc['proto'].size()>0"
+                                " ? String.valueOf(doc['proto'].value) : '?';"
+                                " def d = doc.containsKey('dst_port') && doc['dst_port'].size()>0"
+                                " ? String.valueOf((long)doc['dst_port'].value) : '?';"
+                                " return p+'/'+d"
+                            ),
+                            "lang": "painless",
+                        },
+                        "size": 10,
+                    },
+                    "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
+                },
+                "timeline": {
+                    "date_histogram": {
+                        "field": "@timestamp",
+                        "fixed_interval": "1h",
+                        "min_doc_count": 0,
+                        "extended_bounds": {"min": "now-24h", "max": "now"},
+                    },
+                    "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
+                },
+            },
+        }
+        try:
+            r = _es("/netflow-*/_search", body)
+            r.raise_for_status()
+            aggs = r.json().get("aggregations", {})
+
+            def _nf(b):
+                return {"ip": b["key"],
+                        "bytes": int(b.get("bytes", {}).get("value") or 0),
+                        "count": b["doc_count"]}
+
+            return {
+                "source": "netflow",
+                "top_src":  [_nf(b) for b in aggs.get("top_src",  {}).get("buckets", [])],
+                "top_dst":  [_nf(b) for b in aggs.get("top_dst",  {}).get("buckets", [])],
+                "top_ports": [
+                    {"port": b["key"],
+                     "bytes": int(b.get("bytes", {}).get("value") or 0),
+                     "count": b["doc_count"]}
+                    for b in aggs.get("top_ports", {}).get("buckets", [])
+                ],
+                "timeline": [
+                    {"t": b.get("key_as_string", ""),
+                     "bytes": int(b.get("bytes", {}).get("value") or 0)}
+                    for b in aggs.get("timeline", {}).get("buckets", [])
+                ],
+            }, None
+        except requests.exceptions.ConnectionError:
+            return {**_empty, "warning": "Elasticsearch non joignable"}, "Elasticsearch non joignable"
+        except Exception:
+            pass  # Fall through to Zeek
+
+    # ── 2. Fallback zeek-* conn.log ──
+    body_z = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [
+                    {"range": {"@timestamp": {"gte": "now-24h"}}},
+                    {"term":  {"_path": "conn"}},
+                ]
+            }
+        },
+        "aggs": {
+            "top_src": {
+                "terms": {"field": "id.orig_h", "size": 10},
+                "aggs": {
+                    "ob": {"sum": {"field": "orig_bytes"}},
+                    "rb": {"sum": {"field": "resp_bytes"}},
+                },
+            },
+            "top_dst": {
+                "terms": {"field": "id.resp_h", "size": 10},
+                "aggs": {
+                    "ob": {"sum": {"field": "orig_bytes"}},
+                    "rb": {"sum": {"field": "resp_bytes"}},
+                },
+            },
+            "top_ports": {
+                "terms": {
+                    "script": {
+                        "source": (
+                            "def p = doc.containsKey('proto') && doc['proto'].size()>0"
+                            " ? doc['proto'].value : '?';"
+                            " def d = doc.containsKey('id.resp_p') && doc['id.resp_p'].size()>0"
+                            " ? String.valueOf((long)doc['id.resp_p'].value) : '?';"
+                            " return p+'/'+d"
+                        ),
+                        "lang": "painless",
+                    },
+                    "size": 10,
+                },
+                "aggs": {
+                    "ob": {"sum": {"field": "orig_bytes"}},
+                    "rb": {"sum": {"field": "resp_bytes"}},
+                },
+            },
+            "timeline": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "fixed_interval": "1h",
+                    "min_doc_count": 0,
+                    "extended_bounds": {"min": "now-24h", "max": "now"},
+                },
+                "aggs": {
+                    "ob": {"sum": {"field": "orig_bytes"}},
+                    "rb": {"sum": {"field": "resp_bytes"}},
+                },
+            },
+        },
+    }
+
+    try:
+        r = _es("/zeek-*/_search", body_z)
+        r.raise_for_status()
+        aggs = r.json().get("aggregations", {})
+
+        def _sb(b):
+            return (int(b.get("ob", {}).get("value") or 0)
+                    + int(b.get("rb", {}).get("value") or 0))
+
+        return {
+            "source": "zeek",
+            "warning": "GoFlow2 non connecté — données issues de Zeek conn.log",
+            "top_src": [
+                {"ip": b["key"], "bytes": _sb(b), "count": b["doc_count"]}
+                for b in aggs.get("top_src", {}).get("buckets", [])
+            ],
+            "top_dst": [
+                {"ip": b["key"], "bytes": _sb(b), "count": b["doc_count"]}
+                for b in aggs.get("top_dst", {}).get("buckets", [])
+            ],
+            "top_ports": [
+                {"port": b["key"], "bytes": _sb(b), "count": b["doc_count"]}
+                for b in aggs.get("top_ports", {}).get("buckets", [])
+            ],
+            "timeline": [
+                {"t": b.get("key_as_string", ""), "bytes": _sb(b)}
+                for b in aggs.get("timeline", {}).get("buckets", [])
+            ],
+        }, None
+
+    except requests.exceptions.ConnectionError:
+        return {**_empty, "warning": "Elasticsearch non joignable"}, "Elasticsearch non joignable"
+    except Exception as e:
+        return _empty, str(e)[:120]
+
+
+def get_art_stats():
+    """
+    Application Response Time p50/p95/p99 par service (http/dns/tls).
+    Essaie art.log → fallback conn.log (HTTP/TLS) et dns.log (RTT DNS natif).
+    Retourne (data: dict, error: str|None).
+    """
+    _svc0 = {"p50": None, "p95": None, "p99": None, "count": 0}
+    result = {"http": dict(_svc0), "dns": dict(_svc0), "tls": dict(_svc0)}
+
+    def _ms(v):
+        """Float secondes → ms arrondi, ou None si absent/NaN."""
+        if v is None:
+            return None
+        try:
+            f = float(v)
+            return None if math.isnan(f) else round(f * 1000, 1)
+        except (TypeError, ValueError):
+            return None
+
+    def _ms_direct(v):
+        """Float déjà en ms → arrondi, ou None si absent/NaN."""
+        if v is None:
+            return None
+        try:
+            f = float(v)
+            return None if math.isnan(f) else round(f, 1)
+        except (TypeError, ValueError):
+            return None
+
+    # ── 1. Vérifier si art.log est indexé ──
+    art_field = None
+    svc_field = None
+    try:
+        r_chk = _es("/zeek-*/_search", {
+            "size": 1,
+            "query": {
+                "bool": {
+                    "should": [
+                        {"term":   {"_path": "art"}},
+                        {"exists": {"field": "art.art_ms"}},
+                        {"exists": {"field": "art_ms"}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
+            "_source": ["art.art_ms", "art_ms", "art.service", "service"],
+        })
+        if r_chk.status_code == 200:
+            data_chk = r_chk.json()
+            if data_chk.get("hits", {}).get("total", {}).get("value", 0) > 0:
+                src = (data_chk.get("hits", {}).get("hits", [{}])[0]).get("_source", {})
+                if src.get("art", {}).get("art_ms") is not None:
+                    art_field = "art.art_ms"
+                    svc_field = "art.service"
+                elif "art_ms" in src:
+                    art_field = "art_ms"
+                    svc_field = "service"
+    except Exception:
+        pass
+
+    if art_field:
+        try:
+            r_art = _es("/zeek-*/_search", {
+                "size": 0,
+                "query": {
+                    "bool": {
+                        "should": [
+                            {"term": {"_path": "art"}},
+                            {"exists": {"field": art_field}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                },
+                "aggs": {
+                    "by_svc": {
+                        "terms": {"field": svc_field, "size": 10},
+                        "aggs": {
+                            "pct": {
+                                "percentiles": {
+                                    "field": art_field,
+                                    "percents": [50, 95, 99],
+                                }
+                            },
+                            "cnt": {"value_count": {"field": art_field}},
+                        },
+                    }
+                },
+            })
+            r_art.raise_for_status()
+            for b in (r_art.json().get("aggregations", {})
+                                   .get("by_svc", {}).get("buckets", [])):
+                svc = b["key"].lower()
+                if svc not in result:
+                    continue
+                pts = b.get("pct", {}).get("values", {})
+                result[svc] = {
+                    "p50":   _ms_direct(pts.get("50.0")),
+                    "p95":   _ms_direct(pts.get("95.0")),
+                    "p99":   _ms_direct(pts.get("99.0")),
+                    "count": int(b.get("cnt", {}).get("value") or 0),
+                }
+            return result, None
+        except Exception:
+            pass
+
+    # ── 2. DNS rtt natif du dns.log Zeek ──
+    try:
+        r_dns = _es("/zeek-*/_search", {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"range": {"@timestamp": {"gte": "now-24h"}}},
+                        {"term":  {"_path": "dns"}},
+                        {"exists": {"field": "rtt"}},
+                    ]
+                }
+            },
+            "aggs": {
+                "pct": {"percentiles": {"field": "rtt", "percents": [50, 95, 99]}},
+                "cnt": {"value_count": {"field": "rtt"}},
+            },
+        })
+        if r_dns.status_code == 200:
+            aggs = r_dns.json().get("aggregations", {})
+            pts  = aggs.get("pct", {}).get("values", {})
+            cnt  = int(aggs.get("cnt", {}).get("value") or 0)
+            if cnt > 0:
+                result["dns"] = {
+                    "p50":   _ms(pts.get("50.0")),
+                    "p95":   _ms(pts.get("95.0")),
+                    "p99":   _ms(pts.get("99.0")),
+                    "count": cnt,
+                }
+    except Exception:
+        pass
+
+    # ── 3. HTTP & TLS : durée conn.log par service ──
+    for svc_key, extra_filter in [
+        ("http", [{"term": {"service": "http"}}]),
+        ("tls",  [{
+            "bool": {
+                "should": [
+                    {"term": {"service": "ssl"}},
+                    {"term": {"service": "tls"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        }]),
+    ]:
+        try:
+            r_svc = _es("/zeek-*/_search", {
+                "size": 0,
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"range": {"@timestamp": {"gte": "now-24h"}}},
+                            {"term":  {"_path": "conn"}},
+                            {"exists": {"field": "duration"}},
+                        ] + extra_filter,
+                    }
+                },
+                "aggs": {
+                    "pct": {"percentiles": {"field": "duration", "percents": [50, 95, 99]}},
+                    "cnt": {"value_count": {"field": "duration"}},
+                },
+            })
+            if r_svc.status_code == 200:
+                aggs = r_svc.json().get("aggregations", {})
+                pts  = aggs.get("pct", {}).get("values", {})
+                cnt  = int(aggs.get("cnt", {}).get("value") or 0)
+                if cnt > 0:
+                    result[svc_key] = {
+                        "p50":   _ms(pts.get("50.0")),
+                        "p95":   _ms(pts.get("95.0")),
+                        "p99":   _ms(pts.get("99.0")),
+                        "count": cnt,
+                    }
+        except Exception:
+            pass
+
+    return result, None
+
+
+def get_tcp_perf():
+    """
+    Métriques de santé TCP depuis zeek-* conn.log (24h).
+    RTT depuis conn.rtt (Zeek 6+), retransmissions via history,
+    zero-windows via history.
+    Retourne (data: dict, error: str|None).
+    """
+    result = {
+        "avg_rtt_ms": None,
+        "p95_rtt_ms": None,
+        "top_retransmit_ips": [],
+        "zero_windows_count": 0,
+    }
+
+    base = [
+        {"range": {"@timestamp": {"gte": "now-24h"}}},
+        {"term": {"_path": "conn"}},
+        {"term": {"proto": "tcp"}},
+    ]
+
+    # ── RTT ──
+    try:
+        r_rtt = _es("/zeek-*/_search", {
+            "size": 0,
+            "query": {"bool": {"filter": base + [{"exists": {"field": "rtt"}}]}},
+            "aggs": {
+                "avg": {"avg": {"field": "rtt"}},
+                "pct": {"percentiles": {"field": "rtt", "percents": [95]}},
+                "cnt": {"value_count": {"field": "rtt"}},
+            },
+        })
+        if r_rtt.status_code == 200:
+            aggs = r_rtt.json().get("aggregations", {})
+            cnt  = int(aggs.get("cnt", {}).get("value") or 0)
+            avg  = aggs.get("avg", {}).get("value")
+            p95  = aggs.get("pct", {}).get("values", {}).get("95.0")
+            if cnt > 0:
+                if avg is not None and not math.isnan(float(avg)):
+                    result["avg_rtt_ms"] = round(float(avg) * 1000, 2)
+                if p95 is not None and not math.isnan(float(p95)):
+                    result["p95_rtt_ms"] = round(float(p95) * 1000, 2)
+    except Exception:
+        pass
+
+    # ── Top IPs par retransmissions (history contient T ou t) ──
+    try:
+        r_tot = _es("/zeek-*/_search", {
+            "size": 0,
+            "query": {"bool": {"filter": base}},
+            "aggs": {"per_ip": {"terms": {"field": "id.orig_h", "size": 100}}},
+        })
+        total_per_ip = {}
+        if r_tot.status_code == 200:
+            for b in (r_tot.json().get("aggregations", {})
+                                   .get("per_ip", {}).get("buckets", [])):
+                total_per_ip[b["key"]] = b["doc_count"]
+
+        r_rt = _es("/zeek-*/_search", {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": base,
+                    "must": [{"regexp": {"history.keyword": ".*[Tt].*"}}],
+                }
+            },
+            "aggs": {"per_ip": {"terms": {"field": "id.orig_h", "size": 10}}},
+        })
+        if r_rt.status_code == 200:
+            rows = []
+            for b in (r_rt.json().get("aggregations", {})
+                                   .get("per_ip", {}).get("buckets", [])):
+                ip  = b["key"]
+                cnt = b["doc_count"]
+                tot = total_per_ip.get(ip, cnt)
+                pct = round(cnt / tot * 100, 2) if tot > 0 else 0.0
+                rows.append({"ip": ip, "retransmit_pct": pct, "count": cnt})
+            rows.sort(key=lambda x: x["retransmit_pct"], reverse=True)
+            result["top_retransmit_ips"] = rows[:10]
+    except Exception:
+        pass
+
+    # ── Zero-windows (history contient W ou w) ──
+    try:
+        r_zw = _es("/zeek-*/_search", {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": base,
+                    "must": [{"regexp": {"history.keyword": ".*[Ww].*"}}],
+                }
+            },
+        })
+        if r_zw.status_code == 200:
+            result["zero_windows_count"] = int(
+                r_zw.json().get("hits", {}).get("total", {}).get("value", 0)
+            )
+    except Exception:
+        pass
+
+    return result, None
