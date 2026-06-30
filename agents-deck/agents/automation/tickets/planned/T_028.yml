@@ -1,0 +1,25 @@
+id: T_028
+title: "Intégration ITSM : ServiceNow + JIRA via n8n"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: planned
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/itsm-sync.py : CLI de sync tickets NetWatch → ITSM"
+  - "Lit tous les agents-deck/agents/*/tickets/drafts/*.yml"
+  - "Anti-doublon : skip si itsm_id: déjà présent dans le YAML"
+  - "ITSM_BACKEND=servicenow : POST /api/now/table/incident (Basic auth)"
+  - "Mapping SNOW : title→short_description, severity→urgency(1-4), category, description"
+  - "Après succès SNOW : ajoute itsm_id: INCxxxxxxx dans le YAML"
+  - "ITSM_BACKEND=jira : POST /rest/api/3/issue (Basic auth JIRA_USER:JIRA_TOKEN)"
+  - "Mapping JIRA : title→summary, severity→priority, category→labels"
+  - "Après succès JIRA : ajoute itsm_id: NOC-42 dans le YAML"
+  - "ITSM_BACKEND=none : liste les tickets en attente sans action"
+  - "CLI : python3 itsm-sync.py [--dry-run] [--verbose] [--backend servicenow|jira|none]"
+  - "Note sécurité : credentials masqués par *** dans les logs verbose"
+  - "scripts/automation/n8n-servicenow.json : Schedule 10min → Execute → Parse INC\\d+ → IF créés → Teams card"
+  - "scripts/automation/n8n-jira.json : même structure → Parse [A-Z]+-\\d+ → Teams card projet"
+  - ".env.example : variables ITSM_BACKEND + SNOW_* + JIRA_* ajoutées"
+  - "docs/itsm-setup.md : ServiceNow (user API + rôle itil + curl test) + JIRA (API token + curl test) + n8n (import workflows)"

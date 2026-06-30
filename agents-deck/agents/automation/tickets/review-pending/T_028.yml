@@ -1,0 +1,97 @@
+id: T_028
+title: "Intégration ITSM : ServiceNow + JIRA via n8n"
+agent: Automation-agent
+phase: 3
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+acceptance:
+  - "scripts/automation/itsm-sync.py : CLI de sync tickets NetWatch → ITSM — DONE"
+  - "Lit tous les agents-deck/agents/*/tickets/drafts/*.yml — DONE"
+  - "Anti-doublon : skip si itsm_id: déjà présent dans le YAML — DONE"
+  - "ITSM_BACKEND=servicenow : POST /api/now/table/incident (Basic auth SNOW_USER:SNOW_PASSWORD) — DONE"
+  - "Mapping SNOW : title→short_description, severity(crit→1/high→2/med→3/low→4)→urgency, category, acceptance→description — DONE"
+  - "Après succès SNOW : ajoute itsm_id: INCxxxxxxx dans le YAML — DONE"
+  - "ITSM_BACKEND=jira : POST /rest/api/3/issue (Basic auth JIRA_USER:JIRA_TOKEN) — DONE"
+  - "Mapping JIRA : title→summary, severity→priority(Critical/High/Medium/Low), category→labels[0] — DONE"
+  - "Après succès JIRA : ajoute itsm_id: NOC-42 dans le YAML — DONE"
+  - "ITSM_BACKEND=none : liste les tickets en attente sans action — DONE"
+  - "CLI : python3 itsm-sync.py [--dry-run] [--verbose] [--backend servicenow|jira|none] — DONE"
+  - "Note sécurité : credentials masqués auth=user:*** dans les logs verbose — DONE"
+  - "scripts/automation/n8n-servicenow.json : Schedule 10min → Execute → Code parse INC\\d+ → IF hasCreated → Teams Adaptive Card — DONE"
+  - "scripts/automation/n8n-jira.json : même structure → parse [A-Z]+-\\d+ → Teams card avec projet — DONE"
+  - ".env.example : variables ITSM_BACKEND + SNOW_* + JIRA_* ajoutées — DONE"
+  - "docs/itsm-setup.md : ServiceNow (user API + rôle itil + curl test) + JIRA (API token atlassian.com + curl test) + n8n (import workflows + dry-run) — DONE"
+delivery:
+  summary: |
+    Livraison complète T_028 : intégration ITSM ServiceNow + JIRA via n8n.
+
+    itsm-sync.py : script Python ~280 lignes (stdlib pur, 0 dépendance externe).
+    Découverte automatique des drafts sous agents-deck/agents/*/tickets/drafts/*.yml.
+    Anti-doublon par présence du champ itsm_id: dans le YAML — skip immédiat.
+    Parser YAML interne minimal (pas de PyYAML requis) : parse les champs plats et
+    un niveau de nesting (bloc context:).
+
+    ServiceNow : POST /api/now/table/incident Basic auth.
+    Mapping : title→short_description, priority→urgency(1-4), category, lignes
+    acceptance: concaténées → description. Après création : insertion de
+    `itsm_id: "INC0012345"` après la ligne id: du YAML source.
+
+    JIRA : POST /rest/api/3/issue Basic auth (user:token).
+    Mapping : title→summary, priority→priority(Critical/High/Medium/Low),
+    category→labels[0], acceptance→description ADF (doc v1 paragraph).
+    Après création : insertion `itsm_id: "NOC-42"`.
+
+    Mode none : listing tabulaire des tickets en attente (severity, id, category, title).
+
+    --verbose : tous les appels HTTP loggés avec auth=user:*** (password masqué).
+    --dry-run : simule sans appel réseau ni modification YAML.
+    --backend : override de ITSM_BACKEND env.
+
+    n8n-servicenow.json : 6 nœuds. Schedule 10min → Execute Command (echo EXIT:$?) →
+    Code JS parse (regex INC\d+, compteurs créés/echecs/skippés depuis résumé stdout) →
+    IF hasCreated → Code JS build Adaptive Card → HTTP POST Teams.
+    UUIDs e7f8a9b0-000N.
+
+    n8n-jira.json : même structure. Regex \b([A-Z][A-Z0-9]+-\d+)\b pour capturer
+    les clés JIRA (NOC-42, NETWATCH-7, etc.). Extraction projectKey depuis la première
+    clé pour le titre de la Teams card "X issues créées dans JIRA [NOC]".
+    UUIDs f8a9b0c1-000N.
+
+    .env.example : bloc ITSM ajouté en fin de fichier (ITSM_BACKEND=none + SNOW_* + JIRA_*).
+
+    docs/itsm-setup.md : guide complet ServiceNow (créer user netwatch-api, rôle itil,
+    curl test), JIRA (API token atlassian.com, curl test ADF), n8n (import workflows,
+    variable TEAMS_WEBHOOK_URL, dry-run local).
+  technical: |
+    - scripts/automation/itsm-sync.py :
+      • _load_dotenv() : tentative import dotenv, fallback lecture manuelle .env
+      • _parse_yaml_simple(text) : parser YAML maison, gère indent 0 et 1 niveau
+      • read_ticket(path) : lit + parse, ajoute _path et _raw dans le dict
+      • write_itsm_id(path, itsm_id) : insert après la ligne id: (pas d'écrasement)
+      • _http_request(method, url, payload, user, pass, verbose) : urllib stdlib,
+        Basic auth base64, timeout 30s, gère HTTPError + URLError, log auth=user:***
+      • _snow_push : url = https://{instance}.service-now.com/api/now/table/incident
+        urgency = SEVERITY_MAP_SNOW[severity], impact = urgency (miroir)
+      • _jira_push : url = {JIRA_URL}/rest/api/3/issue
+        description ADF doc v1 paragraph (compatible JIRA Cloud REST API v3)
+        labels = [category, "netwatch"]
+      • find_drafts() : glob agents-deck/agents/*/tickets/drafts/*.yml
+      • main() : --backend override > ITSM_BACKEND env > "none"
+        boucle tickets → push → write_itsm_id → print "OK/ECHEC/DRY-RUN"
+    - scripts/automation/n8n-servicenow.json :
+      • UUIDs e7f8a9b0-0001 à e7f8a9b0-0006
+      • Schedule : minutesInterval=10
+      • Execute : command avec echo EXIT:$? en fin
+      • Code parse : incMatches = [...stdout.matchAll(/INC\d+/g)], Set pour dédup
+        createdMatch /Créés\s*:\s*(\d+)/ depuis résumé stdout
+      • IF : hasCreated===true (boolean strict)
+      • Build card : FactSet {Créés, Echecs, Skippés, INC} + Action.OpenUrl
+    - scripts/automation/n8n-jira.json :
+      • UUIDs f8a9b0c1-0001 à f8a9b0c1-0006
+      • Même structure que servicenow
+      • jiraKeyPattern = /\b([A-Z][A-Z0-9]+-\d+)\b/g (couvre NOC-42, NETWATCH-7)
+      • projectKey extrait depuis jiraKeys[0].split('-')[0]
+      • Teams card : "X issue(s) créée(s) dans JIRA [NOC]"
+  delivered_at: "2026-06-30T18:00:00Z"

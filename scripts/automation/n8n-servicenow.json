@@ -1,0 +1,134 @@
+{
+  "name": "NetWatch ITSM Sync — ServiceNow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "e7f8a9b0-0001-0001-0001-000000000001",
+      "name": "Toutes les 10 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "python3 /home/ourslow/code/netwatch/scripts/automation/itsm-sync.py --backend servicenow --verbose 2>&1; echo \"EXIT:$?\""
+      },
+      "id": "e7f8a9b0-0002-0002-0002-000000000002",
+      "name": "Exécuter itsm-sync.py (ServiceNow)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parser la sortie de itsm-sync.py --backend servicenow\nconst stdout = $input.item.json.stdout || '';\nconst exitCode = $input.item.json.exitCode ?? 0;\n\n// Extraire le vrai code de sortie\nlet realExit = exitCode;\nconst exitMatch = stdout.match(/EXIT:(\\d+)/);\nif (exitMatch) realExit = parseInt(exitMatch[1]);\n\n// Extraire les numéros INC créés : 'CREE [servicenow] T_xxx → INC0012345'\nconst incMatches = [...stdout.matchAll(/INC\\d+/g)];\nconst incNumbers = [...new Set(incMatches.map(m => m[0]))];\n\n// Extraire le nombre de tickets créés depuis le résumé\nconst createdMatch = stdout.match(/Créés\\s*:\\s*(\\d+)/);\nconst failedMatch  = stdout.match(/Echecs\\s*:\\s*(\\d+)/);\nconst skippedMatch = stdout.match(/Skippés\\s*:\\s*(\\d+)/);\n\nconst createdCount = createdMatch ? parseInt(createdMatch[1]) : incNumbers.length;\nconst failedCount  = failedMatch  ? parseInt(failedMatch[1])  : 0;\nconst skippedCount = skippedMatch ? parseInt(skippedMatch[1]) : 0;\n\nconsole.log(`[snow-sync] exit=${realExit} | créés=${createdCount} | echecs=${failedCount} | skippés=${skippedCount}`);\nconsole.log(`[snow-sync] INC créés: ${incNumbers.join(', ') || 'aucun'}`);\n\nreturn [{\n  json: {\n    stdout,\n    exitCode: realExit,\n    createdCount,\n    failedCount,\n    skippedCount,\n    incNumbers,\n    hasCreated: createdCount > 0,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "e7f8a9b0-0003-0003-0003-000000000003",
+      "name": "Parser la sortie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-created",
+              "leftValue": "={{ $json.hasCreated }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e7f8a9b0-0004-0004-0004-000000000004",
+      "name": "Incidents créés ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construire la carte Teams pour ServiceNow\nconst {\n  createdCount, failedCount, skippedCount, incNumbers, timestamp\n} = $input.item.json;\n\nconst dateStr = new Date(timestamp).toLocaleString('fr-FR', {\n  timeZone: 'Europe/Paris',\n  dateStyle: 'short',\n  timeStyle: 'short'\n});\n\n// Liste des INC créés (max 10)\nconst incList = incNumbers.slice(0, 10).join(', ');\nconst incMore = incNumbers.length > 10 ? ` (+${incNumbers.length - 10} autres)` : '';\n\nconst payload = {\n  type: 'message',\n  attachments: [{\n    contentType: 'application/vnd.microsoft.card.adaptive',\n    content: {\n      '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',\n      type: 'AdaptiveCard',\n      version: '1.4',\n      body: [\n        {\n          type: 'TextBlock',\n          text: `NetWatch → ServiceNow — ${dateStr}`,\n          weight: 'Bolder',\n          size: 'Large',\n          color: 'Accent',\n          wrap: true\n        },\n        {\n          type: 'TextBlock',\n          text: `${createdCount} incident(s) créé(s) dans ServiceNow`,\n          size: 'Medium',\n          wrap: true\n        },\n        {\n          type: 'FactSet',\n          facts: [\n            { title: 'Créés',    value: String(createdCount) },\n            { title: 'Echecs',   value: String(failedCount) },\n            { title: 'Skippés', value: String(skippedCount) },\n            { title: 'INC',      value: incList + incMore || 'N/A' }\n          ]\n        }\n      ],\n      actions: [{\n        type: 'Action.OpenUrl',\n        title: 'Ouvrir NetWatch',\n        url: 'http://localhost:5050'\n      }]\n    }\n  }]\n};\n\nreturn [{ json: payload }];"
+      },
+      "id": "e7f8a9b0-0005-0005-0005-000000000005",
+      "name": "Construire carte Teams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TEAMS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "e7f8a9b0-0006-0006-0006-000000000006",
+      "name": "POST Teams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200]
+    }
+  ],
+  "connections": {
+    "Toutes les 10 min": {
+      "main": [[{"node": "Exécuter itsm-sync.py (ServiceNow)", "type": "main", "index": 0}]]
+    },
+    "Exécuter itsm-sync.py (ServiceNow)": {
+      "main": [[{"node": "Parser la sortie", "type": "main", "index": 0}]]
+    },
+    "Parser la sortie": {
+      "main": [[{"node": "Incidents créés ?", "type": "main", "index": 0}]]
+    },
+    "Incidents créés ?": {
+      "main": [
+        [{"node": "Construire carte Teams", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Construire carte Teams": {
+      "main": [[{"node": "POST Teams", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["netwatch", "itsm", "servicenow"],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-30T00:00:00.000Z",
+  "versionId": "1"
+}
