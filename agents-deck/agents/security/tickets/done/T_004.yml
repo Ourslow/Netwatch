@@ -1,0 +1,38 @@
+id: T_004
+title: "Valider et documenter les Anthropic-Cybersecurity-Skills"
+agent: Security-agent
+phase: 1
+priority: high
+category: feature
+status: done
+created: "2026-06-29"
+started: "2026-06-30"
+finished: "2026-06-30"
+commit: "9928932"
+branch: "agent/security/active"
+acceptance:
+  - "Confirmer que .claude/skills/ contient bien 817 skills (`ls .claude/skills/ | wc -l` ≥ 817)"
+  - "Identifier les 10 skills les plus pertinents pour NetWatch (détection, PCAP, Zeek, Suricata)"
+  - "Tester chacun des 10 skills sur un cas concret NetWatch et documenter le résultat"
+  - "Créer .claude/skills/_netwatch-index.md : liste des 10 skills recommandés avec cas d'usage"
+  - "Vérifier que les skills sont chargés dans une session Claude Code (`/skills list`)"
+  - "Proposer 3 nouveaux skills custom à créer pour NetWatch (ex: analyse-zeek-alert, es-query-builder)"
+acceptance_results:
+  skills_count: 817
+  index_created: ".claude/skills/_netwatch-index.md"
+  zeek_script_delivered: "zeek/scripts/lateral-movement-detect.zeek"
+  top_10_skills:
+    - detecting-beaconing-patterns-with-zeek
+    - detecting-exfiltration-over-dns-with-zeek
+    - detecting-network-anomalies-with-zeek
+    - hunting-for-dns-tunneling-with-zeek
+    - detecting-lateral-movement-with-zeek
+    - configuring-suricata-for-network-monitoring
+    - detecting-ransomware-precursors-in-network
+    - detecting-command-and-control-over-dns
+    - performing-network-traffic-analysis-with-zeek
+    - hunting-for-command-and-control-beaconing
+  custom_skills_proposed:
+    - analyse-zeek-alert
+    - es-query-builder
+    - netwatch-incident-response

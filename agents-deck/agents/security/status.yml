@@ -3,10 +3,22 @@ agent: Security-agent
 canonical_id: security
 tool: "Claude Code"
 session_id: null
-state: standby
+state: done
 current_ticket: null
-ticket_started: null
-ticket_finished: null
-last_activity: "2026-06-29T20:00:00Z"
-current_ticket_skills: {}
+last_ticket: T_004
+ticket_started: "2026-06-30T00:00:00Z"
+ticket_finished: "2026-06-30T00:00:00Z"
+last_activity: "2026-06-30T00:00:00Z"
+last_commit: "9928932"
+current_ticket_skills:
+  - detecting-beaconing-patterns-with-zeek
+  - detecting-exfiltration-over-dns-with-zeek
+  - detecting-network-anomalies-with-zeek
+  - hunting-for-dns-tunneling-with-zeek
+  - detecting-lateral-movement-with-zeek
+  - configuring-suricata-for-network-monitoring
+  - detecting-ransomware-precursors-in-network
+  - detecting-command-and-control-over-dns
+  - performing-network-traffic-analysis-with-zeek
+  - hunting-for-command-and-control-beaconing
 skills_override_reason: null
