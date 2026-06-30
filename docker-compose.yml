@@ -70,6 +70,34 @@ services:
     restart: unless-stopped
 
   # ============================================================
+  # COLLECTE NETFLOW / IPFIX / SFLOW
+  # ============================================================
+
+  goflow2:
+    image: netsampler/goflow2:latest
+    container_name: netwatch-goflow2
+    # Écoute sur 3 protocoles — output JSON ligne par ligne sur stdout
+    # Filebeat capte les logs Docker du container et les indexe dans netflow-*
+    command:
+      - "-transport.file.sep=newline"
+      - "-format=json"
+      - "-listen"
+      - "netflow://:2055"
+      - "-listen"
+      - "ipfix://:4739"
+      - "-listen"
+      - "sflow://:6343"
+    ports:
+      # Ports UDP exposés uniquement sur l'interface loopback
+      - "127.0.0.1:2055:2055/udp"   # NetFlow v5/v9
+      - "127.0.0.1:4739:4739/udp"   # IPFIX (NetFlow v10)
+      - "127.0.0.1:6343:6343/udp"   # sFlow
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================================
   # PIPELINE DE DONNEES
   # ============================================================
 
@@ -85,6 +113,9 @@ services:
       - zeek-logs:/zeek/logs:ro
       - snort-logs:/var/log/snort:ro
       - suricata-logs:/var/log/suricata:ro
+      # Accès aux logs Docker pour la collecte des logs goflow2
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       elasticsearch:
         condition: service_healthy

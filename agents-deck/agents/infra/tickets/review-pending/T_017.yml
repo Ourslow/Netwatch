@@ -1,0 +1,28 @@
+id: T_017
+title: "GoFlow2 : collecteur NetFlow/IPFIX/sFlow → Elasticsearch"
+agent: Infra-agent
+phase: 5
+priority: high
+category: feature
+status: review-pending
+created: "2026-06-30"
+started: "2026-06-30T15:00:00Z"
+delivery: "2026-06-30T15:45:00Z"
+acceptance:
+  - "Service goflow2 ajouté dans docker-compose.yml (image netsampler/goflow2:latest, ports UDP 127.0.0.1:2055/4739/6343, container netwatch-goflow2, depends_on elasticsearch, restart unless-stopped)"
+  - "Config GoFlow2 via CLI flags (command: dans docker-compose) + fichier goflow2/goflow2.yaml documentaire monté en option"
+  - "Filebeat : input type:container ajouté dans filebeat/filebeat.yml — lit logs Docker goflow2, decode_json_fields, index netflow-%{+yyyy.MM.dd}"
+  - "Volumes filebeat mis à jour : /var/lib/docker/containers et /var/run/docker.sock montés en ro"
+  - "Script scripts/setup-netflow.sh : crée ILM policy netwatch-netflow (30j) + index template netwatch-netflow (mapping ip/long/keyword/date)"
+  - "scripts/health-check.sh : check_goflow2() vérifie container running + index netflow-* présent dans ES"
+  - "Makefile : targets setup-netflow et netflow-test (softflowd fallback Python UDP)"
+  - "docs/netflow-setup.md : config Cisco IOS ip flow-export, HP/Aruba ProCurve sFlow, Juniper IPFIX, simulation softflowd"
+files_modified:
+  - docker-compose.yml
+  - filebeat/filebeat.yml
+  - scripts/health-check.sh
+  - Makefile
+files_created:
+  - goflow2/goflow2.yaml
+  - scripts/setup-netflow.sh
+  - docs/netflow-setup.md

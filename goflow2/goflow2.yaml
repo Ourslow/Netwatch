@@ -1,0 +1,47 @@
+# goflow2.yaml — Configuration GoFlow2 (NetWatch)
+#
+# Ce fichier sert de référence documentaire. En production, les paramètres
+# sont passés via la directive `command:` dans docker-compose.yml afin de
+# garder la config lisible et versionnable.
+#
+# Pour utiliser ce fichier à la place des flags CLI :
+#   command: ["-config", "/etc/goflow2/goflow2.yaml"]
+#   volumes:
+#     - ./goflow2/goflow2.yaml:/etc/goflow2/goflow2.yaml:ro
+#
+# Référence : https://github.com/netsampler/goflow2
+
+# Format de sortie — JSON ligne par ligne sur stdout
+# Filebeat (type: container) lit automatiquement les logs Docker du container
+format: json
+
+# Transport : stdout (file avec sep newline = une ligne JSON par flux)
+transport:
+  type: file
+  file:
+    # Séparateur : saut de ligne (une entrée JSON par ligne)
+    sep: "\n"
+
+# Sources d'écoute — protocoles supportés
+listen:
+  - netflow://:2055   # NetFlow v5 / v9 (Cisco IOS, HP ProCurve, Aruba)
+  - ipfix://:4739     # IPFIX / NetFlow v10 (RFC 7011)
+  - sflow://:6343     # sFlow v5 (switches HP/Aruba, Juniper, Force10)
+
+# Champs exportés dans chaque enregistrement JSON :
+#   type          : NETFLOW_V9 | IPFIX | SFLOW_5
+#   src_addr      : IP source
+#   dst_addr      : IP destination
+#   src_port      : port source (TCP/UDP)
+#   dst_port      : port destination (TCP/UDP)
+#   proto         : numéro de protocole IP (6=TCP, 17=UDP, 1=ICMP)
+#   bytes         : octets du flux
+#   packets       : paquets du flux
+#   start         : timestamp début (epoch secondes)
+#   end           : timestamp fin (epoch secondes)
+#   in_if         : interface d'entrée (SNMP index)
+#   out_if        : interface de sortie (SNMP index)
+#   src_as        : AS source (BGP)
+#   dst_as        : AS destination (BGP)
+#   next_hop      : IP du prochain saut
+#   sampler_addr  : IP de l'équipement exportateur
