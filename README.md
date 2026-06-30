@@ -84,8 +84,11 @@ La v2 passe de 4 à **12 services** avec trois moteurs d'analyse IDS en parallè
 | 🤖 | **IA locale on-prem** | Explication des alertes via Ollama/Mistral — zéro fuite de données |
 | 🔐 | **Fingerprinting TLS/SSH** | JA3 · JA3S · HASSH via Zeek |
 | ⚡ | **Métriques système** | Prometheus + node-exporter — CPU, RAM, disque, réseau |
-| 🕸️ | **Graphe IOC** | Knowledge graph NetworkX — IPs · règles · MITRE TTPs · relations (ioc-graph.py) |
+| 🕸️ | **Graphe IOC interactif** | Page /graph — D3.js force-directed, zoom/pan, clic nœud, 5 types colorés |
+| 🔎 | **Enrichissement IOC** | Réputation IP AbuseIPDB + ipinfo.io — score abus, pays, ISP, cache local |
 | 🎫 | **Ticketing automatique** | n8n → YAML ticket créé automatiquement sur alerte critique ES |
+| 📅 | **Rapport hebdomadaire** | n8n cron lundi 08h00 → agrège 7j d'alertes ES → Teams Adaptive Card |
+| ⚙️ | **Health check 12 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
 
 ---
 
@@ -598,6 +601,7 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | **v1** | ✅ Mars 2026 | Stack Docker 4 services · 4 dashboards Grafana · Scripts Zeek · Simulateur trafic |
 | **v2 Phase 1** | ✅ Juin 2026 | 12 services · CrowdSec · n8n alertes Teams · page /agents · calibrage 12 règles IDS · détection lateral movement |
 | **v2 Phase 2** | ✅ Juin 2026 | Fix Filebeat/ES data-stream · graphe IOC NetworkX · ticketing auto n8n → agents-deck · audit sécurité P0/P1/P2 |
+| **v2 Phase 3** | ✅ Juin 2026 | Graphe IOC D3.js /graph · enrichissement IP AbuseIPDB · rapport hebdo Teams · health-check 12 services · guide déploiement Proxmox/ESXi |
 | **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
 
 ---
