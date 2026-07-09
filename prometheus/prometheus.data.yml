@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'netwatch'
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # Déploiement 2-VMs : un node-exporter par VM (Sensors fait de la capture
+  # paquets, sa santé CPU/mémoire compte tout autant que celle de la VM Data).
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['netwatch-node-exporter:9100']
+        labels:
+          instance: 'netwatch-data'
+      - targets: ['192.168.100.11:9100']
+        labels:
+          instance: 'netwatch-sensors'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'elasticsearch'
+    metrics_path: '/_prometheus/metrics'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    # Necessite le plugin ES prometheus-exporter (optionnel)
+    honor_labels: true

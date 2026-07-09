@@ -1,0 +1,161 @@
+# NetWatch v2 — VM Sensors (déploiement 2-VMs, Shuttle Proxmox)
+# Moteurs d'analyse + capture réseau. Nécessite un .env avec IFACE réel
+# et les mêmes secrets AUTOBLOCK_* que la VM Data (voir docs/shuttle-deployment-plan.md).
+# Elasticsearch tourne sur la VM Data (192.168.100.12) — voir docker-compose.data.yml.
+
+services:
+  zeek:
+    build: ./zeek
+    container_name: netwatch-zeek
+    network_mode: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - IFACE=${IFACE:-eth0}
+    volumes:
+      - ./zeek/local.zeek:/usr/local/zeek/share/zeek/site/local.zeek:ro
+      - ./zeek/scripts:/usr/local/zeek/share/zeek/site/scripts:ro
+      - ./zeek/intel:/usr/local/zeek/share/zeek/site/intel:ro
+      - zeek-logs:/zeek/logs
+      - ./pcap:/pcap:ro
+    restart: unless-stopped
+
+  snort:
+    build: ./snort
+    container_name: netwatch-snort
+    network_mode: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - IFACE=${IFACE:-eth0}
+      - SNORT_MONITORED_SERVER=${SNORT_MONITORED_SERVER:-127.0.0.1}
+    volumes:
+      - ./snort/snort.lua:/usr/local/etc/snort/snort.lua:ro
+      - ./snort/local.rules:/usr/local/etc/rules/local.rules:ro
+      - snort-logs:/var/log/snort
+      - ./pcap:/pcap:ro
+    restart: unless-stopped
+
+  suricata:
+    build: ./suricata
+    container_name: netwatch-suricata
+    network_mode: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    environment:
+      - IFACE=${IFACE:-eth0}
+    volumes:
+      - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./suricata/local.rules:/etc/suricata/rules/local.rules:ro
+      - suricata-logs:/var/log/suricata
+      - ./pcap:/pcap:ro
+    restart: unless-stopped
+
+  goflow2:
+    image: netsampler/goflow2:latest
+    container_name: netwatch-goflow2
+    command:
+      - "-transport.file.sep=newline"
+      - "-format=json"
+      - "-listen"
+      - "netflow://:2055"
+      - "-listen"
+      - "ipfix://:4739"
+      - "-listen"
+      - "sflow://:6343"
+    ports:
+      - "127.0.0.1:2055:2055/udp"
+      - "127.0.0.1:4739:4739/udp"
+      - "127.0.0.1:6343:6343/udp"
+    restart: unless-stopped
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.0
+    container_name: netwatch-filebeat
+    user: root
+    command: ["-e", "--strict.perms=false"]
+    volumes:
+      - ./filebeat/filebeat.sensors.yml:/usr/share/filebeat/filebeat.yml:ro
+      - zeek-logs:/zeek/logs:ro
+      - snort-logs:/var/log/snort:ro
+      - suricata-logs:/var/log/suricata:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  beacon-detect:
+    build: ./beacon-detect
+    container_name: netwatch-beacon-detect
+    environment:
+      - ES_URL=http://192.168.100.12:9200
+      - SCAN_INTERVAL_MIN=15
+      - LOOKBACK_HOURS=2
+      - MIN_CONNECTIONS=8
+      - BEACON_CV_THRESHOLD=0.25
+    restart: unless-stopped
+
+  autoblock:
+    build: ./autoblock
+    container_name: netwatch-autoblock
+    network_mode: host
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - ES_URL=http://192.168.100.12:9200
+      - WEBHOOK_PORT=5001
+      - WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
+      - BLOCK_DURATION_MIN=${BLOCK_DURATION_MIN:-60}
+      - MAX_BLOCKS_PER_HOUR=20
+      - DRY_RUN=${AUTOBLOCK_DRY_RUN:-true}
+      - ALLOWLIST=${AUTOBLOCK_ALLOWLIST:-}
+    restart: unless-stopped
+
+  # CrowdSec colocalisé avec les logs Zeek/Suricata qu'il analyse (acquis.yaml
+  # tail des fichiers locaux) — ne peut pas lire des volumes sur une autre VM.
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: netwatch-crowdsec
+    environment:
+      - COLLECTIONS=crowdsecurity/linux crowdsecurity/nginx crowdsecurity/suricata
+      - CUSTOM_HOSTNAME=netwatch-crowdsec
+    volumes:
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - crowdsec-db:/var/lib/crowdsec/data
+      - zeek-logs:/zeek/logs:ro
+      - suricata-logs:/var/log/suricata:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: netwatch-node-exporter
+    pid: host
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+
+volumes:
+  zeek-logs:
+  snort-logs:
+  suricata-logs:
+  crowdsec-db:

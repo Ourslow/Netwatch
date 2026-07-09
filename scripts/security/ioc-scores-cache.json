@@ -1,0 +1,580 @@
+{
+  "meta": {
+    "generated_at": "2026-07-07T16:32:26.557554+00:00",
+    "source": "elasticsearch:http://192.168.100.12:9200",
+    "days": 2,
+    "threshold": 0,
+    "total_ips": 30,
+    "total_alerts_processed": 233
+  },
+  "scores": [
+    {
+      "ip": "114.114.114.114",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 9,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "175.45.179.12",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 7,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "KP",
+        "org": "AS131279 Ryugyong-dong",
+        "hostname": null,
+        "city": "Pyongyang",
+        "region": "Pyongyang"
+      },
+      "mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1203",
+        "T1552",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "177.71.0.82",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 9,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "BR",
+        "org": "AS28667 VERO S.A",
+        "hostname": "82.0.71.177.in-addr.arpa.verointernet.com.br",
+        "city": "Pirassununga",
+        "region": "São Paulo"
+      },
+      "mitre_ttps": [
+        "T1027",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1552",
+        "T1567"
+      ]
+    },
+    {
+      "ip": "185.220.101.5",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 11,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "188.165.200.12",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 8,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "FR",
+        "org": "AS16276 OVH SAS",
+        "hostname": "ns209994.ovh.net",
+        "city": "Lille",
+        "region": "Hauts-de-France"
+      },
+      "mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "194.165.16.42",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 15,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "198.199.64.12",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 8,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "200.147.55.3",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 9,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "217.70.184.38",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 9,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "23.45.67.89",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 13,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "31.3.96.45",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 9,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "49.206.12.8",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 10,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1203",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "5.45.208.10",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 8,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1568"
+      ]
+    },
+    {
+      "ip": "5.8.8.180",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 7,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1110",
+        "T1552",
+        "T1567",
+        "T1568"
+      ]
+    },
+    {
+      "ip": "85.214.55.3",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 8,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1203",
+        "T1568"
+      ]
+    },
+    {
+      "ip": "91.108.4.15",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 7,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1110",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "94.182.195.3",
+      "score": 100,
+      "level": "critical",
+      "alerts_count": 8,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "219.76.15.8",
+      "score": 90,
+      "level": "critical",
+      "alerts_count": 6,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1071",
+        "T1110",
+        "T1552",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "117.18.0.55",
+      "score": 88,
+      "level": "critical",
+      "alerts_count": 7,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET SCAN Possible Nmap User-Agent Observed",
+      "enrichment": {
+        "source": "ipinfo",
+        "country": "HK",
+        "org": "AS152194 CTG Server Limited",
+        "hostname": null,
+        "city": "Hong Kong",
+        "region": "Hong Kong"
+      },
+      "mitre_ttps": [
+        "T1027",
+        "T1071",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "104.21.48.3",
+      "score": 87,
+      "level": "critical",
+      "alerts_count": 5,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "1.180.0.12",
+      "score": 82,
+      "level": "critical",
+      "alerts_count": 6,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET SCAN Potential SSH Scan",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1567",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "79.115.12.88",
+      "score": 82,
+      "level": "critical",
+      "alerts_count": 6,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - ICMP Ping Sweep detected",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1567",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "175.45.176.5",
+      "score": 76,
+      "level": "high",
+      "alerts_count": 6,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1203",
+        "T1552",
+        "T1568"
+      ]
+    },
+    {
+      "ip": "78.38.30.7",
+      "score": 73,
+      "level": "high",
+      "alerts_count": 4,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1203",
+        "T1552"
+      ]
+    },
+    {
+      "ip": "5.160.0.48",
+      "score": 71,
+      "level": "high",
+      "alerts_count": 6,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET SCAN Potential SSH Scan",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "79.112.0.60",
+      "score": 69,
+      "level": "high",
+      "alerts_count": 8,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET SCAN Possible Nmap User-Agent Observed",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1071",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "88.190.16.12",
+      "score": 59,
+      "level": "medium",
+      "alerts_count": 3,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - Large outbound transfer",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1048",
+        "T1071",
+        "T1552"
+      ]
+    },
+    {
+      "ip": "46.23.0.82",
+      "score": 57,
+      "level": "medium",
+      "alerts_count": 4,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "ET SCAN Possible Nmap User-Agent Observed",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1027",
+        "T1071",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "58.30.8.21",
+      "score": 57,
+      "level": "medium",
+      "alerts_count": 5,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - ICMP Ping Sweep detected",
+      "enrichment": {},
+      "mitre_ttps": [
+        "T1071",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "ip": "192.168.100.10",
+      "score": 51,
+      "level": "medium",
+      "alerts_count": 12,
+      "engines": [
+        "suricata"
+      ],
+      "top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "enrichment": {},
+      "mitre_ttps": []
+    }
+  ]
+}

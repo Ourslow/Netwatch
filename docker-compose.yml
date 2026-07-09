@@ -183,6 +183,7 @@ services:
       # (le contact point Slack exige une URL non vide). Renseigner SLACK_WEBHOOK_URL pour activer.
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-http://localhost/slack-not-configured}
       - AUTOBLOCK_WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
+      - AUTOBLOCK_HOST=${AUTOBLOCK_HOST:-host.docker.internal}
     extra_hosts:
       # Permet à Grafana (réseau bridge) d'atteindre AutoBlock (network_mode:host)
       - "host.docker.internal:host-gateway"

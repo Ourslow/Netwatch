@@ -13,6 +13,11 @@ ESXI_VERIFY_SSL  = os.getenv("ESXI_VERIFY_SSL", "false").lower() == "true"
 
 PROXMOX_USER     = os.getenv("PROXMOX_USER", "root@pam")
 PROXMOX_PASSWORD = os.getenv("PROXMOX_PASSWORD", "")
+# Auth par API token (recommandé en prod, évite de stocker le mot de passe root) :
+# généré via `pveum user token add <user> <token_name>`. Si renseigné, prend le
+# pas sur PROXMOX_PASSWORD dans proxmox/client.py.
+PROXMOX_TOKEN_NAME  = os.getenv("PROXMOX_TOKEN_NAME", "")
+PROXMOX_TOKEN_VALUE = os.getenv("PROXMOX_TOKEN_VALUE", "")
 PROXMOX_NODE     = os.getenv("PROXMOX_NODE", "pve")
 PROXMOX_VERIFY_SSL = os.getenv("PROXMOX_VERIFY_SSL", "false").lower() == "true"
 
@@ -53,3 +58,8 @@ SLA_HTTP_TARGET_MS  = int(os.getenv("SLA_HTTP_TARGET_MS", "200"))
 SLA_DNS_TARGET_MS   = int(os.getenv("SLA_DNS_TARGET_MS", "50"))
 SLA_RTT_TARGET_MS   = int(os.getenv("SLA_RTT_TARGET_MS", "50"))
 SLA_TARGET_PCT      = float(os.getenv("SLA_TARGET_PCT", "99.0"))
+
+# Topologie réseau (/api/topology) — pas de SPAN/SNMP réel en place pour l'instant,
+# donc on force topology-discover.py en mode --demo (données synthétiques).
+# Mettre à false quand du SNMP réel sera disponible sur les sondes.
+TOPOLOGY_DEMO = os.getenv("TOPOLOGY_DEMO", "false").lower() == "true"

@@ -5,7 +5,7 @@ FROM zeek/zeek:6.2
 RUN zkg install --force https://github.com/salesforce/ja3 && \
     zkg install --force https://github.com/salesforce/hassh
 
-WORKDIR /zeek
+WORKDIR /zeek/logs
 
 ENTRYPOINT ["/bin/sh", "-c"]
 CMD ["zeek -i ${IFACE:-eth0} /usr/local/zeek/share/zeek/site/local.zeek"]

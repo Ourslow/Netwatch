@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# deploy-n8n-workflow.sh — Importe le workflow NetWatch Alertes dans n8n via API REST
-# Usage : ./scripts/automation/deploy-n8n-workflow.sh
+# deploy-n8n-workflow.sh — Importe un workflow NetWatch dans n8n via API REST
+# Usage : ./scripts/automation/deploy-n8n-workflow.sh [chemin-vers-workflow.json]
+#   (par défaut : n8n-alertes-teams.json)
 set -euo pipefail
 
 N8N_URL="${N8N_URL:-http://localhost:5678}"
 N8N_USER="${N8N_USER:-admin}"
 N8N_PASS="${N8N_PASSWORD:?N8N_PASSWORD manquant}"
-WORKFLOW_FILE="$(dirname "$0")/n8n-alertes-teams.json"
+WORKFLOW_FILE="${1:-$(dirname "$0")/n8n-alertes-teams.json}"
+WF_NAME="$(python3 -c "import json; print(json.load(open('$WORKFLOW_FILE'))['name'])")"
 
 echo "=== NetWatch — Deploy n8n Workflow ==="
 echo "URL  : $N8N_URL"
 echo "File : $WORKFLOW_FILE"
+echo "Nom  : $WF_NAME"
 echo ""
 
 # Attendre que n8n soit prêt
@@ -31,7 +34,7 @@ import sys, json
 data = json.load(sys.stdin)
 workflows = data.get('data', [])
 for wf in workflows:
-    if wf.get('name') == 'NetWatch Alertes':
+    if wf.get('name') == '$WF_NAME':
         print(wf['id'])
         break
 " 2>/dev/null || true)
@@ -101,7 +104,7 @@ import sys, json
 data = json.load(sys.stdin)
 workflows = data.get('data', [])
 for wf in workflows:
-    if wf.get('name') == 'NetWatch Alertes':
+    if wf.get('name') == '$WF_NAME':
         active = 'ACTIF' if wf.get('active') else 'INACTIF'
         print(f'      Workflow : {wf[\"name\"]} [{active}] — id={wf[\"id\"]}')
 " 2>/dev/null || echo "      (vérification manuelle requise)"
@@ -116,4 +119,4 @@ echo "  3. Dans n8n : Settings → Variables → TEAMS_WEBHOOK_URL = <url>"
 echo "     OU : docker compose exec n8n sh -c 'export TEAMS_WEBHOOK_URL=<url>'"
 echo "     OU : ajouter N8N_CUSTOM_ENV_VARS=TEAMS_WEBHOOK_URL dans docker-compose.yml"
 echo ""
-echo "Portail : http://localhost:5678"
+echo "Portail : $N8N_URL"

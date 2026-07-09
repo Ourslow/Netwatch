@@ -97,7 +97,7 @@ def detect_beacons(es, since: datetime) -> list:
                                 "aggs": {
                                     "hits": {
                                         "top_hits": {
-                                            "size": 200,
+                                            "size": 100,
                                             "_source": ["@timestamp"],
                                             "sort": [{"@timestamp": "asc"}]
                                         }

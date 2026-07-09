@@ -1061,7 +1061,8 @@ def api_ioc_graph():
 
     try:
         subprocess.run(
-            ["python3", "scripts/security/ioc-graph.py"],
+            ["python3", "scripts/security/ioc-graph.py",
+             "--es-url", config.NETWATCH_ES_URL],
             cwd=netwatch_root,
             capture_output=True,
             timeout=30,
@@ -1134,7 +1135,8 @@ def api_ioc_scores():
     script = os.path.join(netwatch_root, "scripts", "security", "ioc-score.py")
     try:
         result = subprocess.run(
-            ["python3", script, "--output", cache_file],
+            ["python3", script, "--output", cache_file,
+             "--es-url", config.NETWATCH_ES_URL],
             cwd=netwatch_root,
             capture_output=True,
             timeout=60,
@@ -1396,9 +1398,12 @@ def api_topology():
             return jsonify({"error": f"topology-discover.py introuvable et pas de demo : {exc}"}), 503
 
     # ---- Run the script ----
+    cmd = ["python3", script, "--output", cache_path]
+    if config.TOPOLOGY_DEMO:
+        cmd.append("--demo")
     try:
         result = subprocess.run(
-            ["python3", script, "--output", cache_path],
+            cmd,
             cwd=netwatch_root,
             capture_output=True,
             timeout=60,

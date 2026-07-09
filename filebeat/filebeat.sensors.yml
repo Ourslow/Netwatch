@@ -7,9 +7,8 @@ filebeat.inputs:
     enabled: true
     paths:
       # Zeek (invocation CLI directe, sans zeekctl) écrit les logs à plat dans
-      # son WORKDIR ($cwd) — pas de sous-dossier "current/" (celui-ci n'existe
-      # qu'avec zeekctl et sa logique de rotation). WORKDIR = /zeek/logs (le
-      # volume monté), donc les fichiers atterrissent directement ici.
+      # son WORKDIR ($cwd) — pas de sous-dossier "current/". WORKDIR = /zeek/logs
+      # (le volume monté), donc les fichiers atterrissent directement ici.
       - /zeek/logs/conn.log
       - /zeek/logs/dns.log
       - /zeek/logs/http.log
@@ -61,10 +60,6 @@ filebeat.inputs:
   # ============================================================
   # GOFLOW2 — NetFlow / IPFIX / sFlow (T_017)
   # ============================================================
-  # GoFlow2 écrit du JSON sur stdout → Docker capture dans /var/lib/docker/containers/
-  # L'input type:container lit le fichier -json.log, add_docker_metadata filtre
-  # le container netwatch-goflow2, decode_json_fields extrait les champs du flux.
-  # Index cible : netflow-YYYY.MM.DD (template géré par setup-netflow.sh)
   - type: container
     enabled: true
     paths:
@@ -105,24 +100,13 @@ processors:
         - '2006-01-02T15:04:05Z'
       ignore_failure: true
 
+# Déploiement 2-VMs : Elasticsearch tourne sur la VM Data (192.168.100.12),
+# pas de résolution DNS par nom de service Docker possible entre VMs distinctes.
 output.elasticsearch:
-  hosts: ["elasticsearch:9200"]
+  hosts: ["192.168.100.12:9200"]
   index: "%{[engine]:unknown}-%{+yyyy.MM.dd}"
   bulk_max_size: 500
 
-# ============================================================
-# Index template & ILM — gestion manuelle (fix T_002)
-# ============================================================
-# Filebeat 8.x sur ES 8.x tente systématiquement de créer un data-stream
-# "netwatch" via putDataStream(), même quand setup.ilm.enabled=false.
-# Avec l'ancienne valeur "zeek-*,snort-*,suricata-*,netwatch-*", ES 8.x
-# normalisait le pattern en "*" (catch-all), ce qui provoquait une erreur
-# 500 "_data_stream_timestamp disabled" bloquant les reconnexions.
-#
-# Fix : setup.template.enabled=false délègue entièrement la gestion des
-# templates à setup-es.sh (index-templates netwatch-zeek/snort/suricata,
-# priorité 500 + pipeline netwatch-geoip). Filebeat ne touche plus aux
-# templates et n'appelle plus putDataStream() → plus d'erreur reconnexion.
 setup.template.enabled: false
 setup.ilm.enabled: false
 

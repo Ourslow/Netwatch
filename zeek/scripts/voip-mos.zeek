@@ -126,12 +126,12 @@ event connection_state_remove(c: connection)
     local dp = c$id$resp_p;
     local sp = c$id$orig_p;
 
-    local in_rtp: bool = (dp >= 16384/udp && dp <= 32767/udp)
+    local is_rtp_port: bool = (dp >= 16384/udp && dp <= 32767/udp)
                       || (dp >= 10000/udp && dp <= 20000/udp)
                       || (sp >= 16384/udp && sp <= 32767/udp)
                       || (sp >= 10000/udp && sp <= 20000/udp);
 
-    if (!in_rtp)
+    if (!is_rtp_port)
         return;
 
     # Ignorer les connexions trop courtes (< 1s) — probablement pas de la VoIP
@@ -156,12 +156,9 @@ event connection_state_remove(c: connection)
     if (loss_pct < 0.0)   loss_pct = 0.0;
 
     # ── Estimation latence (one-way) ────────────────────────────────────────
-    # conn.log expose c$conn$rtt pour les connexions TCP uniquement.
-    # Pour UDP : défaut 20 ms (latence LAN typique).
-    # Si RTT disponible (rare pour UDP), RTT/2 = one-way delay.
+    # Le champ rtt n'existe pas dans le record conn de cette build Zeek (UDP de toute
+    # façon, RTT rarement mesurable) → défaut 20 ms (latence LAN typique).
     local lat_ms: double = 20.0;
-    if (c$conn?$rtt)
-        lat_ms = interval_to_double(c$conn$rtt) / 2.0 * 1000.0;
 
     # ── Estimation jitter ───────────────────────────────────────────────────
     # Sans analyzer RTP natif, Zeek ne expose pas les timestamps inter-paquets UDP.

@@ -948,19 +948,22 @@ def get_flows_stats():
             "query": {"range": {"@timestamp": {"gte": "now-24h"}}},
             "aggs": {
                 "top_src": {
-                    "terms": {"field": "src_addr", "size": 10},
+                    "terms": {"field": "src_addr.keyword", "size": 10},
                     "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
                 },
                 "top_dst": {
-                    "terms": {"field": "dst_addr", "size": 10},
+                    "terms": {"field": "dst_addr.keyword", "size": 10},
                     "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
                 },
                 "top_ports": {
                     "terms": {
                         "script": {
+                            # src_addr/dst_addr/proto sont mappés "text" par le
+                            # mapping dynamique ES (pas de fielddata) — utiliser
+                            # le sous-champ .keyword pour l'accès en painless.
                             "source": (
-                                "def p = doc.containsKey('proto') && doc['proto'].size()>0"
-                                " ? String.valueOf(doc['proto'].value) : '?';"
+                                "def p = doc.containsKey('proto.keyword') && doc['proto.keyword'].size()>0"
+                                " ? doc['proto.keyword'].value : '?';"
                                 " def d = doc.containsKey('dst_port') && doc['dst_port'].size()>0"
                                 " ? String.valueOf((long)doc['dst_port'].value) : '?';"
                                 " return p+'/'+d"
@@ -1026,14 +1029,14 @@ def get_flows_stats():
         },
         "aggs": {
             "top_src": {
-                "terms": {"field": "id.orig_h", "size": 10},
+                "terms": {"field": "id.orig_h.keyword", "size": 10},
                 "aggs": {
                     "ob": {"sum": {"field": "orig_bytes"}},
                     "rb": {"sum": {"field": "resp_bytes"}},
                 },
             },
             "top_dst": {
-                "terms": {"field": "id.resp_h", "size": 10},
+                "terms": {"field": "id.resp_h.keyword", "size": 10},
                 "aggs": {
                     "ob": {"sum": {"field": "orig_bytes"}},
                     "rb": {"sum": {"field": "resp_bytes"}},
@@ -1042,9 +1045,11 @@ def get_flows_stats():
             "top_ports": {
                 "terms": {
                     "script": {
+                        # proto/id.orig_h/id.resp_h sont mappés "text" par le
+                        # mapping dynamique ES (pas de fielddata) — utiliser .keyword.
                         "source": (
-                            "def p = doc.containsKey('proto') && doc['proto'].size()>0"
-                            " ? doc['proto'].value : '?';"
+                            "def p = doc.containsKey('proto.keyword') && doc['proto.keyword'].size()>0"
+                            " ? doc['proto.keyword'].value : '?';"
                             " def d = doc.containsKey('id.resp_p') && doc['id.resp_p'].size()>0"
                             " ? String.valueOf((long)doc['id.resp_p'].value) : '?';"
                             " return p+'/'+d"

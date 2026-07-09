@@ -24,8 +24,10 @@ contactPoints:
         type: webhook
         settings:
           # AutoBlock tourne en network_mode:host : injoignable par son nom de conteneur
-          # depuis Grafana (réseau bridge). On passe par la gateway hôte (extra_hosts).
+          # depuis Grafana (réseau bridge). AUTOBLOCK_HOST vaut host.docker.internal en
+          # déploiement mono-VM (extra_hosts), ou l'IP de la VM Sensors en déploiement
+          # 2-VMs (AutoBlock et Grafana ne sont alors plus sur le même hôte physique).
           # Le token authentifie l'appel (voir AUTOBLOCK_WEBHOOK_SECRET dans .env).
-          url: http://host.docker.internal:5001/webhook/alert?token=${AUTOBLOCK_WEBHOOK_SECRET}
+          url: http://${AUTOBLOCK_HOST:-host.docker.internal}:5001/webhook/alert?token=${AUTOBLOCK_WEBHOOK_SECRET}
           httpMethod: POST
         disableResolveMessage: true

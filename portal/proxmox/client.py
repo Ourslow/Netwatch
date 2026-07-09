@@ -3,6 +3,15 @@ import config
 
 
 def get_client():
+    if config.PROXMOX_TOKEN_NAME and config.PROXMOX_TOKEN_VALUE:
+        return ProxmoxAPI(
+            config.PROXMOX_HOST,
+            user=config.PROXMOX_USER,
+            token_name=config.PROXMOX_TOKEN_NAME,
+            token_value=config.PROXMOX_TOKEN_VALUE,
+            verify_ssl=config.PROXMOX_VERIFY_SSL,
+            timeout=5,
+        )
     return ProxmoxAPI(
         config.PROXMOX_HOST,
         user=config.PROXMOX_USER,

@@ -1,386 +1,41 @@
 {
   "meta": {
-    "generated_at": "2026-06-30T12:18:27.958067+00:00",
-    "source": "elasticsearch:http://localhost:9200",
-    "alert_count_processed": 649,
-    "node_count": 57,
-    "edge_count": 42,
+    "generated_at": "2026-07-07T16:34:10.007712+00:00",
+    "source": "elasticsearch:http://192.168.100.12:9200",
+    "alert_count_processed": 733,
+    "node_count": 77,
+    "edge_count": 336,
     "node_types": [
-      "mitre_ttp",
-      "ip_src",
       "ip_dst",
-      "rule"
+      "ip_src",
+      "rule",
+      "mitre_ttp"
     ]
   },
   "nodes": [
     {
-      "id": "ip_src::192.168.1.21",
+      "id": "ip_src::79.112.0.60",
       "type": "ip_src",
-      "label": "192.168.1.21",
+      "label": "79.112.0.60",
       "shape": "circle",
       "color": "#4A90D9",
-      "alert_count": 18,
+      "alert_count": 8,
       "risk_score": 69,
       "risk_level": "high",
       "risk_engines": [
         "suricata"
       ],
-      "risk_top_rule": "NETWATCH - Large outbound transfer (possible exfiltration)",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::160.79.104.10",
-      "type": "ip_dst",
-      "label": "160.79.104.10",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::NETWATCH - Large outbound transfer (possible exfiltration)",
-      "type": "rule",
-      "label": "NETWATCH - Large outbound transfer (possible exfiltration)",
-      "shape": "diamond",
-      "category": "Unknown Classtype",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_src::2a01:cb00:1955:9000:dc93:ede5:4178:cf1d",
-      "type": "ip_src",
-      "label": "2a01:cb00:1955:9000:dc93:ede5:4178:cf1d",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 4,
-      "risk_score": 27,
-      "risk_level": "low",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "NETWATCH - Obsolete TLS version (TLSv1.0)",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::2a02:26f0:2b80:0100:0000:0000:0215:48c8",
-      "type": "ip_dst",
-      "label": "2a02:26f0:2b80:0100:0000:0000:0215:48c8",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
-      "type": "rule",
-      "label": "NETWATCH - Obsolete TLS version (TLSv1.0)",
-      "shape": "diamond",
-      "category": "unknown",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_src::172.31.114.173",
-      "type": "ip_src",
-      "label": "172.31.114.173",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 116,
-      "risk_score": 100,
-      "risk_level": "critical",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "NETWATCH - Large outbound transfer (possible exfiltration)",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::192.168.15.2",
-      "type": "ip_dst",
-      "label": "192.168.15.2",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::NETWATCH - ICMP Ping Sweep detected",
-      "type": "rule",
-      "label": "NETWATCH - ICMP Ping Sweep detected",
-      "shape": "diamond",
-      "category": "unknown",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_dst::34.149.66.137",
-      "type": "ip_dst",
-      "label": "34.149.66.137",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.3",
-      "type": "ip_dst",
-      "label": "192.168.15.3",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.89",
-      "type": "ip_dst",
-      "label": "192.168.15.89",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.24",
-      "type": "ip_dst",
-      "label": "192.168.15.24",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.1",
-      "type": "ip_dst",
-      "label": "192.168.15.1",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.157",
-      "type": "ip_dst",
-      "label": "192.168.15.157",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.5",
-      "type": "ip_dst",
-      "label": "192.168.15.5",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.55",
-      "type": "ip_dst",
-      "label": "192.168.15.55",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_dst::192.168.15.6",
-      "type": "ip_dst",
-      "label": "192.168.15.6",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "ip_src::10.10.1.50",
-      "type": "ip_src",
-      "label": "10.10.1.50",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 2,
-      "risk_score": 37,
-      "risk_level": "low",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "ET TROJAN Metasploit Meterpreter reverse shell",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::172.16.0.1",
-      "type": "ip_dst",
-      "label": "172.16.0.1",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::ET TROJAN Metasploit Meterpreter reverse shell",
-      "type": "rule",
-      "label": "ET TROJAN Metasploit Meterpreter reverse shell",
-      "shape": "diamond",
-      "category": "Trojan Activity",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_src::192.168.100.200",
-      "type": "ip_src",
-      "label": "192.168.100.200",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 1,
-      "risk_score": 26,
-      "risk_level": "low",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "ET DNS Query for Known Malware Domain",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::8.8.8.8",
-      "type": "ip_dst",
-      "label": "8.8.8.8",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::ET DNS Query for Known Malware Domain",
-      "type": "rule",
-      "label": "ET DNS Query for Known Malware Domain",
-      "shape": "diamond",
-      "category": "Potentially Bad Traffic",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_src::192.168.1.15",
-      "type": "ip_src",
-      "label": "192.168.1.15",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 2,
-      "risk_score": 27,
-      "risk_level": "low",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "ET TOR Known Tor Exit Node Traffic",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::185.220.101.1",
-      "type": "ip_dst",
-      "label": "185.220.101.1",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::ET TOR Known Tor Exit Node Traffic",
-      "type": "rule",
-      "label": "ET TOR Known Tor Exit Node Traffic",
-      "shape": "diamond",
-      "category": "Misc Attack",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "rule::ET TROJAN Meterpreter reverse shell",
-      "type": "rule",
-      "label": "ET TROJAN Meterpreter reverse shell",
-      "shape": "diamond",
-      "category": "unknown",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "rule::ET TOR Known Tor Exit Node",
-      "type": "rule",
-      "label": "ET TOR Known Tor Exit Node",
-      "shape": "diamond",
-      "category": "unknown",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_src::192.168.1.100",
-      "type": "ip_src",
-      "label": "192.168.1.100",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 1,
-      "risk_score": 26,
-      "risk_level": "low",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "ET SCAN Nmap SYN Scan",
-      "risk_mitre_ttps": []
-    },
-    {
-      "id": "ip_dst::10.0.0.1",
-      "type": "ip_dst",
-      "label": "10.0.0.1",
-      "shape": "circle",
-      "color": "#7FBA00",
-      "alert_count": 0,
-      "risk_score": 0,
-      "risk_level": "unknown"
-    },
-    {
-      "id": "rule::ET SCAN Nmap SYN Scan",
-      "type": "rule",
-      "label": "ET SCAN Nmap SYN Scan",
-      "shape": "diamond",
-      "category": "Attempted Information Leak",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "ip_src::117.18.0.55",
-      "type": "ip_src",
-      "label": "117.18.0.55",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 2,
-      "risk_score": 40,
-      "risk_level": "medium",
-      "risk_engines": [
-        "suricata"
-      ],
       "risk_top_rule": "ET SCAN Possible Nmap User-Agent Observed",
       "risk_mitre_ttps": [
+        "T1027",
         "T1071",
         "T1595"
       ]
     },
     {
-      "id": "ip_dst::10.10.7.88",
+      "id": "ip_dst::172.31.250.188",
       "type": "ip_dst",
-      "label": "10.10.7.88",
+      "label": "172.31.250.188",
       "shape": "circle",
       "color": "#7FBA00",
       "alert_count": 0,
@@ -388,9 +43,9 @@
       "risk_level": "unknown"
     },
     {
-      "id": "rule::ET POLICY Python-urllib User-Agent",
+      "id": "rule::ET POLICY curl User-Agent Outbound",
       "type": "rule",
-      "label": "ET POLICY Python-urllib User-Agent",
+      "label": "ET POLICY curl User-Agent Outbound",
       "shape": "diamond",
       "category": "policy-violation",
       "engine": "suricata",
@@ -406,26 +61,70 @@
       "color": "#FF6666"
     },
     {
-      "id": "ip_src::177.71.0.82",
+      "id": "ip_src::5.8.8.180",
       "type": "ip_src",
-      "label": "177.71.0.82",
+      "label": "5.8.8.180",
       "shape": "circle",
       "color": "#4A90D9",
-      "alert_count": 1,
-      "risk_score": 26,
-      "risk_level": "low",
+      "alert_count": 7,
+      "risk_score": 100,
+      "risk_level": "critical",
       "risk_engines": [
         "suricata"
       ],
-      "risk_top_rule": "NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "risk_top_rule": "NETWATCH - SSH Brute Force Attempt",
       "risk_mitre_ttps": [
-        "T1027"
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1110",
+        "T1552",
+        "T1567",
+        "T1568"
       ]
     },
     {
-      "id": "ip_dst::172.31.250.188",
+      "id": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "type": "rule",
+      "label": "ET POLICY Dropbox Offsite Backup In Use",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1567",
+      "type": "mitre_ttp",
+      "label": "Exfiltration (T1567)",
+      "tactic": "Exfiltration",
+      "technique": "T1567",
+      "shape": "square",
+      "color": "#CC0000"
+    },
+    {
+      "id": "ip_src::5.45.208.10",
+      "type": "ip_src",
+      "label": "5.45.208.10",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 8,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1568"
+      ]
+    },
+    {
+      "id": "ip_dst::10.10.7.102",
       "type": "ip_dst",
-      "label": "172.31.250.188",
+      "label": "10.10.7.102",
       "shape": "circle",
       "color": "#7FBA00",
       "alert_count": 0,
@@ -433,13 +132,22 @@
       "risk_level": "unknown"
     },
     {
-      "id": "mitre_ttp::T1027",
+      "id": "rule::NETWATCH - Large outbound transfer",
+      "type": "rule",
+      "label": "NETWATCH - Large outbound transfer",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1048",
       "type": "mitre_ttp",
-      "label": "Defense Evasion (T1027)",
-      "tactic": "Defense Evasion",
-      "technique": "T1027",
+      "label": "Exfiltration (T1048)",
+      "tactic": "Exfiltration",
+      "technique": "T1048",
       "shape": "square",
-      "color": "#9370DB"
+      "color": "#CC0000"
     },
     {
       "id": "ip_dst::10.10.7.150",
@@ -450,41 +158,6 @@
       "alert_count": 0,
       "risk_score": 0,
       "risk_level": "unknown"
-    },
-    {
-      "id": "rule::ET SCAN Possible Nmap User-Agent Observed",
-      "type": "rule",
-      "label": "ET SCAN Possible Nmap User-Agent Observed",
-      "shape": "diamond",
-      "category": "network-scan",
-      "engine": "suricata",
-      "color": "#F5A623"
-    },
-    {
-      "id": "mitre_ttp::T1595",
-      "type": "mitre_ttp",
-      "label": "Reconnaissance (T1595)",
-      "tactic": "Reconnaissance",
-      "technique": "T1595",
-      "shape": "square",
-      "color": "#FF9999"
-    },
-    {
-      "id": "ip_src::175.45.179.12",
-      "type": "ip_src",
-      "label": "175.45.179.12",
-      "shape": "circle",
-      "color": "#4A90D9",
-      "alert_count": 1,
-      "risk_score": 29,
-      "risk_level": "low",
-      "risk_engines": [
-        "suricata"
-      ],
-      "risk_top_rule": "NETWATCH - Cleartext password in HTTP POST",
-      "risk_mitre_ttps": [
-        "T1552"
-      ]
     },
     {
       "id": "rule::NETWATCH - Cleartext password in HTTP POST",
@@ -505,19 +178,542 @@
       "color": "#FF8C00"
     },
     {
-      "id": "ip_src::188.165.200.12",
+      "id": "ip_src::58.30.8.21",
       "type": "ip_src",
-      "label": "188.165.200.12",
+      "label": "58.30.8.21",
       "shape": "circle",
       "color": "#4A90D9",
-      "alert_count": 1,
-      "risk_score": 29,
-      "risk_level": "low",
+      "alert_count": 5,
+      "risk_score": 57,
+      "risk_level": "medium",
       "risk_engines": [
         "suricata"
       ],
       "risk_top_rule": "NETWATCH - ICMP Ping Sweep detected",
       "risk_mitre_ttps": [
+        "T1071",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_dst::10.10.7.15",
+      "type": "ip_dst",
+      "label": "10.10.7.15",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "rule::ET POLICY Python-urllib User-Agent",
+      "type": "rule",
+      "label": "ET POLICY Python-urllib User-Agent",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "ip_src::200.147.55.3",
+      "type": "ip_src",
+      "label": "200.147.55.3",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 9,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_dst::172.31.250.100",
+      "type": "ip_dst",
+      "label": "172.31.250.100",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "type": "rule",
+      "label": "ET EXPLOIT Metasploit Framework User-Agent",
+      "shape": "diamond",
+      "category": "web-application-attack",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1203",
+      "type": "mitre_ttp",
+      "label": "Execution (T1203)",
+      "tactic": "Execution",
+      "technique": "T1203",
+      "shape": "square",
+      "color": "#FFA500"
+    },
+    {
+      "id": "ip_src::175.45.179.12",
+      "type": "ip_src",
+      "label": "175.45.179.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 7,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1203",
+        "T1552",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_dst::172.31.250.50",
+      "type": "ip_dst",
+      "label": "172.31.250.50",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "ip_src::175.45.176.5",
+      "type": "ip_src",
+      "label": "175.45.176.5",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 6,
+      "risk_score": 76,
+      "risk_level": "high",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1203",
+        "T1552",
+        "T1568"
+      ]
+    },
+    {
+      "id": "ip_dst::10.10.7.88",
+      "type": "ip_dst",
+      "label": "10.10.7.88",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "type": "rule",
+      "label": "NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "shape": "diamond",
+      "category": "policy-violation",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1027",
+      "type": "mitre_ttp",
+      "label": "Defense Evasion (T1027)",
+      "tactic": "Defense Evasion",
+      "technique": "T1027",
+      "shape": "square",
+      "color": "#9370DB"
+    },
+    {
+      "id": "ip_src::194.165.16.42",
+      "type": "ip_src",
+      "label": "194.165.16.42",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 15,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "type": "rule",
+      "label": "NETWATCH - ICMP Ping Sweep detected",
+      "shape": "diamond",
+      "category": "network-scan",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1595",
+      "type": "mitre_ttp",
+      "label": "Reconnaissance (T1595)",
+      "tactic": "Reconnaissance",
+      "technique": "T1595",
+      "shape": "square",
+      "color": "#FF9999"
+    },
+    {
+      "id": "ip_src::79.115.12.88",
+      "type": "ip_src",
+      "label": "79.115.12.88",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 6,
+      "risk_score": 82,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - ICMP Ping Sweep detected",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1567",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_dst::10.10.7.33",
+      "type": "ip_dst",
+      "label": "10.10.7.33",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "ip_src::31.3.96.45",
+      "type": "ip_src",
+      "label": "31.3.96.45",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 9,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_dst::10.10.7.200",
+      "type": "ip_dst",
+      "label": "10.10.7.200",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "type": "rule",
+      "label": "ET SCAN Possible Nmap User-Agent Observed",
+      "shape": "diamond",
+      "category": "network-scan",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::ET SCAN Potential SSH Scan",
+      "type": "rule",
+      "label": "ET SCAN Potential SSH Scan",
+      "shape": "diamond",
+      "category": "network-scan",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1046",
+      "type": "mitre_ttp",
+      "label": "Reconnaissance (T1046)",
+      "tactic": "Reconnaissance",
+      "technique": "T1046",
+      "shape": "square",
+      "color": "#FF9999"
+    },
+    {
+      "id": "ip_src::49.206.12.8",
+      "type": "ip_src",
+      "label": "49.206.12.8",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 10,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1203",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::219.76.15.8",
+      "type": "ip_src",
+      "label": "219.76.15.8",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 6,
+      "risk_score": 90,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "risk_mitre_ttps": [
+        "T1071",
+        "T1110",
+        "T1552",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::85.214.55.3",
+      "type": "ip_src",
+      "label": "85.214.55.3",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 8,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1203",
+        "T1568"
+      ]
+    },
+    {
+      "id": "ip_dst::10.10.7.45",
+      "type": "ip_dst",
+      "label": "10.10.7.45",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "ip_src::1.180.0.12",
+      "type": "ip_src",
+      "label": "1.180.0.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 6,
+      "risk_score": 82,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET SCAN Potential SSH Scan",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1567",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "rule::ET DNS Query for .xyz TLD",
+      "type": "rule",
+      "label": "ET DNS Query for .xyz TLD",
+      "shape": "diamond",
+      "category": "bad-unknown",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1568",
+      "type": "mitre_ttp",
+      "label": "Command and Control (T1568)",
+      "tactic": "Command and Control",
+      "technique": "T1568",
+      "shape": "square",
+      "color": "#FF6666"
+    },
+    {
+      "id": "ip_src::114.114.114.114",
+      "type": "ip_src",
+      "label": "114.114.114.114",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 9,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::23.45.67.89",
+      "type": "ip_src",
+      "label": "23.45.67.89",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 13,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::177.71.0.82",
+      "type": "ip_src",
+      "label": "177.71.0.82",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 9,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1552",
+        "T1567"
+      ]
+    },
+    {
+      "id": "ip_src::5.160.0.48",
+      "type": "ip_src",
+      "label": "5.160.0.48",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 6,
+      "risk_score": 71,
+      "risk_level": "high",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET SCAN Potential SSH Scan",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1071",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "id": "rule::NETWATCH - SSH Brute Force Attempt",
+      "type": "rule",
+      "label": "NETWATCH - SSH Brute Force Attempt",
+      "shape": "diamond",
+      "category": "attempted-admin",
+      "engine": "suricata",
+      "color": "#F5A623"
+    },
+    {
+      "id": "mitre_ttp::T1110",
+      "type": "mitre_ttp",
+      "label": "Credential Access (T1110)",
+      "tactic": "Credential Access",
+      "technique": "T1110",
+      "shape": "square",
+      "color": "#FF8C00"
+    },
+    {
+      "id": "ip_src::94.182.195.3",
+      "type": "ip_src",
+      "label": "94.182.195.3",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 8,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1046",
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1567",
         "T1595"
       ]
     },
@@ -532,72 +728,288 @@
       "risk_level": "unknown"
     },
     {
-      "id": "rule::(stream_tcp) reset outside window",
+      "id": "ip_src::78.38.30.7",
+      "type": "ip_src",
+      "label": "78.38.30.7",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 4,
+      "risk_score": 73,
+      "risk_level": "high",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1203",
+        "T1552"
+      ]
+    },
+    {
+      "id": "ip_src::217.70.184.38",
+      "type": "ip_src",
+      "label": "217.70.184.38",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 9,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::198.199.64.12",
+      "type": "ip_src",
+      "label": "198.199.64.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 8,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1071",
+        "T1110",
+        "T1203",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::185.220.101.5",
+      "type": "ip_src",
+      "label": "185.220.101.5",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 11,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::188.165.200.12",
+      "type": "ip_src",
+      "label": "188.165.200.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 8,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1071",
+        "T1110",
+        "T1567",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::117.18.0.55",
+      "type": "ip_src",
+      "label": "117.18.0.55",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 7,
+      "risk_score": 88,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET SCAN Possible Nmap User-Agent Observed",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1071",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::91.108.4.15",
+      "type": "ip_src",
+      "label": "91.108.4.15",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 7,
+      "risk_score": 100,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1048",
+        "T1110",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::46.23.0.82",
+      "type": "ip_src",
+      "label": "46.23.0.82",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 4,
+      "risk_score": 57,
+      "risk_level": "medium",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET SCAN Possible Nmap User-Agent Observed",
+      "risk_mitre_ttps": [
+        "T1027",
+        "T1071",
+        "T1595"
+      ]
+    },
+    {
+      "id": "ip_src::88.190.16.12",
+      "type": "ip_src",
+      "label": "88.190.16.12",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 3,
+      "risk_score": 59,
+      "risk_level": "medium",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - Large outbound transfer",
+      "risk_mitre_ttps": [
+        "T1048",
+        "T1071",
+        "T1552"
+      ]
+    },
+    {
+      "id": "ip_src::192.168.100.10",
+      "type": "ip_src",
+      "label": "192.168.100.10",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 12,
+      "risk_score": 51,
+      "risk_level": "medium",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "NETWATCH - SSH Brute Force Attempt",
+      "risk_mitre_ttps": []
+    },
+    {
+      "id": "ip_dst::192.168.100.11",
+      "type": "ip_dst",
+      "label": "192.168.100.11",
+      "shape": "circle",
+      "color": "#7FBA00",
+      "alert_count": 0,
+      "risk_score": 0,
+      "risk_level": "unknown"
+    },
+    {
+      "id": "ip_src::104.21.48.3",
+      "type": "ip_src",
+      "label": "104.21.48.3",
+      "shape": "circle",
+      "color": "#4A90D9",
+      "alert_count": 5,
+      "risk_score": 87,
+      "risk_level": "critical",
+      "risk_engines": [
+        "suricata"
+      ],
+      "risk_top_rule": "ET EXPLOIT Metasploit Framework User-Agent",
+      "risk_mitre_ttps": [
+        "T1046",
+        "T1203",
+        "T1552",
+        "T1568",
+        "T1595"
+      ]
+    },
+    {
+      "id": "rule::GPL ICMP_INFO PING",
       "type": "rule",
-      "label": "(stream_tcp) reset outside window",
+      "label": "GPL ICMP_INFO PING",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
       "color": "#F5A623"
     },
     {
-      "id": "rule::(ipv4) IPv4 option set",
+      "id": "rule::NETWATCH - Possible data exfiltration (large upload)",
       "type": "rule",
-      "label": "(ipv4) IPv4 option set",
+      "label": "NETWATCH - Possible data exfiltration (large upload)",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
       "color": "#F5A623"
     },
     {
-      "id": "rule::(icmp6) ICMPv6 packet to multicast address",
+      "id": "rule::ET POLICY Cleartext Password Detected",
       "type": "rule",
-      "label": "(icmp6) ICMPv6 packet to multicast address",
+      "label": "ET POLICY Cleartext Password Detected",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
       "color": "#F5A623"
     },
     {
-      "id": "rule::(port_scan) IP filtered protocol sweep",
+      "id": "rule::NETWATCH - DNS Query to suspicious TLD",
       "type": "rule",
-      "label": "(port_scan) IP filtered protocol sweep",
+      "label": "NETWATCH - DNS Query to suspicious TLD",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
       "color": "#F5A623"
     },
     {
-      "id": "rule::(ipv6) IPv6 packet with reserved multicast destination address",
+      "id": "rule::NETWATCH - Suspicious User-Agent (curl)",
       "type": "rule",
-      "label": "(ipv6) IPv6 packet with reserved multicast destination address",
+      "label": "NETWATCH - Suspicious User-Agent (curl)",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
       "color": "#F5A623"
     },
     {
-      "id": "rule::(ssl) invalid server HELLO without client HELLO detected",
+      "id": "rule::NETWATCH - Cleartext credentials over HTTP",
       "type": "rule",
-      "label": "(ssl) invalid server HELLO without client HELLO detected",
-      "shape": "diamond",
-      "category": "unknown",
-      "engine": "snort",
-      "color": "#F5A623"
-    },
-    {
-      "id": "rule::INDICATOR-SHELLCODE x86 setuid 0",
-      "type": "rule",
-      "label": "INDICATOR-SHELLCODE x86 setuid 0",
-      "shape": "diamond",
-      "category": "unknown",
-      "engine": "snort",
-      "color": "#F5A623"
-    },
-    {
-      "id": "rule::(port_scan) UDP filtered portscan",
-      "type": "rule",
-      "label": "(port_scan) UDP filtered portscan",
+      "label": "NETWATCH - Cleartext credentials over HTTP",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
@@ -613,9 +1025,54 @@
       "color": "#F5A623"
     },
     {
-      "id": "rule::(icmp4) ICMP ping Nmap",
+      "id": "rule::ET POLICY External IP Lookup",
       "type": "rule",
-      "label": "(icmp4) ICMP ping Nmap",
+      "label": "ET POLICY External IP Lookup",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::ET SCAN Nmap Scripting Engine User-Agent",
+      "type": "rule",
+      "label": "ET SCAN Nmap Scripting Engine User-Agent",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::NETWATCH - Connection to non-standard port",
+      "type": "rule",
+      "label": "NETWATCH - Connection to non-standard port",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::ET SCAN Potential SSH Scan OUTBOUND",
+      "type": "rule",
+      "label": "ET SCAN Potential SSH Scan OUTBOUND",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(ipv4) IPv4 datagram length > captured length",
+      "type": "rule",
+      "label": "(ipv4) IPv4 datagram length > captured length",
+      "shape": "diamond",
+      "category": "unknown",
+      "engine": "snort",
+      "color": "#F5A623"
+    },
+    {
+      "id": "rule::(ssl) invalid server HELLO without client HELLO detected",
+      "type": "rule",
+      "label": "(ssl) invalid server HELLO without client HELLO detected",
       "shape": "diamond",
       "category": "unknown",
       "engine": "snort",
@@ -624,200 +1081,272 @@
   ],
   "edges": [
     {
-      "source": "ip_src::192.168.1.21",
-      "target": "rule::NETWATCH - Large outbound transfer (possible exfiltration)",
+      "source": "ip_src::79.112.0.60",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
       "relation": "triggered",
-      "weight": 18
+      "weight": 4
     },
     {
-      "source": "ip_src::192.168.1.21",
-      "target": "ip_dst::160.79.104.10",
+      "source": "ip_src::79.112.0.60",
+      "target": "ip_dst::172.31.250.188",
       "relation": "communicated_with",
-      "weight": 18
+      "weight": 2
     },
     {
-      "source": "ip_src::2a01:cb00:1955:9000:dc93:ede5:4178:cf1d",
+      "source": "ip_src::79.112.0.60",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::79.112.0.60",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::79.112.0.60",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.112.0.60",
       "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
       "relation": "triggered",
-      "weight": 4
-    },
-    {
-      "source": "ip_src::2a01:cb00:1955:9000:dc93:ede5:4178:cf1d",
-      "target": "ip_dst::2a02:26f0:2b80:0100:0000:0000:0215:48c8",
-      "relation": "communicated_with",
-      "weight": 4
-    },
-    {
-      "source": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
-      "target": "mitre_ttp::T1027",
-      "relation": "maps_to_ttp",
       "weight": 1
     },
     {
-      "source": "ip_src::172.31.114.173",
-      "target": "rule::NETWATCH - Large outbound transfer (possible exfiltration)",
-      "relation": "triggered",
-      "weight": 66
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::160.79.104.10",
-      "relation": "communicated_with",
-      "weight": 60
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
-      "relation": "triggered",
-      "weight": 50
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.2",
-      "relation": "communicated_with",
-      "weight": 28
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::34.149.66.137",
-      "relation": "communicated_with",
-      "weight": 6
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.3",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.89",
-      "relation": "communicated_with",
-      "weight": 4
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.24",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.1",
-      "relation": "communicated_with",
-      "weight": 6
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.157",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.5",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.55",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::172.31.114.173",
-      "target": "ip_dst::192.168.15.6",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "rule::NETWATCH - ICMP Ping Sweep detected",
-      "target": "mitre_ttp::T1595",
-      "relation": "maps_to_ttp",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::10.10.1.50",
-      "target": "rule::ET TROJAN Metasploit Meterpreter reverse shell",
-      "relation": "triggered",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::10.10.1.50",
-      "target": "ip_dst::172.16.0.1",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::10.10.1.50",
-      "target": "rule::ET TROJAN Meterpreter reverse shell",
-      "relation": "triggered",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::192.168.100.200",
-      "target": "rule::ET DNS Query for Known Malware Domain",
-      "relation": "triggered",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::192.168.100.200",
-      "target": "ip_dst::8.8.8.8",
+      "source": "ip_src::79.112.0.60",
+      "target": "ip_dst::172.31.250.50",
       "relation": "communicated_with",
       "weight": 1
     },
     {
-      "source": "ip_src::192.168.1.15",
-      "target": "rule::ET TOR Known Tor Exit Node Traffic",
-      "relation": "triggered",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::192.168.1.15",
-      "target": "ip_dst::185.220.101.1",
-      "relation": "communicated_with",
-      "weight": 2
-    },
-    {
-      "source": "ip_src::192.168.1.15",
-      "target": "rule::ET TOR Known Tor Exit Node",
-      "relation": "triggered",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::192.168.1.100",
-      "target": "rule::ET SCAN Nmap SYN Scan",
-      "relation": "triggered",
-      "weight": 1
-    },
-    {
-      "source": "ip_src::192.168.1.100",
-      "target": "ip_dst::10.0.0.1",
+      "source": "ip_src::79.112.0.60",
+      "target": "ip_dst::10.10.7.15",
       "relation": "communicated_with",
       "weight": 1
     },
     {
-      "source": "ip_src::117.18.0.55",
+      "source": "ip_src::79.112.0.60",
       "target": "rule::ET POLICY Python-urllib User-Agent",
       "relation": "triggered",
       "weight": 1
     },
     {
-      "source": "ip_src::117.18.0.55",
-      "target": "ip_dst::10.10.7.88",
+      "source": "ip_src::79.112.0.60",
+      "target": "ip_dst::10.10.7.33",
       "relation": "communicated_with",
       "weight": 1
     },
     {
-      "source": "ip_src::117.18.0.55",
-      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "source": "rule::ET POLICY curl User-Agent Outbound",
+      "target": "mitre_ttp::T1071",
+      "relation": "maps_to_ttp",
+      "weight": 22
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
       "relation": "triggered",
       "weight": 1
     },
     {
-      "source": "ip_src::117.18.0.55",
+      "source": "ip_src::5.8.8.180",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
       "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.8.8.180",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "target": "mitre_ttp::T1567",
+      "relation": "maps_to_ttp",
+      "weight": 15
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.45.208.10",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "rule::NETWATCH - Large outbound transfer",
+      "target": "mitre_ttp::T1048",
+      "relation": "maps_to_ttp",
+      "weight": 16
+    },
+    {
+      "source": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "target": "mitre_ttp::T1552",
+      "relation": "maps_to_ttp",
+      "weight": 19
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::58.30.8.21",
+      "target": "ip_dst::172.31.250.100",
       "relation": "communicated_with",
       "weight": 1
     },
@@ -825,24 +1354,132 @@
       "source": "rule::ET POLICY Python-urllib User-Agent",
       "target": "mitre_ttp::T1071",
       "relation": "maps_to_ttp",
-      "weight": 1
+      "weight": 25
     },
     {
-      "source": "ip_src::177.71.0.82",
-      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
       "relation": "triggered",
       "weight": 1
     },
     {
-      "source": "ip_src::177.71.0.82",
+      "source": "ip_src::200.147.55.3",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::200.147.55.3",
       "target": "ip_dst::172.31.250.188",
       "relation": "communicated_with",
       "weight": 1
     },
     {
-      "source": "rule::ET SCAN Possible Nmap User-Agent Observed",
-      "target": "mitre_ttp::T1595",
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::200.147.55.3",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "target": "mitre_ttp::T1203",
       "relation": "maps_to_ttp",
+      "weight": 18
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
       "weight": 1
     },
     {
@@ -853,14 +1490,1322 @@
     },
     {
       "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.179.12",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::175.45.176.5",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "target": "mitre_ttp::T1027",
+      "relation": "maps_to_ttp",
+      "weight": 14
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 5
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::194.165.16.42",
       "target": "ip_dst::10.10.7.88",
       "relation": "communicated_with",
       "weight": 1
     },
     {
-      "source": "rule::NETWATCH - Cleartext password in HTTP POST",
-      "target": "mitre_ttp::T1552",
+      "source": "ip_src::194.165.16.42",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::194.165.16.42",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "target": "mitre_ttp::T1595",
       "relation": "maps_to_ttp",
+      "weight": 17
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::79.115.12.88",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::31.3.96.45",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "target": "mitre_ttp::T1595",
+      "relation": "maps_to_ttp",
+      "weight": 18
+    },
+    {
+      "source": "rule::ET SCAN Potential SSH Scan",
+      "target": "mitre_ttp::T1046",
+      "relation": "maps_to_ttp",
+      "weight": 19
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::49.206.12.8",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::219.76.15.8",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::85.214.55.3",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::1.180.0.12",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "rule::ET DNS Query for .xyz TLD",
+      "target": "mitre_ttp::T1568",
+      "relation": "maps_to_ttp",
+      "weight": 21
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::114.114.114.114",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 4
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::23.45.67.89",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::177.71.0.82",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::5.160.0.48",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "rule::NETWATCH - SSH Brute Force Attempt",
+      "target": "mitre_ttp::T1110",
+      "relation": "maps_to_ttp",
+      "weight": 17
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::94.182.195.3",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::78.38.30.7",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::78.38.30.7",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::78.38.30.7",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::78.38.30.7",
+      "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::78.38.30.7",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::78.38.30.7",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::217.70.184.38",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "ip_dst::172.31.250.188",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::198.199.64.12",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 4
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 4
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::185.220.101.5",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::ET POLICY Dropbox Offsite Backup In Use",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::188.165.200.12",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
       "weight": 1
     },
     {
@@ -870,8 +2815,284 @@
       "weight": 1
     },
     {
-      "source": "ip_src::188.165.200.12",
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::10.10.7.150",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::ET POLICY curl User-Agent Outbound",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::117.18.0.55",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::10.10.7.102",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::172.31.250.100",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::10.10.7.33",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::91.108.4.15",
+      "target": "ip_dst::10.10.7.88",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::46.23.0.82",
+      "target": "rule::NETWATCH - Obsolete TLS version (TLSv1.0)",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::46.23.0.82",
       "target": "ip_dst::10.10.7.221",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::46.23.0.82",
+      "target": "rule::ET SCAN Possible Nmap User-Agent Observed",
+      "relation": "triggered",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::46.23.0.82",
+      "target": "ip_dst::10.10.7.45",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::46.23.0.82",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::46.23.0.82",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::46.23.0.82",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::88.190.16.12",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::88.190.16.12",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 2
+    },
+    {
+      "source": "ip_src::88.190.16.12",
+      "target": "rule::NETWATCH - Large outbound transfer",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::88.190.16.12",
+      "target": "ip_dst::10.10.7.200",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::88.190.16.12",
+      "target": "rule::ET POLICY Python-urllib User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::192.168.100.10",
+      "target": "rule::NETWATCH - SSH Brute Force Attempt",
+      "relation": "triggered",
+      "weight": 12
+    },
+    {
+      "source": "ip_src::192.168.100.10",
+      "target": "ip_dst::192.168.100.11",
+      "relation": "communicated_with",
+      "weight": 12
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "rule::NETWATCH - ICMP Ping Sweep detected",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "ip_dst::172.31.250.50",
+      "relation": "communicated_with",
+      "weight": 3
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "rule::ET DNS Query for .xyz TLD",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "rule::NETWATCH - Cleartext password in HTTP POST",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "ip_dst::10.10.7.15",
+      "relation": "communicated_with",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "rule::ET EXPLOIT Metasploit Framework User-Agent",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "rule::ET SCAN Potential SSH Scan",
+      "relation": "triggered",
+      "weight": 1
+    },
+    {
+      "source": "ip_src::104.21.48.3",
+      "target": "ip_dst::10.10.7.150",
       "relation": "communicated_with",
       "weight": 1
     }
