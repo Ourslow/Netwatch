@@ -71,6 +71,52 @@
     ]
   },
   {
+    "id": "ntop",
+    "name": "ntopng",
+    "type": "open-source",
+    "category": "NPM / Flux",
+    "description": "Analyse de trafic réseau en temps réel façon NPM commercial (type Riverbed), 100% open-source et gratuit. Recommandé en réunion du 2026-07-10 pour enrichir le catalogue face à Allegro/Riverbed.",
+    "logo": "📈",
+    "version": "5.x",
+    "license": "GPL v3",
+    "repo": "https://github.com/ntop/ntopng",
+    "deployable": true,
+    "template_vmid": null,
+    "ram_gb": 4,
+    "cpu": 2,
+    "disk_gb": 50,
+    "tags": "npm,flux,open-source",
+    "features": [
+      "Analyse de trafic temps réel (libpcap/PF_RING)",
+      "Support NetFlow/sFlow/IPFIX natif",
+      "Historique et alerting configurable",
+      "API REST pour intégration externe"
+    ]
+  },
+  {
+    "id": "kali-tcpreplay",
+    "name": "Kali — Générateur de trafic (TCP Replay)",
+    "type": "open-source",
+    "category": "Génération de trafic",
+    "description": "VM Kali dédiée au rejeu de PCAP (tcpreplay) et à la génération de trafic de test, pilotable depuis le catalogue. Recommandée par Rodolphe et Fred en réunion du 2026-07-10 — permet de tester NetWatch sans dépendre d'un flux client réel, et sert de source pour l'auto-formation.",
+    "logo": "🐉",
+    "version": "2024.x",
+    "license": "GPL",
+    "repo": null,
+    "deployable": true,
+    "template_vmid": null,
+    "ram_gb": 4,
+    "cpu": 2,
+    "disk_gb": 40,
+    "tags": "generation-trafic,formation,open-source",
+    "features": [
+      "tcpreplay / tcpprep — rejeu de PCAP vers une interface",
+      "tcpdump — capture pour constituer sa propre bibliothèque de PCAP",
+      "Scripts Python de génération de trafic (scapy)",
+      "Déconnectable du réseau entreprise — usage formation sans risque"
+    ]
+  },
+  {
     "id": "netscout",
     "name": "Netscout nGeniusONE",
     "type": "commercial",
@@ -139,6 +185,29 @@
       "Visibilité applicative WAN",
       "Détection d'anomalies comportementales",
       "SteelCentral — intégration avec SteelHead"
+    ],
+    "contact": "Contacter l'équipe commerciale Axians"
+  },
+  {
+    "id": "allegro",
+    "name": "Allegro Network Multimeter",
+    "type": "commercial",
+    "category": "NPM / Sécurité",
+    "description": "Sonde combinée performance réseau + sécurité (éditeur allemand, Allegro Packets). Concurrent direct identifié en réunion du 2026-07-10 : moins cher que Riverbed, déjà déployé chez un client Axians, dispose d'une fonction d'anonymisation de PCAP intégrée.",
+    "logo": "🎻",
+    "version": "—",
+    "license": "Commercial — Axians",
+    "repo": null,
+    "deployable": false,
+    "template_vmid": null,
+    "ram_gb": null,
+    "cpu": null,
+    "disk_gb": null,
+    "tags": "npm,securite,commercial,axians",
+    "features": [
+      "Analyse de trafic temps réel (perf + sécurité combinées)",
+      "Anonymisation de PCAP intégrée",
+      "Positionnement le plus proche de NetWatch côté combiné sécu+NPM"
     ],
     "contact": "Contacter l'équipe commerciale Axians"
   }
