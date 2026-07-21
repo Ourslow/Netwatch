@@ -18,7 +18,7 @@ PROXMOX_PASSWORD = os.getenv("PROXMOX_PASSWORD", "")
 # pas sur PROXMOX_PASSWORD dans proxmox/client.py.
 PROXMOX_TOKEN_NAME  = os.getenv("PROXMOX_TOKEN_NAME", "")
 PROXMOX_TOKEN_VALUE = os.getenv("PROXMOX_TOKEN_VALUE", "")
-PROXMOX_NODE     = os.getenv("PROXMOX_NODE", "pve")
+PROXMOX_NODE     = os.getenv("PROXMOX_NODE", "pve-netwatch")
 PROXMOX_VERIFY_SSL = os.getenv("PROXMOX_VERIFY_SSL", "false").lower() == "true"
 
 _secret = os.getenv("FLASK_SECRET_KEY", "")

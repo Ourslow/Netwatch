@@ -348,7 +348,7 @@ def gen_http_log(ts):
         "id.resp_h": dst,
         "id.resp_p": 80,
         "method": method,
-        "host": host,
+        "http_host": host,
         "uri": random.choice(uris),
         "status_code": status,
         "request_body_len": random.randint(0, 5000),

@@ -19,6 +19,7 @@ filebeat.inputs:
       - /zeek/logs/weird.log
       - /zeek/logs/files.log
       - /zeek/logs/x509.log
+      - /zeek/logs/arp.log
     json.keys_under_root: true
     json.add_error_key: true
     json.ignore_decoding_error: true

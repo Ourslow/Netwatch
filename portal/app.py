@@ -1398,7 +1398,7 @@ def api_topology():
             return jsonify({"error": f"topology-discover.py introuvable et pas de demo : {exc}"}), 503
 
     # ---- Run the script ----
-    cmd = ["python3", script, "--output", cache_path]
+    cmd = ["python3", script, "--output", cache_path, "--es-url", config.NETWATCH_ES_URL]
     if config.TOPOLOGY_DEMO:
         cmd.append("--demo")
     try:

@@ -415,6 +415,9 @@ def fetch_arp_from_es(es_url: str, verbose: bool = False) -> list[dict]:
             "src_ip", "src_mac", "dst_ip",
             "source.ip", "source.mac", "destination.ip",
             "zeek.arp.src_mac", "zeek.arp.src_ip", "zeek.arp.dst_ip",
+            # Champs natifs Zeek 6.2 (arp.log custom NetWatch, cf. zeek/local.zeek) —
+            # SPA/SHA/TPA/THA renommés en minuscule par LogAscii::use_json.
+            "spa", "sha", "tpa", "tha", "mac_src", "mac_dst", "operation",
         ],
         "query": {
             "bool": {
@@ -422,6 +425,13 @@ def fetch_arp_from_es(es_url: str, verbose: bool = False) -> list[dict]:
                     {"term": {"network.protocol": "arp"}},
                     {"term": {"log_type": "arp"}},
                     {"term": {"_index": "zeek-arp"}},
+                    # Pipeline réel NetWatch : Filebeat tague tous les logs Zeek
+                    # log_type=zeek/engine=zeek (pas de distinction par sous-type),
+                    # l'index est zeek-YYYY.MM.DD (jamais zeek-arp). Le seul signal
+                    # fiable pour isoler arp.log est le chemin source ajouté par
+                    # Filebeat (log.file.path=/zeek/logs/arp.log). Wildcard sur le
+                    # sous-champ .keyword car log.file.path est un champ text.
+                    {"wildcard": {"log.file.path.keyword": "*arp.log*"}},
                 ],
                 "minimum_should_match": 1,
             }
@@ -450,13 +460,22 @@ def fetch_arp_from_es(es_url: str, verbose: bool = False) -> list[dict]:
         # Try several field naming conventions
         src_ip  = (src.get("src_ip")
                    or src.get("source.ip")
-                   or src.get("zeek.arp.src_ip", ""))
+                   or src.get("zeek.arp.src_ip", "")
+                   # arp.log custom NetWatch (zeek/local.zeek) : SPA = sender
+                   # protocol address = IP source de la requête/réponse ARP.
+                   or src.get("spa", ""))
         src_mac = (src.get("src_mac")
                    or src.get("source.mac")
-                   or src.get("zeek.arp.src_mac", ""))
+                   or src.get("zeek.arp.src_mac", "")
+                   # SHA = sender hardware address ; mac_src = MAC Ethernet L2
+                   # (identique à SHA dans l'immense majorité des cas).
+                   or src.get("sha", "")
+                   or src.get("mac_src", ""))
         dst_ip  = (src.get("dst_ip")
                    or src.get("destination.ip")
-                   or src.get("zeek.arp.dst_ip", ""))
+                   or src.get("zeek.arp.dst_ip", "")
+                   # TPA = target protocol address = IP cible de la requête ARP.
+                   or src.get("tpa", ""))
         if src_ip or src_mac:
             entries.append({"src_ip": src_ip, "src_mac": src_mac, "dst_ip": dst_ip})
 

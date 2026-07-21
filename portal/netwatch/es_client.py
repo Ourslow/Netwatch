@@ -599,7 +599,7 @@ def get_tls_certs(size=50):
     body = {
         "size": size,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"_path": "x509"}},
+        "query": {"term": {"log.file.path.keyword": "/zeek/logs/x509.log"}},
         "_source": [
             "@timestamp", "certificate",
         ],
@@ -661,7 +661,7 @@ def get_suspicious_files(size=50):
         "sort": [{"@timestamp": {"order": "desc"}}],
         "query": {
             "bool": {
-                "must": [{"term": {"_path": "files"}}],
+                "must": [{"term": {"log.file.path.keyword": "/zeek/logs/files.log"}}],
                 "should": [{"term": {"mime_type": m}} for m in _SUSPICIOUS_MIMES],
                 "minimum_should_match": 1,
             }
@@ -887,7 +887,7 @@ def get_weird_events(size=50):
     body = {
         "size": size,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"_path": "weird"}},
+        "query": {"term": {"log.file.path.keyword": "/zeek/logs/weird.log"}},
         "_source": ["@timestamp", "name", "addl", "id"],
     }
     try:
@@ -1023,7 +1023,7 @@ def get_flows_stats():
             "bool": {
                 "filter": [
                     {"range": {"@timestamp": {"gte": "now-24h"}}},
-                    {"term":  {"_path": "conn"}},
+                    {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
                 ]
             }
         },
@@ -1152,7 +1152,7 @@ def get_art_stats():
             "query": {
                 "bool": {
                     "should": [
-                        {"term":   {"_path": "art"}},
+                        {"term":   {"log.file.path.keyword": "/zeek/logs/art.log"}},
                         {"exists": {"field": "art.art_ms"}},
                         {"exists": {"field": "art_ms"}},
                     ],
@@ -1181,7 +1181,7 @@ def get_art_stats():
                 "query": {
                     "bool": {
                         "should": [
-                            {"term": {"_path": "art"}},
+                            {"term": {"log.file.path.keyword": "/zeek/logs/art.log"}},
                             {"exists": {"field": art_field}},
                         ],
                         "minimum_should_match": 1,
@@ -1227,7 +1227,7 @@ def get_art_stats():
                 "bool": {
                     "filter": [
                         {"range": {"@timestamp": {"gte": "now-24h"}}},
-                        {"term":  {"_path": "dns"}},
+                        {"term":  {"log.file.path.keyword": "/zeek/logs/dns.log"}},
                         {"exists": {"field": "rtt"}},
                     ]
                 }
@@ -1271,7 +1271,7 @@ def get_art_stats():
                     "bool": {
                         "filter": [
                             {"range": {"@timestamp": {"gte": "now-24h"}}},
-                            {"term":  {"_path": "conn"}},
+                            {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
                             {"exists": {"field": "duration"}},
                         ] + extra_filter,
                     }
@@ -1314,7 +1314,7 @@ def get_tcp_perf():
 
     base = [
         {"range": {"@timestamp": {"gte": "now-24h"}}},
-        {"term": {"_path": "conn"}},
+        {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
         {"term": {"proto": "tcp"}},
     ]
 
@@ -1347,7 +1347,7 @@ def get_tcp_perf():
         r_tot = _es("/zeek-*/_search", {
             "size": 0,
             "query": {"bool": {"filter": base}},
-            "aggs": {"per_ip": {"terms": {"field": "id.orig_h", "size": 100}}},
+            "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 100}}},
         })
         total_per_ip = {}
         if r_tot.status_code == 200:
@@ -1363,7 +1363,7 @@ def get_tcp_perf():
                     "must": [{"regexp": {"history.keyword": ".*[Tt].*"}}],
                 }
             },
-            "aggs": {"per_ip": {"terms": {"field": "id.orig_h", "size": 10}}},
+            "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
         })
         if r_rt.status_code == 200:
             rows = []
@@ -1554,7 +1554,7 @@ def get_sla_stats(days=7):
             "target_ms": config.SLA_HTTP_TARGET_MS,
             "index":     "zeek-*",
             "filters":   [
-                {"term":   {"_path": "http"}},
+                {"term":   {"log.file.path.keyword": "/zeek/logs/http.log"}},
                 {"exists": {"field": "duration"}},
             ],
             "field":    "duration",
@@ -1565,7 +1565,7 @@ def get_sla_stats(days=7):
             "target_ms": config.SLA_DNS_TARGET_MS,
             "index":     "zeek-*",
             "filters":   [
-                {"term":   {"_path": "dns"}},
+                {"term":   {"log.file.path.keyword": "/zeek/logs/dns.log"}},
                 {"exists": {"field": "rtt"}},
             ],
             "field":    "rtt",
@@ -1576,7 +1576,7 @@ def get_sla_stats(days=7):
             "target_ms": config.SLA_RTT_TARGET_MS,
             "index":     "zeek-*",
             "filters":   [
-                {"term":  {"_path": "conn"}},
+                {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
                 {"term":  {"proto": "tcp"}},
                 {"range": {"rtt": {"gt": 0}}},
             ],
