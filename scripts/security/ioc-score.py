@@ -90,6 +90,11 @@ SURICATA_SEVERITY_WEIGHT = {1: 10, 2: 5, 3: 2, 4: 1}
 SNORT_PRIORITY_WEIGHT    = {1: 5, 2: 2, 3: 1}
 ZEEK_WEIGHT              = 2  # always medium
 ENGINE_BONUS             = 15  # per distinct engine
+# AbuseIPDB confidence (0-100) divise par ce facteur pour sa contribution au
+# score composite. Avant : /10 -> max 10 pts, ecrasee par ENGINE_BONUS (jusqu'a
+# 45) et le MITRE (n*8) — un IP corrobore malveillant par une threat intel
+# externe ne pesait presque rien face aux seuls signaux internes.
+ABUSE_SCORE_DIVISOR      = 3   # max ~33 pts pour une confiance AbuseIPDB de 100
 
 
 def _sev_weight(engine: str, severity: int) -> int:
@@ -267,10 +272,19 @@ def fetch_all_alerts(es_url: str, days: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def load_enrich_cache(cache_path: str) -> dict:
-    """Load the ioc-enrich-cache.json if it exists. Returns {ip: {...}} dict."""
+    """Load the ioc-enrich-cache.json if it exists. Returns {ip: {...}} dict.
+
+    ioc-enrich.py wraps entries as {"data": {...}, "_cached_at": ts} since its
+    per-entry TTL was added ; older cache files store the enrichment dict
+    directly at the top level. Normalize both to {ip: enrichment_dict}.
+    """
     try:
         with open(cache_path, encoding="utf-8") as f:
-            data = json.load(f)
+            raw = json.load(f)
+        data = {
+            ip: (entry.get("data", entry) if isinstance(entry, dict) and "data" in entry else entry)
+            for ip, entry in raw.items()
+        }
         log.info("Enrichment cache loaded: %d entries from %s", len(data), cache_path)
         return data
     except FileNotFoundError:
@@ -334,7 +348,7 @@ def compute_scores(alerts: list[dict], enrich_cache: dict) -> list[dict]:
             n_alerts * 1
             + sev_sum
             + n_engines * ENGINE_BONUS
-            + abuse_score_raw / 10
+            + abuse_score_raw / ABUSE_SCORE_DIVISOR
             + n_mitre * 8
         )
         score = min(int(raw), 100)

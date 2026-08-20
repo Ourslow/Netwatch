@@ -93,7 +93,13 @@ def detect_beacons(es, since: datetime) -> list:
                         "terms": {"field": "id.resp_h.keyword", "size": 20},
                         "aggs": {
                             "ports": {
-                                "terms": {"field": "id.resp_p", "size": 5},
+                                "terms": {
+                                    "field": "id.resp_p", "size": 5,
+                                    # Ecarte les buckets sous le seuil de detection avant
+                                    # de materialiser leurs top_hits (evite de charger des
+                                    # dizaines de milliers de docs pour rien en memoire).
+                                    "min_doc_count": MIN_CONNECTIONS,
+                                },
                                 "aggs": {
                                     "hits": {
                                         "top_hits": {
@@ -295,9 +301,15 @@ def detect_dns_tunneling(es, since: datetime) -> list:
             fqdn  = q_b["key"]
             count = q_b["doc_count"]
 
-            parts      = fqdn.split(".")
-            subdomain  = parts[0] if len(parts) > 1 else fqdn
-            is_long    = len(subdomain) > DNS_SUBDOMAIN_LEN
+            parts = fqdn.split(".")
+            if len(parts) < 2:
+                # Requete sans label de domaine (resolution locale, mDNS, WPAD...) :
+                # structurellement pas exploitable en tunneling DNS, pas de domaine
+                # attaquant a joindre pour exfiltrer. Evite les faux positifs sur
+                # de longs noms d'hote internes.
+                continue
+            subdomain   = parts[0]
+            is_long     = len(subdomain) > DNS_SUBDOMAIN_LEN
             is_frequent = count > DNS_FREQ_THRESHOLD
 
             if not (is_long or is_frequent):

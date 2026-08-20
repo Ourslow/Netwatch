@@ -11,6 +11,8 @@ Chaque checker retourne un dict :
 """
 
 import time
+from concurrent.futures import ThreadPoolExecutor
+
 import requests
 
 TIMEOUT = 3  # secondes
@@ -101,14 +103,20 @@ def _parse_ollama(r):
 
 
 def check_all(es_url, grafana_url, prometheus_url, autoblock_url, ollama_url=None):
-    services = [
-        _check("Elasticsearch",   f"{es_url}/_cluster/health",  _parse_es),
-        _check("Grafana",         f"{grafana_url}/api/health",  _parse_grafana),
-        _check("Prometheus",      f"{prometheus_url}/-/healthy", _parse_prometheus),
-        _check("AutoBlock",       f"{autoblock_url}/health",    _parse_autoblock),
+    checks = [
+        ("Elasticsearch", f"{es_url}/_cluster/health",   _parse_es),
+        ("Grafana",       f"{grafana_url}/api/health",   _parse_grafana),
+        ("Prometheus",    f"{prometheus_url}/-/healthy", _parse_prometheus),
+        ("AutoBlock",     f"{autoblock_url}/health",     _parse_autoblock),
     ]
     if ollama_url:
-        services.append(_check("Assistant IA (Ollama)", f"{ollama_url}/api/tags", _parse_ollama))
+        checks.append(("Assistant IA (Ollama)", f"{ollama_url}/api/tags", _parse_ollama))
+
+    # Checks HTTP en parallèle — en séquentiel, N services down/timeout à
+    # TIMEOUT=3s chacun peuvent cumuler jusqu'à N*3s de latence sur /status.
+    with ThreadPoolExecutor(max_workers=len(checks)) as pool:
+        services = list(pool.map(lambda c: _check(*c), checks))
+
     # Résumé global
     statuses = [s["status"] for s in services]
     if all(s == "up" for s in statuses):

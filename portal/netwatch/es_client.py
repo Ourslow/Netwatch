@@ -90,12 +90,13 @@ def _normalize(hit):
 # Requêtes                                                             #
 # ------------------------------------------------------------------ #
 
-def get_recent_alerts(size=100, engine=None, severity=None, search=None):
+def get_recent_alerts(size=100, engine=None, severity=None, search=None, days=7):
     """
     Retourne (alerts: list, error: str|None).
     engine   : "suricata" | "snort" | None
     severity : 1 | 2 | 3 | None
     search   : str libre (signature, IP) | None
+    days     : fenêtre temporelle en jours (borne la requête, perf en prod)
     """
     if engine == "suricata":
         index = "suricata-*"
@@ -117,7 +118,8 @@ def get_recent_alerts(size=100, engine=None, severity=None, search=None):
                 ],
                 "minimum_should_match": 1,
             }
-        }
+        },
+        {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
     ]
 
     if severity is not None:
@@ -502,15 +504,24 @@ def get_ip_events(ip, size=200):
     return alerts, conn_stats, error
 
 
-def get_alert_stats():
+_EMPTY_ALERT_STATS = {
+    "total": 0, "last_24h": 0, "critical": 0, "medium": 0, "low": 0, "mitre": [],
+}
+
+
+def get_alert_stats(days=7):
     """
     Statistiques pour le widget dashboard et le header /alerts.
+    days : fenêtre temporelle en jours (borne la requête, perf en prod).
     Retourne (stats: dict, error: str|None).
     """
     body = {
         "size": 0,
         "query": {
             "bool": {
+                "filter": [
+                    {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
+                ],
                 "should": [
                     {"term":   {"event_type": "alert"}},
                     {"exists": {"field": "rule"}},
@@ -566,9 +577,9 @@ def get_alert_stats():
         }, None
 
     except requests.exceptions.ConnectionError:
-        return None, "Elasticsearch non joignable"
+        return _EMPTY_ALERT_STATS.copy(), "Elasticsearch non joignable"
     except Exception as e:
-        return None, str(e)[:80]
+        return _EMPTY_ALERT_STATS.copy(), str(e)[:80]
 
 
 # ------------------------------------------------------------------ #
