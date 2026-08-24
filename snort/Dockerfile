@@ -37,12 +37,14 @@ RUN wget -qO- https://github.com/snort3/snort3/archive/refs/tags/3.3.5.0.tar.gz 
     cmake --install build && \
     ldconfig && rm -rf /tmp/snort3-3.3.5.0
 
-# Regles communautaires
+# Regles communautaires (best-effort : certains reseaux d'entreprise bloquent/inspectent
+# le TLS vers snort.org ; on ne fait pas echouer le build pour ca, local.rules custom suffit)
 RUN mkdir -p /usr/local/etc/snort /usr/local/etc/rules /var/log/snort && \
-    wget -qO /tmp/community-rules.tar.gz \
-      https://www.snort.org/downloads/community/snort3-community-rules.tar.gz && \
-    tar xzf /tmp/community-rules.tar.gz -C /usr/local/etc/rules --strip-components=1 && \
-    rm /tmp/community-rules.tar.gz
+    (wget -qO /tmp/community-rules.tar.gz \
+      https://www.snort.org/downloads/community/snort3-community-rules.tar.gz \
+    && tar xzf /tmp/community-rules.tar.gz -C /usr/local/etc/rules --strip-components=1 \
+    && rm /tmp/community-rules.tar.gz \
+    || echo "WARN: telechargement regles communautaires Snort echoue, poursuite sans (local.rules custom toujours actif)")
 
 WORKDIR /var/log/snort
 
