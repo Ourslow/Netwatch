@@ -1,6 +1,7 @@
 # Données
 pcap/*.pcap
 pcap/*.pcapng
+portal/data/
 
 # Elasticsearch data
 elasticsearch/data/

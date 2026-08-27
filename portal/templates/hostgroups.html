@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Hostgroups — NetWatch Portal{% endblock %}
+{% block page_title %}<span data-i18n="nav_hostgroups">Hostgroups</span>{% endblock %}
+
+{% block topbar_actions %}
+{% if groups %}
+<button class="btn btn-sm btn-outline-danger" id="hg-clear-btn">
+  <i class="bi bi-trash me-1"></i><span data-i18n="hostgroup_clear_all">Tout supprimer</span>
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="mb-2" data-i18n="hostgroup_import_title">Importer des hostgroups</h6>
+    <p class="text-muted small mb-3" data-i18n="hostgroup_import_hint">
+      Export CSV type NetScout — colonnes Name, Hosts, Member hostgroups...
+    </p>
+    <form id="hg-import-form" class="d-flex flex-wrap gap-2 align-items-center">
+      <input type="file" name="file" id="hg-file-input" accept=".csv" class="form-control form-control-sm" style="max-width:360px" required>
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i class="bi bi-upload me-1"></i><span data-i18n="hostgroup_import_btn">Importer</span>
+      </button>
+      <span id="hg-import-status" class="small"></span>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if groups %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th data-i18n="hostgroup_col_name">Nom</th>
+            <th data-i18n="hostgroup_col_desc">Description</th>
+            <th data-i18n="hostgroup_col_hosts">Plages</th>
+            <th data-i18n="hostgroup_col_members">Sous-groupes</th>
+            <th data-i18n="hostgroup_col_tags">Tags</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in groups %}
+          <tr class="{% if not g.enabled %}text-muted{% endif %}">
+            <td>
+              <code>{{ g.name }}</code>
+              {% if not g.enabled %}<span class="badge bg-secondary ms-1">disabled</span>{% endif %}
+            </td>
+            <td class="text-muted small">{{ g.description or '—' }}</td>
+            <td><span class="badge bg-dark">{{ g.host_count }}</span></td>
+            <td class="text-muted small">
+              {% if g.member_groups %}{{ g.member_groups | join(', ') }}{% else %}—{% endif %}
+            </td>
+            <td class="text-muted small">{{ g.tags or '—' }}</td>
+            <td class="text-end">
+              <a href="{{ url_for('alerts', hostgroup=g.name) }}" class="btn btn-sm btn-outline-secondary" title="Filtrer les alertes">
+                <i class="bi bi-funnel"></i>
+              </a>
+              <button class="btn btn-sm btn-outline-danger hg-delete-btn" data-name="{{ g.name }}" title="Supprimer">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-collection fs-1 d-block mb-2"></i>
+      <span data-i18n="hostgroup_empty">Aucun hostgroup importé pour le moment.</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form   = document.getElementById('hg-import-form');
+  var status = document.getElementById('hg-import-status');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var fileInput = document.getElementById('hg-file-input');
+    if (!fileInput.files.length) return;
+    var fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+    status.textContent = '...';
+    fetch('/api/hostgroups/import', { method: 'POST', body: fd })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, body: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          status.textContent = res.body.error || 'Erreur';
+          status.className = 'small text-danger';
+          return;
+        }
+        status.textContent = res.body.imported + ' groupe(s) importé(s).';
+        status.className = 'small text-success';
+        setTimeout(function () { window.location.reload(); }, 600);
+      })
+      .catch(function () {
+        status.textContent = 'Erreur réseau';
+        status.className = 'small text-danger';
+      });
+  });
+
+  document.querySelectorAll('.hg-delete-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var name = btn.getAttribute('data-name');
+      fetch('/api/hostgroups/' + encodeURIComponent(name), { method: 'DELETE' })
+        .then(function () { window.location.reload(); });
+    });
+  });
+
+  var clearBtn = document.getElementById('hg-clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      fetch('/api/hostgroups/clear', { method: 'POST' })
+        .then(function () { window.location.reload(); });
+    });
+  }
+})();
+</script>
+{% endblock %}

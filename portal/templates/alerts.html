@@ -80,6 +80,7 @@
        de la recherche — sinon "Filtrer" réinitialise les filtres -->
   <input type="hidden" name="engine" value="{{ engine }}">
   <input type="hidden" name="severity" value="{{ severity }}">
+  <input type="hidden" name="hostgroup" value="{{ hostgroup }}">
   <div class="d-flex flex-wrap gap-2 align-items-center">
     <!-- Recherche libre -->
     <div class="flex-grow-1" style="min-width:200px; max-width:340px">
@@ -94,15 +95,15 @@
 
     <!-- Filtre moteur -->
     <div class="btn-group btn-group-sm">
-      <a href="{{ url_for('alerts', severity=severity, q=search) }}"
+      <a href="{{ url_for('alerts', severity=severity, q=search, hostgroup=hostgroup) }}"
          class="btn {% if not engine %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-i18n="filter_all">
         Tous
       </a>
-      <a href="{{ url_for('alerts', engine='suricata', severity=severity, q=search) }}"
+      <a href="{{ url_for('alerts', engine='suricata', severity=severity, q=search, hostgroup=hostgroup) }}"
          class="btn {% if engine == 'suricata' %}btn-info{% else %}btn-outline-secondary{% endif %}">
         <i class="bi bi-shield-fill me-1"></i>Suricata
       </a>
-      <a href="{{ url_for('alerts', engine='snort', severity=severity, q=search) }}"
+      <a href="{{ url_for('alerts', engine='snort', severity=severity, q=search, hostgroup=hostgroup) }}"
          class="btn {% if engine == 'snort' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
         <i class="bi bi-exclamation-triangle-fill me-1"></i>Snort
       </a>
@@ -110,19 +111,19 @@
 
     <!-- Filtre sévérité -->
     <div class="btn-group btn-group-sm">
-      <a href="{{ url_for('alerts', engine=engine, q=search) }}"
+      <a href="{{ url_for('alerts', engine=engine, q=search, hostgroup=hostgroup) }}"
          class="btn {% if not severity %}btn-secondary{% else %}btn-outline-secondary{% endif %}" data-i18n="filter_all_sev">
         Toutes sév.
       </a>
-      <a href="{{ url_for('alerts', engine=engine, severity=1, q=search) }}"
+      <a href="{{ url_for('alerts', engine=engine, severity=1, q=search, hostgroup=hostgroup) }}"
          class="btn {% if severity == '1' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
         <span data-i18n="sev_critical">Critique</span>
       </a>
-      <a href="{{ url_for('alerts', engine=engine, severity=2, q=search) }}"
+      <a href="{{ url_for('alerts', engine=engine, severity=2, q=search, hostgroup=hostgroup) }}"
          class="btn {% if severity == '2' %}btn-warning{% else %}btn-outline-secondary{% endif %}">
         <span data-i18n="sev_medium">Moyen</span>
       </a>
-      <a href="{{ url_for('alerts', engine=engine, severity=3, q=search) }}"
+      <a href="{{ url_for('alerts', engine=engine, severity=3, q=search, hostgroup=hostgroup) }}"
          class="btn {% if severity == '3' %}btn-outline-secondary active{% else %}btn-outline-secondary{% endif %}">
         <span data-i18n="sev_low">Faible</span>
       </a>

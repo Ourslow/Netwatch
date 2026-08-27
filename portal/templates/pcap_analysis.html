@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block title %}Analyse PCAP — NetWatch Portal{% endblock %}
+{% block page_title %}<span data-i18n="page_pcap_analysis">Analyse PCAP</span>{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted small" id="pcap-count-label"></span>
+<button class="btn btn-sm btn-outline-secondary" id="pcap-refresh-btn" title="Relancer l'analyse">
+  <i class="bi bi-arrow-repeat"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+
+<p class="text-muted small mb-3">
+  <i class="bi bi-info-circle me-1"></i>
+  Chaque fichier de <code>pcap/</code> est traité comme un point d'écoute distinct
+  (architecture prête pour de futurs points d'écoute réels sur différents flux réseau).
+  Conversations TCP triées par volume, analyse façon Allegro Network Multimeter.
+</p>
+
+<div id="pcap-loading" class="text-center text-muted py-5">
+  <span class="spinner-border spinner-border-sm me-2"></span>Analyse en cours (tshark)…
+</div>
+
+<div id="pcap-error" class="alert alert-warning" style="display:none"></div>
+
+<div class="card" id="pcap-table-card" style="display:none">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th data-i18n="pcap_col_point">Point d'écoute</th>
+            <th data-i18n="pcap_col_conv">Conversation</th>
+            <th class="text-end" data-i18n="pcap_col_bytes">Octets</th>
+            <th class="text-end" data-i18n="pcap_col_duration">Durée</th>
+            <th data-i18n="pcap_col_handshake">Handshake</th>
+            <th class="text-end" data-i18n="pcap_col_retrans">Retrans.</th>
+            <th data-i18n="pcap_col_qos">QoS / VLAN</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pcap-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal détail métriques -->
+<div class="modal fade" id="pcapDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pcap-detail-title"><i class="bi bi-diagram-3 me-2"></i>Conversation TCP</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="pcap-detail-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-primary pcap-ai-btn" id="pcap-detail-ai-btn">
+          <i class="bi bi-stars me-1"></i><span data-i18n="pcap_analyze_ai">Analyser avec l'IA</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" data-i18n="modal_close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal narration IA -->
+<div class="modal fade" id="pcapAiModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-stars me-2"></i><span data-i18n="modal_title">Assistant IA</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="pcap-ai-body"></div>
+      <div class="modal-footer">
+        <span class="ai-privacy me-auto">
+          <i class="bi bi-shield-lock"></i><span data-i18n="modal_privacy">Modèle exécuté localement (Ollama) — aucune donnée envoyée à l'extérieur</span>
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" data-i18n="modal_close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var tbody       = document.getElementById('pcap-tbody');
+  var loading     = document.getElementById('pcap-loading');
+  var errorBox    = document.getElementById('pcap-error');
+  var tableCard   = document.getElementById('pcap-table-card');
+  var countLabel  = document.getElementById('pcap-count-label');
+  var refreshBtn  = document.getElementById('pcap-refresh-btn');
+
+  var detailModalEl = document.getElementById('pcapDetailModal');
+  var detailModal    = new bootstrap.Modal(detailModalEl);
+  var detailBody      = document.getElementById('pcap-detail-body');
+  var detailTitle      = document.getElementById('pcap-detail-title');
+  var detailAiBtn        = document.getElementById('pcap-detail-ai-btn');
+
+  var aiModalEl = document.getElementById('pcapAiModal');
+  var aiModal    = new bootstrap.Modal(aiModalEl);
+  var aiBody      = document.getElementById('pcap-ai-body');
+
+  var AI_SKELETON = '<div class="py-1">' +
+    '<div class="skeleton skeleton-line" style="width:92%"></div>' +
+    '<div class="skeleton skeleton-line" style="width:100%"></div>' +
+    '<div class="skeleton skeleton-line" style="width:78%"></div>' +
+    '<div class="ai-privacy mt-3"><span class="spinner-border spinner-border-sm me-1"></span>' +
+    'L\'assistant IA analyse la conversation…</div></div>';
+
+  var currentConv = null;
+
+  function ratingBadge(r) {
+    if (!r || !r.label) return '<span class="text-muted">—</span>';
+    var cls = { EXCELLENT: 'bg-success', GOOD: 'bg-info', NORMAL: 'bg-secondary',
+                DEGRADED: 'bg-warning', POOR: 'bg-danger' }[r.label] || 'bg-secondary';
+    return '<span class="badge ' + cls + '">' + r.label + '</span>';
+  }
+
+  function fmtBytes(n) {
+    if (n === null || n === undefined) return '—';
+    var units = ['B', 'kB', 'MB', 'GB', 'TB'], i = 0;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return n.toFixed(i ? 1 : 0) + ' ' + units[i];
+  }
+
+  function fmtDuration(s) {
+    if (!s) return '—';
+    if (s < 60) return s.toFixed(1) + ' s';
+    var m = Math.floor(s / 60), sec = Math.round(s % 60);
+    return m + 'm ' + sec + 's';
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function metricRow(label, c2s, s2c) {
+    return '<tr><td class="text-muted small">' + label + '</td>' +
+      '<td class="text-end">' + c2s + '</td><td class="text-end">' + s2c + '</td></tr>';
+  }
+
+  function renderDetail(conv) {
+    detailTitle.innerHTML = '<i class="bi bi-diagram-3 me-2"></i>' +
+      escapeHtml(conv.client_ip) + ':' + conv.client_port + ' <i class="bi bi-arrow-left-right mx-1 text-muted"></i> ' +
+      escapeHtml(conv.server_ip) + ':' + conv.server_port;
+
+    var hs = conv.handshake_ms || {}, hsr = conv.handshake_rating || {};
+    var rt = conv.response_time_ms || {};
+    var win = conv.window_size || {};
+
+    var html = '<div class="row g-3 mb-3 align-items-start">' +
+      '<div class="col-6 col-md-3"><div class="text-muted small">Durée ' +
+        '<button class="btn btn-sm btn-link p-0 ms-1" id="pcap-timeline-toggle" title="Chronologie"><i class="bi bi-graph-up"></i></button>' +
+        '</div><div class="fw-bold">' + fmtDuration(conv.duration_s) + '</div></div>' +
+      '<div class="col-6 col-md-3"><div class="text-muted small">Octets totaux</div><div class="fw-bold">' + fmtBytes(conv.total_bytes) + '</div></div>' +
+      '<div class="col-6 col-md-3"><div class="text-muted small">Handshake serveur</div><div class="fw-bold">' + (hs.server != null ? hs.server + ' ms' : '—') + ' ' + ratingBadge(hsr.server) + '</div></div>' +
+      '<div class="col-6 col-md-3"><div class="text-muted small">Handshake client</div><div class="fw-bold">' + (hs.client != null ? hs.client + ' ms' : '—') + ' ' + ratingBadge(hsr.client) + '</div></div>' +
+      '</div>' +
+      '<div id="pcap-timeline-panel" style="display:none" class="mb-3 p-2 border rounded" data-i18n-skip>' +
+      '  <div class="d-flex align-items-center gap-2 mb-2">' +
+      '    <span class="small text-muted flex-grow-1" id="pcap-timeline-window-label">Fenêtre : tout</span>' +
+      '    <button class="btn btn-sm btn-outline-secondary" id="pcap-zoom-in" title="Zoomer"><i class="bi bi-zoom-in"></i></button>' +
+      '    <button class="btn btn-sm btn-outline-secondary" id="pcap-zoom-out" title="Dézoomer"><i class="bi bi-zoom-out"></i></button>' +
+      '    <button class="btn btn-sm btn-outline-secondary" id="pcap-zoom-reset" title="Réinitialiser">Reset</button>' +
+      '  </div>' +
+      '  <canvas id="pcap-timeline-canvas" height="90"></canvas>' +
+      '</div>' +
+      '<table class="table table-sm mb-0">' +
+      '<thead><tr><th></th><th class="text-end">Client → Serveur</th><th class="text-end">Serveur → Client</th></tr></thead><tbody>' +
+      metricRow('Paquets', conv.frames.c2s, conv.frames.s2c) +
+      metricRow('Octets', fmtBytes(conv.bytes.c2s), fmtBytes(conv.bytes.s2c)) +
+      metricRow('Débit', (conv.bps.c2s / 1000).toFixed(1) + ' kbps', (conv.bps.s2c / 1000).toFixed(1) + ' kbps') +
+      metricRow('MTU observé', conv.mtu.c2s + ' o', conv.mtu.s2c + ' o') +
+      metricRow('Retransmissions', conv.retransmissions.c2s + ' (' + conv.retransmissions_pct.c2s + '%)', conv.retransmissions.s2c + ' (' + conv.retransmissions_pct.s2c + '%)') +
+      metricRow('Paquets hors-ordre', conv.out_of_order.c2s, conv.out_of_order.s2c) +
+      metricRow('ACKs dupliqués', conv.duplicate_acks.c2s, conv.duplicate_acks.s2c) +
+      metricRow('Fenêtres nulles', conv.zero_window.c2s, conv.zero_window.s2c) +
+      metricRow('SYN / SYN-ACK', conv.syn.c2s, conv.synack.s2c) +
+      metricRow('FIN / RST', conv.fin.c2s + ' / ' + conv.rst.c2s, conv.fin.s2c + ' / ' + conv.rst.s2c) +
+      metricRow('MSS', conv.mss.c2s ?? '—', conv.mss.s2c ?? '—') +
+      metricRow('Fenêtre TCP (max/min)', (win.max.c2s ?? '—') + ' / ' + (win.min.c2s ?? '—'), (win.max.s2c ?? '—') + ' / ' + (win.min.s2c ?? '—')) +
+      metricRow('Octets en vol (max, estimé)', conv.bytes_in_flight_max.c2s, conv.bytes_in_flight_max.s2c) +
+      metricRow('Usage fenêtre estimé', conv.window_usage_pct.c2s + '%', conv.window_usage_pct.s2c + '%') +
+      metricRow('QoS (DSCP)', conv.dscp_name.c2s || '—', conv.dscp_name.s2c || '—') +
+      metricRow('VLAN', conv.vlan_id.c2s ?? '—', conv.vlan_id.s2c ?? '—') +
+      '</tbody></table>' +
+      '<div class="row g-3 mt-1">' +
+      '<div class="col-6 col-md-6"><div class="text-muted small">Temps de réponse max</div><div class="fw-bold">' + (rt.max != null ? rt.max + ' ms' : '—') + '</div></div>' +
+      '<div class="col-6 col-md-6"><div class="text-muted small">Temps de réponse moyen</div><div class="fw-bold">' + (rt.avg != null ? rt.avg + ' ms' : '—') + '</div></div>' +
+      '</div>';
+    detailBody.innerHTML = html;
+    setupTimeline(conv);
+  }
+
+  var pcapChart = null;
+  var zoomState = { min: 0, max: 0 };
+
+  function setupTimeline(conv) {
+    var toggleBtn = document.getElementById('pcap-timeline-toggle');
+    var panel     = document.getElementById('pcap-timeline-panel');
+    var label     = document.getElementById('pcap-timeline-window-label');
+    var canvas    = document.getElementById('pcap-timeline-canvas');
+    var timeline  = conv.timeline || [];
+    var duration  = conv.duration_s || (timeline.length ? timeline[timeline.length - 1].t : 0) || 1;
+
+    if (pcapChart) { pcapChart.destroy(); pcapChart = null; }
+    zoomState = { min: 0, max: duration };
+
+    function updateLabel() {
+      var visible = timeline.filter(function (b) { return b.t >= zoomState.min && b.t <= zoomState.max; });
+      var bytesC = visible.reduce(function (s, b) { return s + b.bytes_c2s; }, 0);
+      var bytesS = visible.reduce(function (s, b) { return s + b.bytes_s2c; }, 0);
+      var retr   = visible.reduce(function (s, b) { return s + b.retrans_c2s + b.retrans_s2c; }, 0);
+      var isFull = zoomState.min <= 0.01 && zoomState.max >= duration - 0.01;
+      label.textContent = (isFull ? 'Fenêtre : tout' : 'Fenêtre : ' + zoomState.min.toFixed(1) + 's → ' + zoomState.max.toFixed(1) + 's') +
+        '  ·  ' + fmtBytes(bytesC + bytesS) + '  ·  ' + retr + ' retrans.';
+    }
+
+    function applyZoom() {
+      if (!pcapChart) return;
+      pcapChart.options.scales.x.min = zoomState.min;
+      pcapChart.options.scales.x.max = zoomState.max;
+      pcapChart.update();
+      updateLabel();
+    }
+
+    function renderChart() {
+      if (pcapChart) return;
+      pcapChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: timeline.map(function (b) { return b.t.toFixed(1); }),
+          datasets: [
+            { label: 'Client → Serveur', data: timeline.map(function (b) { return b.bytes_c2s; }), backgroundColor: '#22d3ee' },
+            { label: 'Serveur → Client', data: timeline.map(function (b) { return b.bytes_s2c; }), backgroundColor: '#6366f1' },
+          ],
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            x: { type: 'linear', min: 0, max: duration, ticks: { callback: function (v) { return v.toFixed(0) + 's'; } } },
+            y: { stacked: false, ticks: { callback: function (v) { return fmtBytes(v); } } },
+          },
+          plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+        },
+      });
+      updateLabel();
+    }
+
+    toggleBtn.onclick = function () {
+      var show = panel.style.display === 'none';
+      panel.style.display = show ? '' : 'none';
+      if (show) renderChart();
+    };
+
+    document.getElementById('pcap-zoom-in').onclick = function () {
+      var mid = (zoomState.min + zoomState.max) / 2;
+      var half = Math.max((zoomState.max - zoomState.min) / 4, duration / timeline.length / 2);
+      zoomState = { min: Math.max(0, mid - half), max: Math.min(duration, mid + half) };
+      applyZoom();
+    };
+    document.getElementById('pcap-zoom-out').onclick = function () {
+      var mid = (zoomState.min + zoomState.max) / 2;
+      var half = (zoomState.max - zoomState.min);
+      zoomState = { min: Math.max(0, mid - half), max: Math.min(duration, mid + half) };
+      applyZoom();
+    };
+    document.getElementById('pcap-zoom-reset').onclick = function () {
+      zoomState = { min: 0, max: duration };
+      applyZoom();
+    };
+  }
+
+  /* Rend une réponse markdown-lite (## titre, - puce) en HTML, sans dépendance externe */
+  function renderMarkdownLite(text) {
+    var lines = (text || '').split('\n');
+    var html = '', inList = false;
+    lines.forEach(function (line) {
+      line = line.trim();
+      if (!line) { if (inList) { html += '</ul>'; inList = false; } return; }
+      if (line.indexOf('## ') === 0) {
+        if (inList) { html += '</ul>'; inList = false; }
+        html += '<h6 class="mt-3 mb-2 text-info">' + escapeHtml(line.slice(3)) + '</h6>';
+      } else if (line.indexOf('- ') === 0 || line.indexOf('* ') === 0) {
+        if (!inList) { html += '<ul class="mb-2">'; inList = true; }
+        html += '<li>' + escapeHtml(line.slice(2)) + '</li>';
+      } else {
+        if (inList) { html += '</ul>'; inList = false; }
+        html += '<p class="mb-2">' + escapeHtml(line) + '</p>';
+      }
+    });
+    if (inList) html += '</ul>';
+    return html || '<p class="text-muted mb-0">Réponse vide.</p>';
+  }
+
+  function askAi(conv) {
+    aiBody.innerHTML = AI_SKELETON;
+    aiModal.show();
+    fetch('/api/pcap-analysis/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(conv),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          aiBody.innerHTML = '<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>' + escapeHtml(res.d.error || 'Erreur inconnue') + '</div>';
+          return;
+        }
+        aiBody.innerHTML = '<div class="ai-output">' + renderMarkdownLite(res.d.explanation) + '</div>';
+      })
+      .catch(function () {
+        aiBody.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-x-circle-fill me-2"></i>Impossible de contacter l\'assistant IA</div>';
+      });
+  }
+
+  detailAiBtn.addEventListener('click', function () {
+    if (currentConv) askAi(currentConv);
+  });
+
+  function load(forceRefresh) {
+    loading.style.display = '';
+    tableCard.style.display = 'none';
+    errorBox.style.display = 'none';
+    var url = '/api/pcap-analysis' + (forceRefresh ? '?force_refresh=true' : '');
+    fetch(url)
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        loading.style.display = 'none';
+        if (!res.ok || res.d.error) {
+          errorBox.style.display = '';
+          errorBox.textContent = res.d.error || 'Erreur inconnue';
+          return;
+        }
+        var points = res.d.listening_points || [];
+        var rows = [];
+        points.forEach(function (p) {
+          (p.conversations || []).forEach(function (c) {
+            rows.push({ point: p.name, conv: c });
+          });
+        });
+        countLabel.textContent = points.length + ' point(s) d\'écoute · ' + rows.length + ' conversation(s)';
+        tbody.innerHTML = rows.map(function (row, idx) {
+          var c = row.conv;
+          var hsr = c.handshake_rating || {};
+          var qos = (c.dscp_name.c2s || c.dscp_name.s2c || '—');
+          var vlan = c.vlan_id.c2s ?? c.vlan_id.s2c;
+          return '<tr>' +
+            '<td><span class="badge bg-dark"><i class="bi bi-broadcast me-1"></i>' + escapeHtml(row.point) + '</span></td>' +
+            '<td><code class="small">' + escapeHtml(c.client_ip) + ':' + c.client_port + '</code> <i class="bi bi-arrow-left-right text-muted mx-1"></i> <code class="small">' + escapeHtml(c.server_ip) + ':' + c.server_port + '</code></td>' +
+            '<td class="text-end">' + fmtBytes(c.total_bytes) + '</td>' +
+            '<td class="text-end">' + fmtDuration(c.duration_s) + '</td>' +
+            '<td>' + ratingBadge(hsr.server) + '</td>' +
+            '<td class="text-end">' + (c.retransmissions_pct.c2s + c.retransmissions_pct.s2c > 1 ? '<span class="text-warning">' : '<span class="text-muted">') + Math.max(c.retransmissions_pct.c2s, c.retransmissions_pct.s2c) + '%</span></td>' +
+            '<td class="small text-muted">' + escapeHtml(qos) + (vlan != null ? ' · VLAN ' + vlan : '') + '</td>' +
+            '<td class="text-end"><button class="btn btn-sm btn-outline-secondary pcap-detail-btn" data-idx="' + idx + '"><i class="bi bi-eye"></i></button></td>' +
+            '</tr>';
+        }).join('');
+        tbody.querySelectorAll('.pcap-detail-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            currentConv = rows[parseInt(btn.dataset.idx, 10)].conv;
+            renderDetail(currentConv);
+            detailModal.show();
+          });
+        });
+        tableCard.style.display = rows.length ? '' : 'none';
+        if (!rows.length) {
+          errorBox.style.display = '';
+          errorBox.textContent = 'Aucune conversation TCP trouvée — dépose un fichier .pcap/.pcapng dans le dossier pcap/ du repo.';
+        }
+      })
+      .catch(function () {
+        loading.style.display = 'none';
+        errorBox.style.display = '';
+        errorBox.textContent = 'Erreur réseau lors du chargement de l\'analyse.';
+      });
+  }
+
+  refreshBtn.addEventListener('click', function () { load(true); });
+  load(false);
+})();
+</script>
+{% endblock %}

@@ -24,6 +24,7 @@ from netwatch import es_client
 from netwatch import llm_client
 from netwatch import audit as nw_audit
 from netwatch import incidents as nw_incidents
+from netwatch import hostgroups as nw_hostgroups
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -803,9 +804,10 @@ def report():
 @app.route("/alerts")
 @login_required
 def alerts():
-    engine   = request.args.get("engine",   "")
-    severity = request.args.get("severity", "")
-    search   = request.args.get("q",        "").strip()
+    engine    = request.args.get("engine",   "")
+    severity  = request.args.get("severity", "")
+    search    = request.args.get("q",        "").strip()
+    hostgroup = request.args.get("hostgroup", "")
 
     alerts_list, error = es_client.get_recent_alerts(
         size=100,
@@ -813,6 +815,8 @@ def alerts():
         severity=int(severity) if severity else None,
         search=search   or None,
     )
+    if hostgroup:
+        alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
     stats, _ = es_client.get_alert_stats()
 
     return render_template(
@@ -823,15 +827,17 @@ def alerts():
         engine=engine,
         severity=severity,
         search=search,
+        hostgroup=hostgroup,
     )
 
 
 @app.route("/api/alerts")
 @login_required
 def api_alerts():
-    engine   = request.args.get("engine",   "")
-    severity = request.args.get("severity", "")
-    search   = request.args.get("q",        "").strip()
+    engine    = request.args.get("engine",   "")
+    severity  = request.args.get("severity", "")
+    search    = request.args.get("q",        "").strip()
+    hostgroup = request.args.get("hostgroup", "")
     alerts_list, error = es_client.get_recent_alerts(
         size=50,
         engine=engine or None,
@@ -840,6 +846,8 @@ def api_alerts():
     )
     if error:
         return jsonify({"error": error}), 503
+    if hostgroup:
+        alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
     return jsonify(alerts_list)
 
 
@@ -847,9 +855,10 @@ def api_alerts():
 @login_required
 def alerts_export_csv():
     """Export des alertes filtrées au format CSV (max 1000 lignes)."""
-    engine   = request.args.get("engine",   "")
-    severity = request.args.get("severity", "")
-    search   = request.args.get("q",        "").strip()
+    engine    = request.args.get("engine",   "")
+    severity  = request.args.get("severity", "")
+    search    = request.args.get("q",        "").strip()
+    hostgroup = request.args.get("hostgroup", "")
 
     alerts_list, _ = es_client.get_recent_alerts(
         size=1000,
@@ -857,6 +866,8 @@ def alerts_export_csv():
         severity=int(severity) if severity else None,
         search=search   or None,
     )
+    if hostgroup:
+        alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
 
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=[
@@ -919,17 +930,76 @@ def api_alerts_series():
     return jsonify(series)
 
 
+# ============================================================
+# Hostgroups — import CSV (format NetScout) + filtre global par IP
+# ============================================================
+
+@app.route("/hostgroups")
+@login_required
+def hostgroups_page():
+    return render_template("hostgroups.html", groups=nw_hostgroups.list_groups())
+
+
+@app.route("/api/hostgroups")
+@login_required
+def api_hostgroups():
+    """Liste des groupes importés — alimente le sélecteur global du portail."""
+    return jsonify(nw_hostgroups.list_groups())
+
+
+@app.route("/api/hostgroups/import", methods=["POST"])
+@login_required
+def api_hostgroups_import():
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"error": "Aucun fichier fourni"}), 400
+    try:
+        parsed = nw_hostgroups.parse_csv(file.read())
+    except Exception as exc:
+        return jsonify({"error": f"Erreur de lecture du CSV : {exc}"}), 400
+    if not parsed:
+        return jsonify({"error": "Aucun groupe valide trouvé dans ce fichier"}), 400
+    existing = nw_hostgroups.load()
+    existing.update(parsed)
+    nw_hostgroups.save(existing)
+    flash(f"{len(parsed)} groupe(s) importé(s) depuis {file.filename}.", "success")
+    return jsonify({"imported": len(parsed), "groups": sorted(parsed.keys())})
+
+
+@app.route("/api/hostgroups/<path:name>", methods=["DELETE"])
+@login_required
+def api_hostgroups_delete(name):
+    groups = nw_hostgroups.load()
+    if name not in groups:
+        return jsonify({"error": "Groupe introuvable"}), 404
+    del groups[name]
+    nw_hostgroups.save(groups)
+    return jsonify({"deleted": name})
+
+
+@app.route("/api/hostgroups/clear", methods=["POST"])
+@login_required
+def api_hostgroups_clear():
+    nw_hostgroups.save({})
+    flash("Tous les hostgroups ont été supprimés.", "success")
+    return jsonify({"cleared": True})
+
+
 @app.route("/zeek")
 @login_required
 def zeek_logs():
+    hostgroup = request.args.get("hostgroup", "")
     certs,  err1 = es_client.get_tls_certs()
     files,  err2 = es_client.get_suspicious_files()
     weirds, err3 = es_client.get_weird_events()
     error = err1 or err2 or err3
+    if hostgroup:
+        weirds = nw_hostgroups.filter_items_by_group(weirds, hostgroup, ["src_ip", "dst_ip"])
     return render_template("zeek.html",
                            certs=certs,
                            files=files,
                            weirds=weirds,
+                           hostgroup=hostgroup,
                            expired_count=sum(1 for c in certs if c["expired"]),
                            selfsig_count=sum(1 for c in certs if c["self_signed"]),
                            suspicious_count=len(files),
@@ -1348,9 +1418,20 @@ def api_topology():
     global _TOPOLOGY_CACHE
 
     force_refresh = request.args.get("force_refresh", "").lower() == "true"
+    hostgroup     = request.args.get("hostgroup", "")
     cache_path    = "/tmp/topology.json"
     demo_path     = os.path.join(os.path.dirname(__file__), "static", "topology-demo.json")
     netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _topo_response(data):
+        if hostgroup and isinstance(data, dict) and "devices" in data:
+            kept = nw_hostgroups.filter_items_by_group(data.get("devices", []), hostgroup, ["ip"])
+            kept_ids = {d.get("id") for d in kept}
+            links = [l for l in data.get("links", [])
+                     if l.get("source") in kept_ids and l.get("target") in kept_ids]
+            stats = {**data.get("stats", {}), "devices": len(kept), "links": len(links)}
+            data = {**data, "devices": kept, "links": links, "stats": stats}
+        return jsonify(data)
 
     now = _time_topo.monotonic()
 
@@ -1358,7 +1439,7 @@ def api_topology():
     if (not force_refresh
             and _TOPOLOGY_CACHE["data"] is not None
             and (now - _TOPOLOGY_CACHE["ts"]) < _TOPOLOGY_TTL):
-        return jsonify(_TOPOLOGY_CACHE["data"])
+        return _topo_response(_TOPOLOGY_CACHE["data"])
 
     # ---- File cache check ----
     def _cache_fresh():
@@ -1376,7 +1457,7 @@ def api_topology():
         try:
             data = _load_json(cache_path)
             _TOPOLOGY_CACHE = {"data": data, "ts": now}
-            return jsonify(data)
+            return _topo_response(data)
         except Exception:
             pass
 
@@ -1393,7 +1474,7 @@ def api_topology():
         try:
             data = _load_json(demo_path)
             _TOPOLOGY_CACHE = {"data": data, "ts": now}
-            return jsonify(data)
+            return _topo_response(data)
         except Exception as exc:
             return jsonify({"error": f"topology-discover.py introuvable et pas de demo : {exc}"}), 503
 
@@ -1417,7 +1498,7 @@ def api_topology():
             )
         data = _load_json(cache_path)
         _TOPOLOGY_CACHE = {"data": data, "ts": now}
-        return jsonify(data)
+        return _topo_response(data)
     except subprocess.TimeoutExpired:
         app.logger.warning("topology-discover.py timed out after 60s")
     except Exception as exc:
@@ -1427,13 +1508,13 @@ def api_topology():
     try:
         data = _load_json(cache_path)
         _TOPOLOGY_CACHE = {"data": data, "ts": now}
-        return jsonify(data)
+        return _topo_response(data)
     except Exception:
         pass
     try:
         data = _load_json(demo_path)
         _TOPOLOGY_CACHE = {"data": data, "ts": now}
-        return jsonify(data)
+        return _topo_response(data)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 503
 
@@ -1735,6 +1816,97 @@ def api_voip_stats():
             return jsonify(data)
         except Exception:
             return jsonify({"error": str(exc)}), 503
+
+
+# ============================================================
+# Analyse PCAP par conversation TCP (façon Allegro Network Multimeter)
+# Chaque PCAP = un "point d'écoute" — architecture prête pour de futurs
+# points d'écoute réels sur différents flux de transmission.
+# ============================================================
+
+import time as _time_pcap  # noqa: E402
+
+_PCAP_ANALYSIS_TTL = 600  # 10 minutes — analyse tshark coûteuse, pas besoin de la relancer souvent
+_PCAP_ANALYSIS_CACHE: dict = {"data": None, "ts": 0.0}
+
+
+@app.route("/pcap-analysis")
+@login_required
+def pcap_analysis_page():
+    return render_template("pcap_analysis.html")
+
+
+@app.route("/api/pcap-analysis")
+@login_required
+def api_pcap_analysis():
+    """
+    Analyse TCP par conversation sur tous les PCAP de pcap/ (ou un fichier
+    donné via ?file=). Exécute scripts/security/pcap-tcp-analysis.py
+    (nécessite tshark). Cache mémoire + fichier JSON (TTL 10 min).
+    """
+    global _PCAP_ANALYSIS_CACHE
+
+    force_refresh = request.args.get("force_refresh", "").lower() == "true"
+    single_file   = request.args.get("file", "")
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_file    = os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json")
+    script        = os.path.join(netwatch_root, "scripts", "security", "pcap-tcp-analysis.py")
+
+    now = _time_pcap.monotonic()
+
+    if (not force_refresh and not single_file
+            and _PCAP_ANALYSIS_CACHE["data"] is not None
+            and (now - _PCAP_ANALYSIS_CACHE["ts"]) < _PCAP_ANALYSIS_TTL):
+        return jsonify(_PCAP_ANALYSIS_CACHE["data"])
+
+    if not os.path.isfile(script):
+        return jsonify({"error": "pcap-tcp-analysis.py introuvable"}), 503
+
+    cmd = ["python3", script, "--output", cache_file]
+    if single_file:
+        cmd += ["--pcap", os.path.join(netwatch_root, "pcap", single_file)]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=240,
+            check=False,
+        )
+        if result.returncode != 0:
+            app.logger.warning(
+                "pcap-tcp-analysis.py exited %d: %s",
+                result.returncode,
+                (result.stderr or b"").decode(errors="replace")[:500],
+            )
+            return jsonify({"error": (result.stderr or b"").decode(errors="replace")[:300]}), 503
+
+        with open(cache_file, encoding="utf-8") as f:
+            data = json.load(f)
+        if not single_file:
+            _PCAP_ANALYSIS_CACHE = {"data": data, "ts": now}
+        return jsonify(data)
+
+    except subprocess.TimeoutExpired:
+        app.logger.warning("pcap-tcp-analysis.py timed out after 240s")
+        return jsonify({"error": "Analyse trop longue (> 240s) — réduire --top ou --max-packets"}), 503
+    except Exception as exc:
+        app.logger.warning("pcap-analysis error: %s", exc)
+        return jsonify({"error": str(exc)}), 503
+
+
+@app.route("/api/pcap-analysis/explain", methods=["POST"])
+@login_required
+def api_pcap_analysis_explain():
+    """Génère une analyse narrative IA d'une conversation TCP (via Ollama)."""
+    conv = request.get_json(silent=True) or {}
+    if not conv:
+        return jsonify({"error": "Conversation manquante"}), 400
+    text, error = llm_client.explain_tcp_conversation(conv)
+    if error:
+        return jsonify({"error": error}), 503
+    return jsonify({"explanation": text})
 
 
 # ============================================================

@@ -65,9 +65,21 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('pcap_analysis_page') }}"
+           class="nav-link {% if request.endpoint == 'pcap_analysis_page' %}active{% endif %}">
+          <i class="bi bi-file-earmark-binary-fill"></i> <span data-i18n="page_pcap_analysis">Analyse PCAP</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('topology') }}"
            class="nav-link {% if request.endpoint == 'topology' %}active{% endif %}">
           <i class="bi bi-diagram-2-fill"></i> <span>Topologie</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('hostgroups_page') }}"
+           class="nav-link {% if request.endpoint == 'hostgroups_page' %}active{% endif %}">
+          <i class="bi bi-collection"></i> <span data-i18n="nav_hostgroups">Hostgroups</span>
         </a>
       </li>
       <li class="nav-item">
@@ -174,6 +186,10 @@
         </span>
         {% endif %}
         {% block topbar_actions %}{% endblock %}
+        <select id="hostgroup-filter" class="form-select form-select-sm" style="width:auto;max-width:220px"
+                title="Filtrer par groupe d'hôtes" data-current="{{ request.args.get('hostgroup', '') }}">
+          <option value="" data-i18n="hostgroup_filter_all">Tous les hôtes</option>
+        </select>
         <button class="cmd-trigger" id="cmd-open-btn" title="Palette de commandes (Ctrl+K)">
           <i class="bi bi-search"></i>
           <span class="cmd-trigger-hint">Ctrl+K</span>
@@ -364,6 +380,31 @@
   }
   updateBadge();
   setInterval(updateBadge, 60000);
+})();
+
+// ── Filtre global par hostgroup (sélecteur topbar) ──
+(function () {
+  var sel = document.getElementById('hostgroup-filter');
+  if (!sel) return;
+  fetch('/api/hostgroups')
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (groups) {
+      (groups || []).forEach(function (g) {
+        var opt = document.createElement('option');
+        opt.value = g.name;
+        opt.textContent = g.name + ' (' + g.host_count + ')';
+        sel.appendChild(opt);
+      });
+      var current = sel.getAttribute('data-current');
+      if (current) sel.value = current;
+    })
+    .catch(function () {});
+  sel.addEventListener('change', function () {
+    var url = new URL(window.location.href);
+    if (sel.value) url.searchParams.set('hostgroup', sel.value);
+    else url.searchParams.delete('hostgroup');
+    window.location.href = url.toString();
+  });
 })();
 </script>
 </body>
