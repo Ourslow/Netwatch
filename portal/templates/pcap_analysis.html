@@ -356,7 +356,7 @@
           var vlan = c.vlan_id.c2s ?? c.vlan_id.s2c;
           return '<tr>' +
             '<td><span class="badge bg-dark"><i class="bi bi-broadcast me-1"></i>' + escapeHtml(row.point) + '</span></td>' +
-            '<td><code class="small">' + escapeHtml(c.client_ip) + ':' + c.client_port + '</code> <i class="bi bi-arrow-left-right text-muted mx-1"></i> <code class="small">' + escapeHtml(c.server_ip) + ':' + c.server_port + '</code></td>' +
+            '<td><a href="/ip/' + encodeURIComponent(c.client_ip) + '" class="text-decoration-none"><code class="small">' + escapeHtml(c.client_ip) + ':' + c.client_port + '</code></a> <i class="bi bi-arrow-left-right text-muted mx-1"></i> <a href="/ip/' + encodeURIComponent(c.server_ip) + '" class="text-decoration-none"><code class="small">' + escapeHtml(c.server_ip) + ':' + c.server_port + '</code></a></td>' +
             '<td class="text-end">' + fmtBytes(c.total_bytes) + '</td>' +
             '<td class="text-end">' + fmtDuration(c.duration_s) + '</td>' +
             '<td>' + ratingBadge(hsr.server) + '</td>' +

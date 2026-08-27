@@ -1035,12 +1035,77 @@ def incidents():
     return render_template("incidents.html", incidents=inc_list, error=error)
 
 
+def _pcap_conversations_for(ip=None, ranges=None):
+    """
+    Conversations de scripts/security/pcap-analysis.json impliquant cette IP
+    (ou dans ces plages hostgroup). Lecture simple du cache, pas de relance
+    d'analyse — évite de coupler la page dashboard à tshark.
+    """
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_path = os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json")
+    try:
+        with open(cache_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return []
+    out = []
+    for point in data.get("listening_points", []):
+        for c in point.get("conversations", []):
+            match = False
+            if ip and (c.get("client_ip") == ip or c.get("server_ip") == ip):
+                match = True
+            elif ranges and (nw_hostgroups.ip_in_ranges(c.get("client_ip"), ranges)
+                              or nw_hostgroups.ip_in_ranges(c.get("server_ip"), ranges)):
+                match = True
+            if match:
+                out.append({**c, "listening_point": point.get("name")})
+    out.sort(key=lambda c: c.get("total_bytes", 0), reverse=True)
+    return out[:20]
+
+
+def _perf_dashboard(ip=None, ranges=None, talkers_size=10):
+    """
+    Widgets de dashboard réutilisables (device unique ou hostgroup) — même
+    jeu de métriques aux deux échelles, esprit Allegro/Keysight : débit,
+    santé TCP, ART décomposé Network/Server/App, top talkers, conversations.
+    """
+    art, _  = es_client.get_art_stats(ip=ip) if ip else es_client.get_art_stats()
+    tcp, _  = es_client.get_tcp_perf(ip=ip) if ip else es_client.get_tcp_perf()
+    talkers, _ = es_client.get_top_talkers(size=talkers_size, ip_ranges=ranges)
+
+    network_ms = tcp.get("avg_rtt_ms")
+    app_ms     = art.get("http", {}).get("p50") or art.get("tls", {}).get("p50")
+    server_ms  = round(app_ms - network_ms, 1) if (network_ms is not None and app_ms is not None and app_ms >= network_ms) else None
+
+    return {
+        "art": art,
+        "tcp": tcp,
+        "talkers": talkers,
+        "response_split": {"network_ms": network_ms, "server_ms": server_ms, "app_ms": app_ms},
+        "pcap_conversations": _pcap_conversations_for(ip=ip, ranges=ranges),
+    }
+
+
 @app.route("/ip/<ip>")
 @login_required
 def ip_detail(ip):
     alerts_list, conn_stats, error = es_client.get_ip_events(ip)
+    dashboard = _perf_dashboard(ip=ip)
     return render_template("ip_detail.html", ip=ip,
-                           alerts=alerts_list, conn=conn_stats, error=error)
+                           alerts=alerts_list, conn=conn_stats, error=error,
+                           dashboard=dashboard)
+
+
+@app.route("/hostgroups/<path:name>/dashboard")
+@login_required
+def hostgroup_dashboard(name):
+    groups = nw_hostgroups.load()
+    if name not in groups:
+        flash(f"Hostgroup « {name} » introuvable.", "error")
+        return redirect(url_for("hostgroups_page"))
+    ranges = nw_hostgroups.resolve_ranges(name, groups)
+    dashboard = _perf_dashboard(ranges=ranges, talkers_size=15)
+    return render_template("hostgroup_dashboard.html", group=groups[name], dashboard=dashboard)
 
 
 @app.route("/api/explain", methods=["POST"])

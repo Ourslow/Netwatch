@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} — NetWatch Portal{% endblock %}
+{% block page_title %}Dashboard : <code style="font-size:1rem">{{ group.name }}</code>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('alerts', hostgroup=group.name) }}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-shield-exclamation me-1"></i>Alertes du groupe
+</a>
+<a href="{{ url_for('hostgroups_page') }}" class="btn btn-sm btn-outline-secondary ms-1">
+  <i class="bi bi-collection me-1"></i>Hostgroups
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="stat-label">Description</div>
+        <div>{{ group.description or '—' }}</div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-label">Sous-groupes</div>
+        <div>{{ group.member_groups | join(', ') if group.member_groups else '—' }}</div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-label">Tags</div>
+        <div>{{ group.tags or '—' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include "_perf_dashboard.html" %}
+
+{% endblock %}

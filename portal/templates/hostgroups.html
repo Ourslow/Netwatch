@@ -57,6 +57,9 @@
             </td>
             <td class="text-muted small">{{ g.tags or '—' }}</td>
             <td class="text-end">
+              <a href="{{ url_for('hostgroup_dashboard', name=g.name) }}" class="btn btn-sm btn-outline-primary" title="Dashboard du groupe">
+                <i class="bi bi-speedometer2"></i>
+              </a>
               <a href="{{ url_for('alerts', hostgroup=g.name) }}" class="btn btn-sm btn-outline-secondary" title="Filtrer les alertes">
                 <i class="bi bi-funnel"></i>
               </a>

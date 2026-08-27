@@ -1,0 +1,149 @@
+{# Widgets de dashboard réutilisables (device unique ou hostgroup) — esprit
+   Allegro Network Multimeter / Keysight : mêmes widgets à toutes les échelles.
+   Attend une variable `dashboard` (voir app.py _perf_dashboard()). #}
+
+<div class="row g-3 mb-4">
+
+  <!-- Temps de réponse décomposé (Network / Server / App — vocabulaire Keysight) -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-speedometer me-2"></i>Temps de réponse</div>
+      <div class="card-body">
+        {% set rs = dashboard.response_split %}
+        {% if rs.network_ms is not none or rs.app_ms is not none %}
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">Network Time (RTT TCP)</span>
+          <span class="fw-mono">{{ rs.network_ms if rs.network_ms is not none else '—' }} ms</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">Server Time (estimé)</span>
+          <span class="fw-mono">{{ rs.server_ms if rs.server_ms is not none else '—' }} ms</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span class="text-muted small">Application Response Time</span>
+          <span class="fw-mono fw-bold">{{ rs.app_ms if rs.app_ms is not none else '—' }} ms</span>
+        </div>
+        <div class="text-muted" style="font-size:.7rem" class="mt-2">Server Time = ART − Network Time (approximation)</div>
+        {% else %}
+        <div class="text-muted small">Pas assez de données (RTT/ART) sur cette échelle.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Santé TCP -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-heart-pulse me-2"></i>Santé TCP</div>
+      <div class="card-body">
+        {% set tcp = dashboard.tcp %}
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">RTT moyen / p95</span>
+          <span class="fw-mono">{{ tcp.avg_rtt_ms if tcp.avg_rtt_ms is not none else '—' }} / {{ tcp.p95_rtt_ms if tcp.p95_rtt_ms is not none else '—' }} ms</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted small">Fenêtres nulles (24h)</span>
+          <span class="fw-mono {% if tcp.zero_windows_count %}text-warning{% endif %}">{{ tcp.zero_windows_count }}</span>
+        </div>
+        {% if tcp.top_retransmit_ips %}
+        <div class="stat-label mb-1 mt-3">Top retransmissions</div>
+        {% for r in tcp.top_retransmit_ips[:5] %}
+        <div class="d-flex justify-content-between small">
+          <a href="{{ url_for('ip_detail', ip=r.ip) }}" class="fw-mono text-decoration-none">{{ r.ip }}</a>
+          <span class="text-warning">{{ r.retransmit_pct }}%</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ART par service -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-hourglass-split me-2"></i>ART par service</div>
+      <div class="card-body">
+        {% for svc, label in [('http','HTTP'), ('dns','DNS'), ('tls','TLS')] %}
+        {% set s = dashboard.art.get(svc, {}) %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small">{{ label }} <span class="text-muted" style="font-size:.7rem">({{ s.count or 0 }})</span></span>
+          <span class="fw-mono">{{ s.p50 if s.p50 is not none else '—' }} / {{ s.p95 if s.p95 is not none else '—' }} ms</span>
+        </div>
+        {% endfor %}
+        <div class="text-muted" style="font-size:.7rem">p50 / p95</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+  <!-- Top talkers -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>Top talkers</div>
+      <div class="card-body p-0">
+        {% if dashboard.talkers %}
+        <table class="table table-sm mb-0">
+          <thead><tr><th>IP</th><th class="text-end">Octets</th><th class="text-end">Connexions</th></tr></thead>
+          <tbody>
+            {% for t in dashboard.talkers %}
+            <tr>
+              <td><a href="{{ url_for('ip_detail', ip=t.ip) }}" class="fw-mono small text-decoration-none">{{ t.ip }}</a></td>
+              <td class="text-end small">
+                {% set b = t.bytes %}
+                {% if b > 1073741824 %}{{ "%.1f"|format(b/1073741824) }} GB
+                {% elif b > 1048576 %}{{ "%.1f"|format(b/1048576) }} MB
+                {% elif b > 1024 %}{{ "%.1f"|format(b/1024) }} KB
+                {% else %}{{ b }} B{% endif %}
+              </td>
+              <td class="text-end small">{{ t.conns }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-muted small p-3">Aucune donnée.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Conversations PCAP (analyse tshark, si disponibles) -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-file-earmark-binary-fill me-2"></i>Conversations PCAP
+        <a href="{{ url_for('pcap_analysis_page') }}" class="float-end small text-decoration-none">voir tout</a>
+      </div>
+      <div class="card-body p-0">
+        {% if dashboard.pcap_conversations %}
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Conversation</th><th class="text-end">Octets</th><th>Handshake</th></tr></thead>
+          <tbody>
+            {% for c in dashboard.pcap_conversations[:8] %}
+            <tr>
+              <td class="small fw-mono">{{ c.client_ip }} ↔ {{ c.server_ip }}</td>
+              <td class="text-end small">
+                {% set b = c.total_bytes %}
+                {% if b > 1073741824 %}{{ "%.1f"|format(b/1073741824) }} GB
+                {% elif b > 1048576 %}{{ "%.1f"|format(b/1048576) }} MB
+                {% else %}{{ "%.1f"|format(b/1024) }} KB{% endif %}
+              </td>
+              <td>
+                {% set r = c.handshake_rating.server %}
+                {% if r.label %}
+                  <span class="badge {% if r.label == 'EXCELLENT' %}bg-success{% elif r.label == 'POOR' %}bg-danger{% else %}bg-secondary{% endif %}">{{ r.label }}</span>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-muted small p-3">Aucune conversation PCAP analysée pour cette échelle — voir <a href="{{ url_for('pcap_analysis_page') }}">Analyse PCAP</a>.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

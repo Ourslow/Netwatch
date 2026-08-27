@@ -1114,12 +1114,27 @@ def get_flows_stats():
         return _empty, str(e)[:120]
 
 
-def get_art_stats():
+def _ip_filter(ip):
+    """Clause de filtre optionnelle id.orig_h/id.resp_h = ip, pour scoper une requête
+    Zeek à un device donné (dashboard par device/hostgroup, T_030)."""
+    if not ip:
+        return []
+    return [{
+        "bool": {
+            "should": [{"term": {"id.orig_h": ip}}, {"term": {"id.resp_h": ip}}],
+            "minimum_should_match": 1,
+        }
+    }]
+
+
+def get_art_stats(ip=None):
     """
     Application Response Time p50/p95/p99 par service (http/dns/tls).
     Essaie art.log → fallback conn.log (HTTP/TLS) et dns.log (RTT DNS natif).
+    ip : si fourni, restreint aux échanges impliquant ce device (orig ou resp).
     Retourne (data: dict, error: str|None).
     """
+    ip_filter = _ip_filter(ip)
     _svc0 = {"p50": None, "p95": None, "p99": None, "count": 0}
     result = {"http": dict(_svc0), "dns": dict(_svc0), "tls": dict(_svc0)}
 
@@ -1180,6 +1195,7 @@ def get_art_stats():
                 "size": 0,
                 "query": {
                     "bool": {
+                        "filter": ip_filter,
                         "should": [
                             {"term": {"log.file.path.keyword": "/zeek/logs/art.log"}},
                             {"exists": {"field": art_field}},
@@ -1229,7 +1245,7 @@ def get_art_stats():
                         {"range": {"@timestamp": {"gte": "now-24h"}}},
                         {"term":  {"log.file.path.keyword": "/zeek/logs/dns.log"}},
                         {"exists": {"field": "rtt"}},
-                    ]
+                    ] + ip_filter
                 }
             },
             "aggs": {
@@ -1273,7 +1289,7 @@ def get_art_stats():
                             {"range": {"@timestamp": {"gte": "now-24h"}}},
                             {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
                             {"exists": {"field": "duration"}},
-                        ] + extra_filter,
+                        ] + extra_filter + ip_filter,
                     }
                 },
                 "aggs": {
@@ -1298,11 +1314,12 @@ def get_art_stats():
     return result, None
 
 
-def get_tcp_perf():
+def get_tcp_perf(ip=None):
     """
     Métriques de santé TCP depuis zeek-* conn.log (24h).
     RTT depuis conn.rtt (Zeek 6+), retransmissions via history,
     zero-windows via history.
+    ip : si fourni, restreint aux échanges impliquant ce device (orig ou resp).
     Retourne (data: dict, error: str|None).
     """
     result = {
@@ -1316,7 +1333,7 @@ def get_tcp_perf():
         {"range": {"@timestamp": {"gte": "now-24h"}}},
         {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
         {"term": {"proto": "tcp"}},
-    ]
+    ] + _ip_filter(ip)
 
     # ── RTT ──
     try:
@@ -1398,6 +1415,50 @@ def get_tcp_perf():
         pass
 
     return result, None
+
+
+def get_top_talkers(size=10, ip_ranges=None):
+    """
+    Top devices par volume (octets, 24h) depuis conn.log.
+    ip_ranges (optionnel) : plages résolues d'un hostgroup (voir
+    netwatch.hostgroups.resolve_ranges) pour restreindre le classement à ce
+    groupe — filtré côté Python après une agrégation plus large, cohérent
+    avec le filtrage hostgroups déjà utilisé ailleurs dans le portail.
+    Retourne (talkers: list[{ip, bytes, conns}], error: str|None).
+    """
+    body = {
+        "size": 0,
+        "query": {"bool": {"filter": [
+            {"range": {"@timestamp": {"gte": "now-24h"}}},
+            {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+        ]}},
+        "aggs": {
+            "by_ip": {
+                "terms": {"field": "id.orig_h.keyword", "size": 500 if ip_ranges else size},
+                "aggs": {
+                    "orig_bytes": {"sum": {"field": "orig_bytes"}},
+                    "resp_bytes": {"sum": {"field": "resp_bytes"}},
+                },
+            }
+        },
+    }
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        buckets = r.json().get("aggregations", {}).get("by_ip", {}).get("buckets", [])
+        rows = []
+        for b in buckets:
+            total = (b.get("orig_bytes", {}).get("value") or 0) + (b.get("resp_bytes", {}).get("value") or 0)
+            rows.append({"ip": b["key"], "bytes": int(total), "conns": b["doc_count"]})
+        if ip_ranges:
+            from .hostgroups import ip_in_ranges
+            rows = [row for row in rows if ip_in_ranges(row["ip"], ip_ranges)]
+        rows.sort(key=lambda row: row["bytes"], reverse=True)
+        return rows[:size], None
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:150]
 
 
 # ------------------------------------------------------------------ #

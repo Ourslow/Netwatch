@@ -439,7 +439,9 @@
     badge.style.color = color;
 
     document.getElementById('panel-name').textContent   = d.name || d.id;
-    document.getElementById('panel-ip').textContent     = d.ip   || '—';
+    document.getElementById('panel-ip').innerHTML = d.ip
+      ? '<a href="/ip/' + encodeURIComponent(d.ip) + '" class="text-decoration-none">' + d.ip + ' <i class="bi bi-box-arrow-up-right small"></i></a>'
+      : '—';
     document.getElementById('panel-vendor').textContent = d.vendor || '—';
 
     var uptimeRow = document.getElementById('panel-uptime-row');
