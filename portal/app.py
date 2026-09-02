@@ -11,7 +11,8 @@ from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 
-from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
 from flask_login import (LoginManager, UserMixin,
                          login_user, logout_user,
                          login_required, current_user)
@@ -775,8 +776,28 @@ def report():
     all_alerts,      _ = es_client.get_recent_alerts(size=5)
     alert_stats,     _ = es_client.get_alert_stats()
 
+    # Hostgroups + analyse PCAP (points d'écoute) — T_031
+    report_hostgroups = nw_hostgroups.list_groups()
+    pcap_points, pcap_top_conversations = [], []
+    try:
+        netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json"), encoding="utf-8") as f:
+            pcap_data = json.load(f)
+        pcap_points = [
+            {"name": p.get("name"), "count": p.get("conversation_count", 0)}
+            for p in pcap_data.get("listening_points", [])
+        ]
+        all_convs = [c for p in pcap_data.get("listening_points", []) for c in p.get("conversations", [])]
+        all_convs.sort(key=lambda c: c.get("total_bytes", 0), reverse=True)
+        pcap_top_conversations = all_convs[:10]
+    except Exception:
+        pass
+
     return render_template(
         "report.html",
+        report_hostgroups      = report_hostgroups,
+        pcap_points             = pcap_points,
+        pcap_top_conversations  = pcap_top_conversations,
         node_status    = node_status,
         vms            = vms,
         proxmox_ok     = (px is not None),
@@ -799,6 +820,73 @@ def report():
         audit          = nw_audit.run_audit(),
         generated_at   = datetime.now().strftime("%d/%m/%Y à %H:%M"),
     )
+
+
+# ============================================================
+# Rapports PDF — historique + génération à la demande/planifiée
+# ============================================================
+
+_REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "reports")
+
+
+@app.route("/reports")
+@login_required
+def reports_page():
+    index_path = os.path.join(_REPORTS_DIR, "index.json")
+    entries = []
+    try:
+        with open(index_path, encoding="utf-8") as f:
+            entries = json.load(f)
+    except Exception:
+        pass
+    return render_template("reports.html", entries=entries)
+
+
+@app.route("/api/reports/generate", methods=["POST"])
+@login_required
+def api_reports_generate():
+    """Déclenche generate-report-pdf.py à la demande (bouton portail ou n8n)."""
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    script = os.path.join(netwatch_root, "scripts", "automation", "generate-report-pdf.py")
+    if not os.path.isfile(script):
+        return jsonify({"error": "generate-report-pdf.py introuvable"}), 503
+    try:
+        result = subprocess.run(
+            ["python3", script,
+             "--portal-url", request.host_url.rstrip("/"),
+             "--username", config.PORTAL_USERNAME,
+             "--password", config.PORTAL_PASSWORD,
+             "--output-dir", _REPORTS_DIR],
+            cwd=netwatch_root,
+            capture_output=True,
+            timeout=90,
+            check=False,
+        )
+        if result.returncode != 0:
+            app.logger.warning("generate-report-pdf.py exited %d: %s", result.returncode,
+                                (result.stderr or b"").decode(errors="replace")[:400])
+            return jsonify({"error": "Génération échouée — voir les logs du portail"}), 503
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Génération trop longue (> 90s)"}), 503
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 503
+
+    index_path = os.path.join(_REPORTS_DIR, "index.json")
+    try:
+        with open(index_path, encoding="utf-8") as f:
+            entries = json.load(f)
+        return jsonify(entries[0] if entries else {})
+    except Exception:
+        return jsonify({"status": "unknown"})
+
+
+@app.route("/reports/download/<path:filename>")
+@login_required
+def reports_download(filename):
+    safe_name = secure_filename(filename)
+    if not safe_name.endswith(".pdf"):
+        return jsonify({"error": "Fichier invalide"}), 400
+    return send_from_directory(_REPORTS_DIR, safe_name, as_attachment=True)
 
 
 @app.route("/alerts")
@@ -938,6 +1026,21 @@ def api_alerts_series():
 @login_required
 def hostgroups_page():
     return render_template("hostgroups.html", groups=nw_hostgroups.list_groups())
+
+
+@app.route("/hostgroups/export.csv")
+@login_required
+def hostgroups_export_csv():
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=["name", "description", "enabled", "host_count", "member_groups", "tags"])
+    writer.writeheader()
+    for g in nw_hostgroups.list_groups():
+        writer.writerow({**g, "member_groups": ", ".join(g.get("member_groups", []))})
+    filename = f"netwatch-hostgroups-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv"
+    resp = make_response(out.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return resp
 
 
 @app.route("/api/hostgroups")
@@ -1959,6 +2062,49 @@ def api_pcap_analysis():
     except Exception as exc:
         app.logger.warning("pcap-analysis error: %s", exc)
         return jsonify({"error": str(exc)}), 503
+
+
+@app.route("/pcap-analysis/export.csv")
+@login_required
+def pcap_analysis_export_csv():
+    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_file = os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json")
+    out = io.StringIO()
+    fieldnames = [
+        "listening_point", "client_ip", "client_port", "server_ip", "server_port",
+        "duration_s", "total_bytes", "handshake_server_ms", "handshake_client_ms",
+        "retrans_pct_c2s", "retrans_pct_s2c", "out_of_order_c2s", "out_of_order_s2c",
+        "dscp_c2s", "dscp_s2c", "vlan_id",
+    ]
+    writer = csv.DictWriter(out, fieldnames=fieldnames)
+    writer.writeheader()
+    try:
+        with open(cache_file, encoding="utf-8") as f:
+            data = json.load(f)
+        for point in data.get("listening_points", []):
+            for c in point.get("conversations", []):
+                writer.writerow({
+                    "listening_point": point.get("name"),
+                    "client_ip": c.get("client_ip"), "client_port": c.get("client_port"),
+                    "server_ip": c.get("server_ip"), "server_port": c.get("server_port"),
+                    "duration_s": c.get("duration_s"), "total_bytes": c.get("total_bytes"),
+                    "handshake_server_ms": c.get("handshake_ms", {}).get("server"),
+                    "handshake_client_ms": c.get("handshake_ms", {}).get("client"),
+                    "retrans_pct_c2s": c.get("retransmissions_pct", {}).get("c2s"),
+                    "retrans_pct_s2c": c.get("retransmissions_pct", {}).get("s2c"),
+                    "out_of_order_c2s": c.get("out_of_order", {}).get("c2s"),
+                    "out_of_order_s2c": c.get("out_of_order", {}).get("s2c"),
+                    "dscp_c2s": c.get("dscp_name", {}).get("c2s"),
+                    "dscp_s2c": c.get("dscp_name", {}).get("s2c"),
+                    "vlan_id": c.get("vlan_id", {}).get("c2s") or c.get("vlan_id", {}).get("s2c"),
+                })
+    except Exception:
+        pass
+    filename = f"netwatch-pcap-analysis-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv"
+    resp = make_response(out.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return resp
 
 
 @app.route("/api/pcap-analysis/explain", methods=["POST"])

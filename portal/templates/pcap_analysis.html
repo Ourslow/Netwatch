@@ -4,6 +4,9 @@
 
 {% block topbar_actions %}
 <span class="text-muted small" id="pcap-count-label"></span>
+<a href="{{ url_for('pcap_analysis_export_csv') }}" class="btn btn-sm btn-outline-success">
+  <i class="bi bi-download me-1"></i>Export CSV
+</a>
 <button class="btn btn-sm btn-outline-secondary" id="pcap-refresh-btn" title="Relancer l'analyse">
   <i class="bi bi-arrow-repeat"></i>
 </button>

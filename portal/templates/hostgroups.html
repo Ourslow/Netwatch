@@ -4,6 +4,9 @@
 
 {% block topbar_actions %}
 {% if groups %}
+<a href="{{ url_for('hostgroups_export_csv') }}" class="btn btn-sm btn-outline-success">
+  <i class="bi bi-download me-1"></i>Export CSV
+</a>
 <button class="btn btn-sm btn-outline-danger" id="hg-clear-btn">
   <i class="bi bi-trash me-1"></i><span data-i18n="hostgroup_clear_all">Tout supprimer</span>
 </button>

@@ -433,6 +433,56 @@
       <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Score = (fonctionnalités supportées + 0,5 × partielles) / total des critères évalués.</div>
     </div>
 
+    <!-- ════ 7 — Hostgroups & Analyse PCAP (points d'écoute) ════ -->
+    <div class="section page-break">
+      <div class="section-head"><span class="section-num">7</span><span class="section-name">Hostgroups & analyse PCAP (points d'écoute)</span><span class="hr"></span></div>
+
+      {% if report_hostgroups %}
+      <div style="font-size:.76rem;color:var(--muted);margin-bottom:.4rem">{{ report_hostgroups | length }} hostgroup(s) importé(s)</div>
+      <table class="report-table mb-3">
+        <thead><tr><th>Groupe</th><th>Description</th><th style="width:80px">Plages</th><th>Sous-groupes</th></tr></thead>
+        <tbody>
+          {% for g in report_hostgroups[:12] %}
+          <tr>
+            <td class="mono">{{ g.name }}</td>
+            <td style="font-size:.74rem">{{ g.description or '—' }}</td>
+            <td class="text-center">{{ g.host_count }}</td>
+            <td style="font-size:.74rem;color:var(--muted)">{{ g.member_groups | join(', ') if g.member_groups else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="font-size:.76rem;color:var(--muted);margin-bottom:.75rem">Aucun hostgroup importé — voir la page Hostgroups du portail.</div>
+      {% endif %}
+
+      {% if pcap_points %}
+      <div style="font-size:.76rem;color:var(--muted);margin:.6rem 0 .4rem">
+        {{ pcap_points | length }} point(s) d'écoute analysé(s) —
+        {% for p in pcap_points %}{{ p.name }} ({{ p.count }} conv.){% if not loop.last %}, {% endif %}{% endfor %}
+      </div>
+      <table class="report-table">
+        <thead><tr><th>Conversation</th><th style="width:70px">Octets</th><th style="width:90px">Handshake</th><th style="width:70px">Retrans.</th><th>QoS</th></tr></thead>
+        <tbody>
+          {% for c in pcap_top_conversations %}
+          <tr>
+            <td class="mono" style="font-size:.72rem">{{ c.client_ip }}:{{ c.client_port }} ↔ {{ c.server_ip }}:{{ c.server_port }}</td>
+            <td class="text-end" style="font-size:.74rem">
+              {% set b = c.total_bytes %}
+              {% if b > 1073741824 %}{{ "%.1f"|format(b/1073741824) }} GB{% elif b > 1048576 %}{{ "%.1f"|format(b/1048576) }} MB{% else %}{{ "%.1f"|format(b/1024) }} KB{% endif %}
+            </td>
+            <td style="font-size:.72rem">{{ c.handshake_rating.server.label or '—' }}</td>
+            <td class="text-center" style="font-size:.74rem">{{ [c.retransmissions_pct.c2s, c.retransmissions_pct.s2c] | max }}%</td>
+            <td style="font-size:.7rem;color:var(--muted)">{{ c.dscp_name.c2s or c.dscp_name.s2c or '—' }}{% if c.vlan_id.c2s or c.vlan_id.s2c %} · VLAN {{ c.vlan_id.c2s or c.vlan_id.s2c }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="font-size:.76rem;color:var(--muted)">Aucune analyse PCAP disponible — déposer un fichier dans <span class="mono">pcap/</span> et lancer l'analyse depuis le portail.</div>
+      {% endif %}
+    </div>
+
   </div><!-- /.report-body -->
 
   <div class="report-footer">

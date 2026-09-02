@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Rapports — NetWatch Portal{% endblock %}
+{% block page_title %}<span data-i18n="page_reports">Rapports</span>{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-sm btn-primary" id="reports-generate-btn">
+  <i class="bi bi-file-earmark-plus me-1"></i><span data-i18n="reports_generate">Générer maintenant</span>
+</button>
+{% endblock %}
+
+{% block content %}
+
+<p class="text-muted small mb-3">
+  <i class="bi bi-info-circle me-1"></i>
+  Historique des rapports PDF générés (à la demande ou planifiés via n8n —
+  voir <code>scripts/automation/n8n-scheduled-pdf-report.json</code>).
+  Le rapport reprend les mêmes données que <a href="{{ url_for('report') }}" target="_blank">/report</a>.
+</p>
+
+<div id="reports-status" class="alert alert-info" style="display:none"></div>
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if entries %}
+    <table class="table table-sm table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th data-i18n="reports_col_date">Généré le</th>
+          <th data-i18n="reports_col_status">Statut</th>
+          <th data-i18n="reports_col_size">Taille</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="reports-tbody">
+        {% for e in entries %}
+        <tr>
+          <td class="fw-mono small">{{ e.generated_at[:19] | replace('T',' ') if e.generated_at else '—' }}</td>
+          <td>
+            {% if e.status == 'finished' %}<span class="badge bg-success">Finished</span>
+            {% elif e.status == 'running' %}<span class="badge bg-info"><span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem"></span>Running</span>
+            {% else %}<span class="badge bg-danger" title="{{ e.error }}">Failed</span>
+            {% endif %}
+          </td>
+          <td class="small text-muted">
+            {% if e.size_bytes %}{{ "%.1f"|format(e.size_bytes / 1024) }} kB{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            {% if e.status == 'finished' %}
+            <a href="{{ url_for('reports_download', filename=e.filename) }}" class="btn btn-sm btn-outline-success">
+              <i class="bi bi-download me-1"></i>PDF
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-file-earmark-pdf fs-1 d-block mb-2"></i>
+      <span data-i18n="reports_empty">Aucun rapport généré pour le moment.</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var btn    = document.getElementById('reports-generate-btn');
+  var status = document.getElementById('reports-status');
+
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Génération en cours…';
+    status.style.display = 'none';
+    fetch('/api/reports/generate', { method: 'POST' })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-file-earmark-plus me-1"></i>Générer maintenant';
+        if (!res.ok) {
+          status.className = 'alert alert-danger';
+          status.textContent = res.d.error || 'Erreur inconnue';
+          status.style.display = '';
+          return;
+        }
+        window.location.reload();
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-file-earmark-plus me-1"></i>Générer maintenant';
+        status.className = 'alert alert-danger';
+        status.textContent = 'Erreur réseau';
+        status.style.display = '';
+      });
+  });
+})();
+</script>
+{% endblock %}

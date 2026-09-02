@@ -2,6 +2,8 @@
 pcap/*.pcap
 pcap/*.pcapng
 portal/data/
+reports/*.pdf
+reports/index.json
 
 # Elasticsearch data
 elasticsearch/data/
