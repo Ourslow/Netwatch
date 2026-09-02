@@ -78,10 +78,19 @@ def load_json_file(path: Path) -> dict | list:
 
 
 def save_json_file(path: Path, data: dict | list) -> None:
+    """
+    Write atomically (tmp file + os.replace) : ce script tourne périodiquement
+    (cron), une écriture directe interrompue (crash, run concurrent) corrompt
+    le JSON — le prochain load_json_file() avale l'erreur et repart de {},
+    perdant silencieusement l'historique anti-doublon / perf log 30j.
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
     try:
-        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.replace(tmp_path, path)
     except OSError as e:
         print(f"WARN: cannot write {path.name}: {e}", file=sys.stderr)
+        tmp_path.unlink(missing_ok=True)
 
 
 def purge_history(history: dict, ttl_hours: int) -> dict:
@@ -550,6 +559,7 @@ def evaluate_art_http(art_ms: float, history: dict, args) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def main():
+    global HISTORY_FILE
     parser = argparse.ArgumentParser(
         description="NetWatch NPM Performance Alerting — surveille RTT, retransmissions et ART."
     )
@@ -582,7 +592,6 @@ def main():
     )
     args = parser.parse_args()
 
-    global HISTORY_FILE
     HISTORY_FILE = Path(args.history_file)
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")

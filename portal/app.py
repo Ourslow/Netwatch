@@ -1705,9 +1705,10 @@ def api_snmp_interfaces():
             return json.loads(resp.read())
 
     try:
-        # Octets in/out
-        r_in  = _prom_query("ifHCInOctets")
-        r_out = _prom_query("ifHCOutOctets")
+        # Octets in/out — rate() sur 5min, pas le compteur cumulatif brut
+        # (ifHCInOctets/ifHCOutOctets sont des compteurs SNMP toujours croissants)
+        r_in  = _prom_query("rate(ifHCInOctets[5m])")
+        r_out = _prom_query("rate(ifHCOutOctets[5m])")
         r_op  = _prom_query("ifOperStatus")
 
         def _parse_vector(result_json):

@@ -43,6 +43,12 @@ logging.basicConfig(
 log = logging.getLogger("ioc-enrich")
 
 # ---------------------------------------------------------------------------
+# Cache TTL — la reputation IP (AbuseIPDB/ipinfo) evolue dans le temps, un
+# cache sans expiration retourne des scores perimes indefiniment.
+# ---------------------------------------------------------------------------
+CACHE_TTL_HOURS = float(os.environ.get("IOC_CACHE_TTL_HOURS", "24"))
+
+# ---------------------------------------------------------------------------
 # RFC 1918 + loopback + link-local private ranges to skip
 # ---------------------------------------------------------------------------
 PRIVATE_NETWORKS = [
@@ -193,10 +199,20 @@ def enrich_ip(ip: str, api_key: str | None, cache: dict) -> dict:
     Uses cache to avoid duplicate API calls.
     Falls back from AbuseIPDB → ipinfo.io depending on key availability.
     """
-    # Cache hit
-    if ip in cache:
-        log.debug("Cache hit for %s", ip)
-        return cache[ip]
+    # Cache hit — seulement si l'entree n'a pas depasse son TTL
+    cached = cache.get(ip)
+    if cached is not None:
+        cached_at = cached.get("_cached_at")
+        age_hours = None
+        if cached_at is not None:
+            try:
+                age_hours = (time.time() - cached_at) / 3600.0
+            except TypeError:
+                age_hours = None
+        if age_hours is not None and age_hours < CACHE_TTL_HOURS:
+            log.debug("Cache hit for %s (age %.1fh)", ip, age_hours)
+            return cached.get("data", {})
+        log.debug("Cache expired for %s — re-enriching", ip)
 
     # Rate limiting — be polite to free-tier APIs
     time.sleep(0.1)
@@ -213,7 +229,7 @@ def enrich_ip(ip: str, api_key: str | None, cache: dict) -> dict:
         log.info("ipinfo.io lookup: %s", ip)
         enrichment = enrich_ipinfo(ip)
 
-    cache[ip] = enrichment
+    cache[ip] = {"data": enrichment, "_cached_at": time.time()}
     return enrichment
 
 
