@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Dépendances applicatives — NetWatch Portal{% endblock %}
+{% block page_title %}Dépendances applicatives{% endblock %}
+
+{% block head %}
+<style>
+  #depmap-wrap {
+    height: calc(100vh - 160px);
+    min-height: 420px;
+    border-radius: .5rem;
+    overflow: hidden;
+    background: #0a0e16;
+    position: relative;
+  }
+  #depmap-svg { width: 100%; height: 100%; display: block; }
+  #depmap-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .6rem; color: #8fa0b8; font-size: .88rem; pointer-events: none;
+  }
+  #depmap-overlay.hidden { display: none; }
+  .depmap-node circle { stroke: #0a0e16; stroke-width: 1.5px; cursor: pointer; }
+  .depmap-node text { fill: #dbe4f0; font-size: 10px; pointer-events: none; }
+  .depmap-node.dim circle, .depmap-node.dim text { opacity: .18; }
+  .depmap-link { stroke: #3a4a63; stroke-opacity: .55; fill: none; }
+  .depmap-link.dim { stroke-opacity: .06; }
+  .depmap-tooltip {
+    position: absolute; pointer-events: none; z-index: 5;
+    background: #111827; border: 1px solid #1e2d3d; border-radius: .4rem;
+    padding: .5rem .65rem; font-size: .78rem; color: #dbe4f0;
+    box-shadow: 0 8px 24px -8px rgba(0,0,0,.6); display: none; max-width: 240px;
+  }
+  #depmap-legend {
+    display: flex; flex-wrap: wrap; gap: 1rem; font-size: .74rem; color: #8fa0b8;
+  }
+  #depmap-legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="btn-group btn-group-sm" role="group">
+  <a href="#" data-days="1"  class="btn btn-outline-secondary depmap-day-btn active">24h</a>
+  <a href="#" data-days="7"  class="btn btn-outline-secondary depmap-day-btn">7j</a>
+  <a href="#" data-days="30" class="btn btn-outline-secondary depmap-day-btn">30j</a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p class="text-muted small mb-3">
+  Qui parle à qui : flux applicatifs agrégés depuis Zeek conn.log, labellisés par le
+  dictionnaire applicatif SNI quand la destination est reconnue — à la manière de la
+  cartographie de dépendances Riverbed AppResponse. Distinct de la topologie L2/L3
+  (<a href="{{ url_for('topology') }}">/topology</a>) et du graphe sécurité
+  (<a href="{{ url_for('graph') }}">/graph</a>).
+</p>
+
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div id="depmap-legend">
+      <span><span class="swatch" style="background:#22d3ee"></span>Interne</span>
+      <span><span class="swatch" style="background:#f5a524"></span>Externe (app reconnue)</span>
+      <span><span class="swatch" style="background:#57647a"></span>Externe (non catalogué)</span>
+      <span>Épaisseur du lien = volume (octets)</span>
+    </div>
+    <span class="text-muted small"><b id="depmap-stat-nodes">—</b> nœuds · <b id="depmap-stat-edges">—</b> liens</span>
+  </div>
+</div>
+
+<div id="depmap-wrap" class="card">
+  <svg id="depmap-svg"></svg>
+  <div id="depmap-overlay">
+    <span class="spinner-border spinner-border-sm" style="color:#22d3ee"></span>
+    <span>Chargement…</span>
+  </div>
+  <div class="depmap-tooltip" id="depmap-tooltip"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+(function () {
+  var svg      = d3.select('#depmap-svg');
+  var overlay  = document.getElementById('depmap-overlay');
+  var tooltip  = document.getElementById('depmap-tooltip');
+  var wrap     = document.getElementById('depmap-wrap');
+  var days     = 1;
+  var simulation, gLinks, gNodes;
+
+  function currentHostgroup() {
+    var sel = document.getElementById('hostgroup-filter');
+    return sel && sel.value ? sel.value : '';
+  }
+
+  function nodeColor(d) {
+    if (d.internal) return '#22d3ee';
+    return d.category ? '#f5a524' : '#57647a';
+  }
+
+  function load() {
+    overlay.classList.remove('hidden');
+    overlay.querySelector('span:last-child').textContent = 'Chargement…';
+    var url = '/api/app-map?days=' + days;
+    var hg = currentHostgroup();
+    if (hg) url += '&hostgroup=' + encodeURIComponent(hg);
+
+    fetch(url)
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(render)
+      .catch(function () {
+        overlay.querySelector('span:last-child').textContent = 'Erreur de chargement — Elasticsearch non joignable ?';
+      });
+  }
+
+  function render(data) {
+    var nodes = (data.nodes || []).map(function (n) { return Object.assign({}, n); });
+    var links = (data.edges || []).map(function (e) { return Object.assign({}, e); });
+
+    document.getElementById('depmap-stat-nodes').textContent = nodes.length;
+    document.getElementById('depmap-stat-edges').textContent = links.length;
+
+    if (!nodes.length) {
+      overlay.querySelector('span:last-child').textContent = 'Aucun flux sur cette période.';
+      svg.selectAll('*').remove();
+      return;
+    }
+    overlay.classList.add('hidden');
+
+    var W = wrap.clientWidth, H = wrap.clientHeight;
+    svg.attr('viewBox', [0, 0, W, H]).selectAll('*').remove();
+    var g = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([.2, 4]).on('zoom', function (ev) { g.attr('transform', ev.transform); }));
+
+    var maxBytes = d3.max(links, function (l) { return l.bytes; }) || 1;
+    var wScale = d3.scaleLinear().domain([0, maxBytes]).range([1, 8]);
+    var maxNodeBytes = d3.max(nodes, function (n) { return n.bytes; }) || 1;
+    var rScale = d3.scaleSqrt().domain([0, maxNodeBytes]).range([5, 22]);
+
+    simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(function (d) { return d.id; }).distance(90))
+      .force('charge', d3.forceManyBody().strength(-180))
+      .force('center', d3.forceCenter(W / 2, H / 2))
+      .force('collision', d3.forceCollide().radius(function (d) { return rScale(d.bytes) + 8; }));
+
+    gLinks = g.append('g').selectAll('path')
+      .data(links).enter().append('path')
+      .attr('class', 'depmap-link')
+      .attr('stroke-width', function (d) { return wScale(d.bytes); });
+
+    gNodes = g.append('g').selectAll('g')
+      .data(nodes).enter().append('g')
+      .attr('class', 'depmap-node')
+      .call(d3.drag()
+        .on('start', function (ev, d) { if (!ev.active) simulation.alphaTarget(.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on('drag',  function (ev, d) { d.fx = ev.x; d.fy = ev.y; })
+        .on('end',   function (ev, d) { if (!ev.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+    gNodes.append('circle')
+      .attr('r', function (d) { return rScale(d.bytes); })
+      .attr('fill', nodeColor);
+
+    gNodes.append('text')
+      .attr('dy', function (d) { return rScale(d.bytes) + 12; })
+      .attr('text-anchor', 'middle')
+      .text(function (d) { return d.label.length > 18 ? d.label.slice(0, 17) + '…' : d.label; });
+
+    gNodes
+      .on('mouseenter', function (ev, d) {
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = '<b>' + d.label + '</b><br>'
+          + (d.id !== d.label ? d.id + '<br>' : '')
+          + (d.category ? d.category + '<br>' : '')
+          + fmtBytes(d.bytes) + ' échangés';
+      })
+      .on('mousemove', function (ev) {
+        tooltip.style.left = (ev.offsetX + 16) + 'px';
+        tooltip.style.top  = (ev.offsetY + 8) + 'px';
+      })
+      .on('mouseleave', function () { tooltip.style.display = 'none'; })
+      .on('click', function (ev, d) { highlight(d.id); });
+
+    svg.on('click', function (ev) { if (ev.target === svg.node()) clearHighlight(); });
+
+    simulation.on('tick', function () {
+      gLinks.attr('d', function (d) {
+        return 'M' + d.source.x + ',' + d.source.y + 'L' + d.target.x + ',' + d.target.y;
+      });
+      gNodes.attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+    });
+  }
+
+  function highlight(id) {
+    var connected = new Set([id]);
+    gLinks.each(function (d) {
+      if (d.source.id === id) connected.add(d.target.id);
+      if (d.target.id === id) connected.add(d.source.id);
+    });
+    gNodes.classed('dim', function (d) { return !connected.has(d.id); });
+    gLinks.classed('dim', function (d) { return d.source.id !== id && d.target.id !== id; });
+  }
+
+  function clearHighlight() {
+    gNodes.classed('dim', false);
+    gLinks.classed('dim', false);
+  }
+
+  function fmtBytes(b) {
+    if (!b) return '0 B';
+    var units = ['B', 'KB', 'MB', 'GB'];
+    var i = 0;
+    while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+    return b.toFixed(1) + ' ' + units[i];
+  }
+
+  document.querySelectorAll('.depmap-day-btn').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      document.querySelectorAll('.depmap-day-btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      days = parseInt(btn.dataset.days, 10);
+      load();
+    });
+  });
+
+  window.addEventListener('resize', function () { if (simulation) load(); });
+
+  load();
+})();
+</script>
+{% endblock %}

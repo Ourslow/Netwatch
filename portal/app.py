@@ -1172,6 +1172,23 @@ def api_applications():
     return jsonify({"apps": apps, "unmatched": unmatched})
 
 
+@app.route("/app-map")
+@login_required
+def app_map_page():
+    return render_template("app_map.html")
+
+
+@app.route("/api/app-map")
+@login_required
+def api_app_map():
+    days = request.args.get("days", default=1, type=int)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    graph, err = nw_app_dictionary.get_app_dependency_map(days=days, hostgroup=hostgroup or None)
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify(graph)
+
+
 @app.route("/api/hostgroups/import", methods=["POST"])
 @login_required
 def api_hostgroups_import():
