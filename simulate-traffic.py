@@ -163,6 +163,27 @@ JA3_MALICIOUS = [
     "26caf660a5c9fc71f2f88ca1b0d3d2e3",  # CobaltStrike default
     "b386946a5a44d1ddcc843bc75336dfce",  # Metasploit
 ]
+TLS_CIPHERS_STRONG = [
+    "TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+]
+# Suites bannies par le RGS ANSSI (annexe B1) : RC4, 3DES, NULL, export — gardées
+# ici pour que l'axe "Hygiène chiffrement" de /audit ait des occurrences réelles
+# à détecter en démo (~10% des sessions TLS simulées).
+TLS_CIPHERS_WEAK = [
+    "TLS_RSA_WITH_RC4_128_SHA", "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+    "TLS_RSA_WITH_NULL_SHA", "TLS_RSA_EXPORT_WITH_RC4_40_MD5",
+]
+# validation_status Zeek natif (ssl.log) — sous-ensemble "chaîne de confiance
+# invalide" volontairement distinct de "certificate has expired" (déjà couvert
+# par le notice SSL::Certificate_Expired existant, pour ne pas doublonner le
+# même constat via deux mécanismes).
+VALIDATION_STATUS_UNTRUSTED = [
+    "self signed certificate",
+    "unable to get local issuer certificate",
+    "unable to verify the first certificate",
+]
 JA3S_VALUES = [
     "9d93b2d1c78f31563ea0bd51a6e78e93",
     "f4febc55ea12b31ae17cfb7e614afda8",
@@ -408,6 +429,8 @@ def gen_ssl_log(ts, malicious=False):
     version = random.choice(TLS_VERSIONS)
     ja3 = random.choice(JA3_MALICIOUS if malicious else JA3_NORMAL)
     ja3s = random.choice(JA3S_VALUES)
+    cipher = random.choice(TLS_CIPHERS_WEAK) if random.random() < 0.10 else random.choice(TLS_CIPHERS_STRONG)
+    validation_status = random.choice(VALIDATION_STATUS_UNTRUSTED) if random.random() < 0.08 else "ok"
 
     return {
         "ts": ts,
@@ -422,6 +445,8 @@ def gen_ssl_log(ts, malicious=False):
         "subject": f"CN={server}",
         "issuer": random.choice(TLS_ISSUERS),
         "established": True,
+        "cipher": cipher,
+        "validation_status": validation_status,
         "ja3": ja3,
         "ja3s": ja3s,
         "log_type": "zeek",

@@ -20,6 +20,22 @@ BEACON = "netwatch-beacons-*"
 
 OBSOLETE_TLS = ["TLSv10", "TLSv11", "SSLv3", "SSLv2", "TLSv1", "TLSv1.0", "TLSv1.1"]
 
+# Suites de chiffrement bannies par le RGS ANSSI (annexe B1 — mécanismes
+# cryptographiques) : RC4, 3DES, NULL, export. Motif large (wildcard) plutôt
+# qu'une liste exacte de chaînes, pour rester robuste aux variations de nommage
+# des suites TLS réellement observées (vs. le simulateur, qui utilise des noms
+# fixes de cette même famille).
+WEAK_CIPHER_PATTERNS = ["*RC4*", "*3DES*", "*_NULL_*", "*EXPORT*", "*DES_CBC*"]
+
+# validation_status Zeek natif (ssl.log) indiquant une chaîne de confiance
+# invalide — distinct de "certificate has expired", déjà couvert par le
+# notice SSL::Certificate_Expired (finding "Certificats expirés" ci-dessous).
+VALIDATION_STATUS_UNTRUSTED = [
+    "self signed certificate",
+    "unable to get local issuer certificate",
+    "unable to verify the first certificate",
+]
+
 # Ports de services à risque s'ils sont exposés
 RISKY_PORTS = {
     21: "FTP", 23: "Telnet", 135: "RPC", 139: "NetBIOS", 445: "SMB",
@@ -42,6 +58,8 @@ REMEDIATION = {
     "Scans de ports":                 "NGFW · supervision managée",
     "Alertes critiques":              "SOC managé (MDR) · réponse à incident",
     "Logiciels obsolètes":            "Gestion de patchs (WSUS/RMM) · durcissement postes",
+    "Certificats auto-signés":        "PKI managée · gestion de certificats",
+    "Suites de chiffrement faibles":  "Durcissement TLS · WAF / reverse-proxy",
 }
 
 # Version de référence (major, minor) par logiciel, pour la détection passive
@@ -163,6 +181,14 @@ def run_audit():
                                     "should": [{"term": {"note.keyword": "SSL::Certificate_Expired"}},
                                                {"term": {"note.keyword": "SSL::Certificate_Not_Valid_Yet"}}],
                                     "minimum_should_match": 1}})
+    selfsigned_q = {"bool": {"filter": [ssl_q, {"terms": {"validation_status.keyword": VALIDATION_STATUS_UNTRUSTED}}]}}
+    selfsigned_n = _count(ZEEK, selfsigned_q)
+    selfsigned_ex = _top(ZEEK, "server_name.keyword", selfsigned_q, 6, "{k} ({c})")
+    weak_cipher_q = {"bool": {"filter": [ssl_q, {"bool": {
+        "should": [{"wildcard": {"cipher.keyword": p}} for p in WEAK_CIPHER_PATTERNS],
+        "minimum_should_match": 1}}]}}
+    weak_cipher_n = _count(ZEEK, weak_cipher_q)
+    weak_cipher_ex = _top(ZEEK, "cipher.keyword", weak_cipher_q, 6, "{k} ({c})")
     crypto = [
         _finding("Identifiants transmis en clair (HTTP)", clr_n,
                  _grade(clr_n, warn_at=1, crit_at=20),
@@ -179,6 +205,20 @@ def run_audit():
                  f"{cert_n} notice(s) de certificat expiré ou pas encore valide.",
                  "Surveiller et renouveler automatiquement les certificats (alerting J-30).",
                  "ISO A.8.24"),
+        _finding("Certificats auto-signés / chaîne de confiance invalide", selfsigned_n,
+                 _grade(selfsigned_n, warn_at=1, crit_at=15),
+                 f"{selfsigned_n} session(s) TLS avec un certificat auto-signé ou une chaîne "
+                 "de confiance invalide (émetteur non reconnu).",
+                 "Déployer une PKI managée (certificats émis par une autorité reconnue) sur "
+                 "les services concernés.",
+                 "RGS ANSSI annexe B1 · ISO A.8.24", selfsigned_ex),
+        _finding("Suites de chiffrement faibles", weak_cipher_n,
+                 _grade(weak_cipher_n, warn_at=1, crit_at=15),
+                 f"{weak_cipher_n} session(s) TLS négociée(s) avec une suite de chiffrement "
+                 "bannie par le RGS (RC4, 3DES, NULL, export...).",
+                 "Désactiver les suites faibles côté serveur ; n'autoriser que des suites "
+                 "AEAD modernes (AES-GCM, ChaCha20-Poly1305).",
+                 "RGS ANSSI annexe B1 · NIS2 21.2.h", weak_cipher_ex),
     ]
 
     # ════ Axe 2 — Exposition & surface ════
