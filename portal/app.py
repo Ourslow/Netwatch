@@ -26,6 +26,7 @@ from netwatch import llm_client
 from netwatch import audit as nw_audit
 from netwatch import incidents as nw_incidents
 from netwatch import hostgroups as nw_hostgroups
+from netwatch.experience import app_dictionary as nw_app_dictionary
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -1048,6 +1049,28 @@ def hostgroups_export_csv():
 def api_hostgroups():
     """Liste des groupes importés — alimente le sélecteur global du portail."""
     return jsonify(nw_hostgroups.list_groups())
+
+
+# ============================================================
+# Applications — dictionnaire applicatif SNI (Network Experience Monitoring)
+# ============================================================
+
+@app.route("/applications")
+@login_required
+def applications_page():
+    days = request.args.get("days", default=1, type=int)
+    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days)
+    return render_template("applications.html", apps=apps, unmatched=unmatched, error=err, days=days)
+
+
+@app.route("/api/applications")
+@login_required
+def api_applications():
+    days = request.args.get("days", default=1, type=int)
+    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days)
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify({"apps": apps, "unmatched": unmatched})
 
 
 @app.route("/api/hostgroups/import", methods=["POST"])

@@ -1,0 +1,30 @@
+{
+  "apps": [
+    {"name": "Microsoft 365",    "category": "Productivité",      "domains": ["microsoft.com", "office.com", "office365.com", "outlook.com", "sharepointonline.com", "microsoftonline.com", "live.com"]},
+    {"name": "Microsoft Teams",  "category": "Communication",     "domains": ["teams.microsoft.com"]},
+    {"name": "Google Workspace", "category": "Productivité",      "domains": ["google.com", "gmail.com", "googleapis.com", "gstatic.com", "drive.google.com"]},
+    {"name": "Salesforce",       "category": "CRM",                "domains": ["salesforce.com", "force.com"]},
+    {"name": "Slack",            "category": "Communication",     "domains": ["slack.com"]},
+    {"name": "Zoom",             "category": "Visioconférence",   "domains": ["zoom.us"]},
+    {"name": "Dropbox",          "category": "Stockage cloud",    "domains": ["dropbox.com"]},
+    {"name": "GitHub",           "category": "Développement",     "domains": ["github.com", "githubusercontent.com"]},
+    {"name": "Stack Overflow",   "category": "Développement",     "domains": ["stackoverflow.com"]},
+    {"name": "Docker Hub",       "category": "Développement",     "domains": ["docker.com"]},
+    {"name": "Elastic",          "category": "Infra/Monitoring",  "domains": ["elastic.co"]},
+    {"name": "Grafana",          "category": "Infra/Monitoring",  "domains": ["grafana.com"]},
+    {"name": "Cloudflare",       "category": "CDN/Infra",         "domains": ["cloudflare.com", "cloudflare-dns.com"]},
+    {"name": "AWS",              "category": "Cloud/Infra",       "domains": ["amazonaws.com", "aws.amazon.com"]},
+    {"name": "Amazon",           "category": "E-commerce",        "domains": ["amazon.com"]},
+    {"name": "Apple",            "category": "Cloud personnel",   "domains": ["apple.com", "icloud.com"]},
+    {"name": "Debian",           "category": "Dev/Infra",         "domains": ["debian.org"]},
+    {"name": "Ubuntu",           "category": "Dev/Infra",         "domains": ["ubuntu.com"]},
+    {"name": "Mozilla",          "category": "Dev/Infra",         "domains": ["mozilla.org"]},
+    {"name": "Wikipedia",        "category": "Référence",         "domains": ["wikipedia.org"]},
+    {"name": "YouTube",          "category": "Streaming",         "domains": ["youtube.com"]},
+    {"name": "Netflix",          "category": "Streaming",         "domains": ["netflix.com"]},
+    {"name": "X (Twitter)",      "category": "Réseaux sociaux",   "domains": ["twitter.com", "x.com"]},
+    {"name": "Meta/Facebook",    "category": "Réseaux sociaux",   "domains": ["facebook.com"]},
+    {"name": "LinkedIn",         "category": "Réseaux sociaux",   "domains": ["linkedin.com"]},
+    {"name": "Reddit",           "category": "Réseaux sociaux",   "domains": ["reddit.com"]}
+  ]
+}

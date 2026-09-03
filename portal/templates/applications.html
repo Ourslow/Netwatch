@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Applications — NetWatch Portal{% endblock %}
+{% block page_title %}Dictionnaire applicatif{% endblock %}
+
+{% block topbar_actions %}
+<div class="btn-group btn-group-sm" role="group">
+  <a href="{{ url_for('applications_page', days=1) }}" class="btn btn-outline-secondary {% if days == 1 %}active{% endif %}">24h</a>
+  <a href="{{ url_for('applications_page', days=7) }}" class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7j</a>
+  <a href="{{ url_for('applications_page', days=30) }}" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30j</a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% endif %}
+
+<p class="text-muted small mb-3">
+  Classification du trafic TLS par application métier (SNI → catalogue), à la manière du
+  dictionnaire applicatif Riverbed/Netscout — dérivée du réseau, sans agent poste client.
+</p>
+
+<div class="card mb-4">
+  <div class="card-body p-0">
+    {% if apps %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Application</th>
+            <th>Catégorie</th>
+            <th class="text-end">Sessions TLS</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set max_sessions = apps[0].sessions if apps else 1 %}
+          {% for a in apps %}
+          <tr>
+            <td>{{ a.name }}</td>
+            <td class="text-muted small">{{ a.category }}</td>
+            <td class="text-end"><span class="badge bg-dark">{{ a.sessions }}</span></td>
+            <td style="width:30%">
+              <div class="progress" style="height:6px">
+                <div class="progress-bar" role="progressbar"
+                     style="width: {{ (a.sessions / max_sessions * 100) | round(1) }}%"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-diagram-3 fs-1 d-block mb-2"></i>
+      Aucun trafic TLS classifié sur la période.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if unmatched %}
+<div class="card">
+  <div class="card-body">
+    <h6 class="mb-2">SNI non catalogués</h6>
+    <p class="text-muted small mb-3">
+      Domaines vus sur le réseau mais absents du dictionnaire — candidats à ajouter dans
+      <code>portal/netwatch/experience/app_catalog.json</code>.
+    </p>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Domaine (SNI)</th><th class="text-end">Sessions</th></tr></thead>
+        <tbody>
+          {% for u in unmatched %}
+          <tr><td><code>{{ u.domain }}</code></td><td class="text-end">{{ u.sessions }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -83,6 +83,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('applications_page') }}"
+           class="nav-link {% if request.endpoint == 'applications_page' %}active{% endif %}">
+          <i class="bi bi-window-stack"></i> <span>Applications</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('graph') }}"
            class="nav-link {% if request.endpoint == 'graph' %}active{% endif %}">
           <i class="bi bi-bezier2"></i> <span>Graphe IOC</span>
