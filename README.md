@@ -96,6 +96,11 @@ La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallè
 | 🎫 | **Ticketing automatique** | n8n → YAML ticket créé automatiquement sur alerte critique ES |
 | 📅 | **Rapport hebdomadaire** | n8n cron lundi 08h00 → agrège 7j d'alertes ES → Teams Adaptive Card |
 | ⚙️ | **Health check 14 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
+| 🗂️ | **Hostgroups** | Import CSV type NetScout, dashboards réutilisables par device/groupe (Allegro/Keysight-like) |
+| 🧩 | **Analyse PCAP conversations** | Conversations TCP par point d'écoute — octets, durée, handshake rating, retransmissions, QoS/VLAN |
+| 📄 | **Rapports planifiables** | Génération PDF à la demande + exports CSV, historique consultable sur `/reports` |
+| 🏷️ | **Dictionnaire applicatif SNI** | Classification du trafic TLS par application métier (SNI → M365, Salesforce, Slack...) — Network Experience Monitoring sans agent, à la Riverbed/Aternity |
+| 🪟 | **Ratio zero-window TCP** | Indicateur de congestion applicative (`conn.log.history`), ratio global + top IPs par device/hostgroup |
 
 ---
 
@@ -234,6 +239,10 @@ Le portail Flask (`:5050`) centralise toutes les données en une interface unifi
 | `/report` | Rapport de conseil PDF : bandeau couverture, KPI cards, sections numérotées |
 | `/status` | Santé des 14 services Docker en temps réel |
 | `/agents` | Monitoring des agents IA — état, ticket en cours, dernière activité (refresh 15s) |
+| `/hostgroups` | Import CSV NetScout-like, dashboards réutilisables par device/groupe |
+| `/pcap-analysis` | Analyse de conversations TCP capturées — handshake, retransmissions, QoS/VLAN |
+| `/applications` | Dictionnaire applicatif SNI — trafic classé par application métier, fenêtre 24h/7j/30j |
+| `/reports` | Historique des rapports générés — PDF à la demande, exports CSV |
 | `✨ IA` | Explication des alertes via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
 > Interface disponible en **FR / EN** (switch côté client, localStorage)
@@ -291,7 +300,7 @@ sudo chmod 644 filebeat/filebeat.yml
 
 ```bash
 docker compose up -d
-docker compose ps   # 10 conteneurs attendus
+docker compose ps   # 14 conteneurs attendus
 ```
 
 > ⚠️ Le build de **Snort** prend 10-15 min la première fois (compilation depuis les sources).
@@ -441,6 +450,8 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | **Capacity planning** | **predict_linear Prometheus** | Netscout · PRTG · ManageEngine |
 | **Qualité VoIP** | **MOS E-model G.107 (Zeek)** | Netscout InfiniStreamNG · Empirix |
 | **Compliance SLA** | **Percentiles ES p95 → gauges** | Netscout nGeniusONE · Riverbed |
+| **Dictionnaire applicatif** | **Mapping SNI/domaine → app métier (Zeek ssl.log)** | Riverbed AppFlow (1300+ sign. DPI) · Netscout DPI |
+| **Ratio zero-window TCP** | **`conn.log.history` → ratio + top IPs** | Netscout nGeniusONE TCP/IP Triage · Riverbed |
 | Corrélation multi-sources | Dashboard multi-moteurs | nGeniusONE Service Triage |
 | Intégration ITSM | ServiceNow + JIRA (itsm-sync.py) | Intégrations natives |
 | Rapport conformité | PDF automatique (Flask) | SIEM intégré |
@@ -452,7 +463,7 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 
 ```
 netwatch/
-├── docker-compose.yml              # Orchestration 12 services
+├── docker-compose.yml              # Orchestration 14 services
 ├── .env.example                    # Template de configuration
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
 ├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch
@@ -473,9 +484,11 @@ netwatch/
 ├── scripts/
 │   ├── security/
 │   │   ├── ioc-graph.py            # Graphe IOC NetworkX (IPs·règles·MITRE TTPs)
-│   │   └── ioc-graph-output.json   # Export graphe (nodes + edges)
+│   │   ├── ioc-graph-output.json   # Export graphe (nodes + edges)
+│   │   └── pcap-tcp-analysis.py    # Analyse conversations TCP (tshark) par point d'écoute
 │   └── automation/
 │       ├── create-ticket.py        # Création YAML ticket depuis alerte ES (CLI)
+│       ├── generate-report-pdf.py  # Génération rapport PDF planifiable + exports CSV
 │       ├── n8n-alertes-teams.json  # Workflow n8n alertes → Teams
 │       ├── n8n-auto-tickets.json   # Workflow n8n alertes critiques → tickets
 │       └── deploy-n8n-workflow.sh  # Import auto workflow via API n8n
@@ -517,15 +530,25 @@ netwatch/
 │   │   └── alerting/
 │   └── dashboards/                 # 11 fichiers JSON auto-provisionnés
 │
-└── netwatch/                       # Portail web Flask
+└── portal/                         # Portail web Flask
     ├── app.py
-    ├── llm_client.py               # IA locale Ollama/Mistral
-    └── templates/
-        ├── alerts.html
-        ├── audit.html
-        ├── compliance.html
-        ├── report.html
-        └── status.html
+    └── netwatch/
+        ├── es_client.py             # Requêtes Elasticsearch (alertes, TCP, flows...)
+        ├── llm_client.py            # IA locale Ollama/Mistral
+        ├── hostgroups.py            # Import CSV NetScout-like, dashboards par groupe
+        ├── experience/              # Network Experience Monitoring (à la Aternity, sans agent)
+        │   ├── app_dictionary.py    # Classification trafic TLS par SNI → app métier
+        │   └── app_catalog.json     # Table de correspondance domaine → application
+        └── templates/
+            ├── alerts.html
+            ├── audit.html
+            ├── compliance.html
+            ├── hostgroups.html
+            ├── applications.html
+            ├── pcap_analysis.html
+            ├── reports.html
+            ├── report.html
+            └── status.html
 ```
 
 ---
@@ -609,7 +632,7 @@ python3 simulate-traffic.py --hours 6 --intensity medium --attack
 ```bash
 # Stack
 docker compose up -d                                              # Démarrer
-docker compose ps                                                 # Vérifier les 10 conteneurs
+docker compose ps                                                 # Vérifier les 14 conteneurs
 docker compose logs -f beacon-detect                             # Logs d'un service
 docker compose build snort --no-cache && docker compose up -d snort  # Rebuild
 
@@ -638,6 +661,7 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | **v2 Phase 5** | ✅ Juin 2026 | GoFlow2 NetFlow/IPFIX/sFlow · page /flows · ART applicatif · TCP health · npm-alerts |
 | **v2 Phase 6** | ✅ Juin 2026 | SNMP exporter IF-MIB · topologie D3.js /topology · app-classifier 425 ports · iface-saturation |
 | **v2 Phase 7** | ✅ Juin 2026 | Capacity planning predict_linear · VoIP MOS E-model G.107 · SLA compliance /sla · ITSM ServiceNow/JIRA |
+| **v2 Phase 8** | ✅ Septembre 2026 | Hostgroups CSV + dashboards réutilisables · Analyse PCAP conversations TCP · Rapports PDF/CSV planifiables · Dictionnaire applicatif SNI · Ratio zero-window TCP |
 | **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
 
 ---
