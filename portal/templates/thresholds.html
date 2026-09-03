@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Alertes sur seuil — NetWatch Portal{% endblock %}
+{% block page_title %}Alertes sur seuil{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% endif %}
+
+<p class="text-muted small mb-3">
+  Surveille en continu une métrique (score de santé, RTT, zero-window, retransmissions) et
+  notifie dès le franchissement d'un seuil — vérifié toutes les {{ config_check_seconds }}
+  secondes en tâche de fond, sans attendre qu'un opérateur consulte une page.
+</p>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-plus-circle me-2"></i>Nouvelle règle</div>
+  <div class="card-body">
+    <form id="rule-form" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1">Métrique</label>
+        <select name="metric" class="form-select form-select-sm">
+          {% for key, m in metrics.items() %}
+          <option value="{{ key }}">{{ m.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1">Portée</label>
+        <input type="text" name="scope" class="form-control form-control-sm" placeholder="global" style="width:160px">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1">Condition</label>
+        <select name="operator" class="form-select form-select-sm">
+          <option value="<">inférieur à</option>
+          <option value=">">supérieur à</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1">Valeur</label>
+        <input type="number" step="any" name="value" class="form-control form-control-sm" style="width:100px" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1">Sévérité</label>
+        <select name="severity" class="form-select form-select-sm">
+          <option value="warning">Avertissement</option>
+          <option value="critical">Critique</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">
+          <i class="bi bi-plus-lg me-1"></i>Ajouter
+        </button>
+      </div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">
+      Portée : laisser vide (ou "global") pour surveiller toutes les applications reconnues,
+      ou saisir un nom d'application exact (ex. "Microsoft 365") pour la cibler seule.
+    </p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-list-check me-2"></i>Règles actives</div>
+  <div class="card-body p-0">
+    {% if rules %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Statut</th>
+            <th>Métrique</th>
+            <th>Portée</th>
+            <th>Condition</th>
+            <th>Sévérité</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rules %}
+          <tr data-rule-id="{{ r.id }}">
+            <td>
+              {% if r.id in breached_rule_ids %}
+              <span class="badge bg-danger">Franchi</span>
+              {% elif r.enabled %}
+              <span class="badge bg-success">OK</span>
+              {% else %}
+              <span class="badge bg-secondary">Désactivée</span>
+              {% endif %}
+            </td>
+            <td>{{ metrics.get(r.metric, {}).get('label', r.metric) }}</td>
+            <td><code>{{ r.scope }}</code></td>
+            <td class="fw-mono small">{{ r.operator }} {{ r.value }}{{ metrics.get(r.metric, {}).get('unit', '') }}</td>
+            <td><span class="badge {% if r.severity == 'critical' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.severity }}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-secondary rule-toggle-btn" data-enabled="{{ r.enabled | tojson }}" title="Activer/désactiver">
+                <i class="bi {% if r.enabled %}bi-pause-fill{% else %}bi-play-fill{% endif %}"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger rule-delete-btn" title="Supprimer">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-bell-slash fs-3 d-block mb-2"></i>Aucune règle configurée pour le moment.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><i class="bi bi-clock-history me-2"></i>Derniers événements</div>
+  <div class="card-body p-0">
+    {% if events %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Horodatage</th><th>Événement</th><th>Application</th><th>Métrique</th><th class="text-end">Valeur</th></tr></thead>
+        <tbody>
+          {% for e in events %}
+          <tr>
+            <td class="text-muted small fw-mono">{{ e.get('@timestamp', '')[:19] | replace('T', ' ') }}</td>
+            <td>
+              {% if e.kind == 'breach' %}
+              <span class="badge bg-danger">Seuil franchi</span>
+              {% else %}
+              <span class="badge bg-success">Retour à la normale</span>
+              {% endif %}
+            </td>
+            <td>{{ e.app }}</td>
+            <td class="text-muted small">{{ metrics.get(e.metric, {}).get('label', e.metric) }}</td>
+            <td class="text-end fw-mono">{{ e.current_value if e.current_value is not none else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-inbox fs-3 d-block mb-2"></i>Aucun événement pour le moment.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('rule-form');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var fd = new FormData(form);
+    var payload = Object.fromEntries(fd.entries());
+    fetch('/api/thresholds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) { alert(res.d.error || 'Erreur'); return; }
+        window.location.reload();
+      })
+      .catch(function () { alert('Erreur réseau'); });
+  });
+
+  document.querySelectorAll('.rule-delete-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = btn.closest('tr');
+      var id = row.dataset.ruleId;
+      if (!confirm('Supprimer cette règle ?')) return;
+      fetch('/api/thresholds/' + id, { method: 'DELETE' }).then(function () { window.location.reload(); });
+    });
+  });
+
+  document.querySelectorAll('.rule-toggle-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = btn.closest('tr');
+      var id = row.dataset.ruleId;
+      var enabled = btn.dataset.enabled === 'true';
+      fetch('/api/thresholds/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !enabled }),
+      }).then(function () { window.location.reload(); });
+    });
+  });
+})();
+</script>
+{% endblock %}

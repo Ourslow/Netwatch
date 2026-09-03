@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+import threading
 from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlsplit, urlunsplit
@@ -28,6 +29,7 @@ from netwatch import incidents as nw_incidents
 from netwatch import hostgroups as nw_hostgroups
 from netwatch.experience import app_dictionary as nw_app_dictionary
 from netwatch import llmops as nw_llmops
+from netwatch import thresholds as nw_thresholds
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -1185,6 +1187,58 @@ def api_applications_health():
     return jsonify({"scores": scores})
 
 
+@app.route("/thresholds")
+@login_required
+def thresholds_page():
+    rules = nw_thresholds.list_rules()
+    breaches, _ = nw_thresholds.evaluate()
+    breached_rule_ids = {b["rule"]["id"] for b in breaches}
+    events, err = nw_thresholds.get_recent_events()
+    return render_template("thresholds.html", rules=rules, events=events, error=err,
+                           metrics=nw_thresholds.METRICS, breaches=breaches,
+                           breached_rule_ids=breached_rule_ids,
+                           config_check_seconds=config.THRESHOLD_CHECK_SECONDS)
+
+
+@app.route("/api/thresholds", methods=["GET", "POST"])
+@login_required
+def api_thresholds():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or request.form
+        try:
+            rule = nw_thresholds.add_rule(
+                metric=data.get("metric", ""),
+                scope=(data.get("scope") or "global").strip(),
+                operator=data.get("operator", "<"),
+                value=data.get("value", 0),
+                severity=data.get("severity", "warning"),
+            )
+        except (ValueError, TypeError) as e:
+            return jsonify({"error": str(e)}), 400
+        return jsonify(rule)
+    return jsonify(nw_thresholds.list_rules())
+
+
+@app.route("/api/thresholds/<rule_id>", methods=["DELETE", "PATCH"])
+@login_required
+def api_thresholds_rule(rule_id):
+    if request.method == "DELETE":
+        nw_thresholds.delete_rule(rule_id)
+        return jsonify({"deleted": rule_id})
+    data = request.get_json(silent=True) or {}
+    nw_thresholds.toggle_rule(rule_id, data.get("enabled", True))
+    return jsonify({"id": rule_id, "enabled": bool(data.get("enabled", True))})
+
+
+@app.route("/api/thresholds/events")
+@login_required
+def api_thresholds_events():
+    events, err = nw_thresholds.get_recent_events()
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify(events)
+
+
 @app.route("/app-map")
 @login_required
 def app_map_page():
@@ -2309,6 +2363,17 @@ if __name__ == "__main__":
             "⚠️  PORTAL_PASSWORD non défini — toute tentative de connexion sera refusée. "
             "Définissez la variable d'environnement PORTAL_PASSWORD pour activer l'accès."
         )
+    # Vérification périodique des seuils (/thresholds) — thread daemon, pas de
+    # service Docker séparé. Guard WERKZEUG_RUN_MAIN : évite un double thread
+    # si jamais FLASK_DEBUG est activé (le reloader Werkzeug relance ce
+    # fichier dans un sous-process, "__main__" s'exécute alors deux fois).
+    if not config.FLASK_DEBUG or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        threading.Thread(
+            target=nw_thresholds.run_background_loop,
+            args=(config.THRESHOLD_CHECK_SECONDS,),
+            daemon=True,
+        ).start()
+
     # threaded=True : indispensable depuis l'ajout du flux SSE
     # (/api/alerts/stream) — une connexion longue durée bloquerait sinon
     # tout le reste du portail sur le serveur de dev Werkzeug (mono-thread

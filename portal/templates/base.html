@@ -126,6 +126,12 @@
           <i class="bi bi-activity"></i> <span data-i18n="nav_status">Statut services</span>
         </a>
       </li>
+      <li class="nav-item">
+        <a href="{{ url_for('thresholds_page') }}"
+           class="nav-link {% if request.endpoint == 'thresholds_page' %}active{% endif %}">
+          <i class="bi bi-bell"></i> <span>Alertes sur seuil</span>
+        </a>
+      </li>
     </ul>
 
     <div class="nav-section" data-i18n="nav_infra">Infrastructure</div>
@@ -305,6 +311,7 @@
     { icon: 'bi-diagram-2-fill',      label: 'Topologie',            url: '/topology',    hint: 'Carte réseau L2/L3 · LLDP' },
     { icon: 'bi-window-stack',        label: 'Applications',         url: '/applications', hint: 'Dictionnaire applicatif SNI' },
     { icon: 'bi-diagram-3-fill',      label: 'Dépendances applicatives', url: '/app-map',   hint: 'Qui parle à qui — flux inter-services' },
+    { icon: 'bi-bell',                label: 'Alertes sur seuil',    url: '/thresholds',   hint: 'Notifications sur franchissement de métrique' },
     { icon: 'bi-bezier2',             label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
     { icon: 'bi-globe',               label: 'Carte GeoIP',          url: '/geomap',      hint: 'Origine des attaques' },
     { icon: 'bi-collection',          label: 'Hostgroups',           url: '/hostgroups',  hint: 'Groupes d\'hôtes' },

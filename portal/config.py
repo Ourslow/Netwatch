@@ -63,3 +63,9 @@ SLA_TARGET_PCT      = float(os.getenv("SLA_TARGET_PCT", "99.0"))
 # donc on force topology-discover.py en mode --demo (données synthétiques).
 # Mettre à false quand du SNMP réel sera disponible sur les sondes.
 TOPOLOGY_DEMO = os.getenv("TOPOLOGY_DEMO", "false").lower() == "true"
+
+# Alertes sur seuil (/thresholds) — webhook optionnel notifié à chaque nouveau
+# franchissement (n8n, Slack incoming webhook...). Vide = pas de notification
+# externe, les événements restent consultables dans le portail.
+THRESHOLD_WEBHOOK_URL   = os.getenv("THRESHOLD_WEBHOOK_URL", "")
+THRESHOLD_CHECK_SECONDS = int(os.getenv("THRESHOLD_CHECK_SECONDS", "120"))
