@@ -148,6 +148,11 @@
 
   search.addEventListener('input', applyFilter);
   catSel.addEventListener('change', applyFilter);
+
+  /* Pré-remplit depuis ?q= (ex. pivot clic-droit sur un domaine depuis
+     une autre page) plutôt que d'arriver sur une page non filtrée. */
+  var presetQ = new URLSearchParams(window.location.search).get('q');
+  if (presetQ) search.value = presetQ;
   applyFilter();
 })();
 </script>

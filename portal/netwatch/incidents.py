@@ -11,7 +11,13 @@ def _parse_ts(ts_str):
     if not ts_str:
         return None
     try:
-        return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            # Timestamp sans offset/Z : les données ES sont toujours en UTC,
+            # un datetime naïf ferait planter `now - anchor` plus bas
+            # (comparaison naive vs aware).
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except Exception:
         return None
 
@@ -35,12 +41,18 @@ def build_incidents(alerts, window_minutes=5):
     current = None
 
     for alert, ts in dated:
-        if current is None or (current["_anchor"] - ts) > window:
+        # Fenêtre glissante par rapport à la _dernière_ alerte du cluster, pas
+        # à l'ancre d'origine — sinon une rafale dense et continue (alertes
+        # espacées de 4 min avec une fenêtre de 5) se fragmente artificiellement
+        # dès que la durée cumulée depuis la 1ère alerte dépasse window_minutes,
+        # même si chaque écart consécutif reste bien dans la fenêtre.
+        if current is None or (current["_last"] - ts) > window:
             if current:
                 incidents.append(_finalize(current, now))
             current = {
                 "_anchor": ts,
                 "_end":    ts,
+                "_last":   ts,
                 "alerts":    [alert],
                 "engines":   set(),
                 "src_ips":   set(),
@@ -49,6 +61,7 @@ def build_incidents(alerts, window_minutes=5):
         else:
             current["alerts"].append(alert)
             current["_end"] = ts
+            current["_last"] = ts
 
         current["engines"].add(alert.get("engine", "?"))
         src = alert.get("src_ip", "")

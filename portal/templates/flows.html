@@ -425,6 +425,7 @@
         var srcLabels = (d.top_src || []).map(function (x) { return x.ip; });
         var srcBytes  = (d.top_src || []).map(function (x) { return x.bytes; });
         var donutWrap = document.getElementById('donut-src-wrap');
+        Chart.getChart('donut-src') && Chart.getChart('donut-src').destroy();
         donutWrap.innerHTML = '<canvas id="donut-src" height="220"></canvas>';
         if (srcLabels.length) {
           new Chart(document.getElementById('donut-src'), {
@@ -453,6 +454,7 @@
         var portLabels = (d.top_ports || []).map(function (x) { return x.port; });
         var portBytes  = (d.top_ports || []).map(function (x) { return x.bytes; });
         var barWrap = document.getElementById('bar-ports-wrap');
+        Chart.getChart('bar-ports') && Chart.getChart('bar-ports').destroy();
         barWrap.innerHTML = '<canvas id="bar-ports" height="220"></canvas>';
         if (portLabels.length) {
           new Chart(document.getElementById('bar-ports'), {
@@ -493,6 +495,7 @@
         });
         var tlBytes = (d.timeline || []).map(function (x) { return x.bytes; });
         var tlWrap = document.getElementById('line-tl-wrap');
+        Chart.getChart('line-tl') && Chart.getChart('line-tl').destroy();
         tlWrap.innerHTML = '<canvas id="line-tl" height="220"></canvas>';
         new Chart(document.getElementById('line-tl'), {
           type: 'line',
@@ -592,6 +595,11 @@
         document.getElementById('gauge-rtt-p95').textContent =
           p95Ms !== null && p95Ms !== undefined ? p95Ms.toFixed(1) + ' ms' : '—';
 
+        /* Détruit toute instance existante avant d'en recréer une — ce canvas
+           n'est pas recréé via innerHTML comme les 5 autres, donc un appel
+           chevauchant (double-clic Refresh) planterait sinon sur
+           "Canvas is already in use by another chart". */
+        Chart.getChart('gauge-rtt') && Chart.getChart('gauge-rtt').destroy();
         new Chart(document.getElementById('gauge-rtt'), {
           type: 'doughnut',
           data: {
@@ -699,6 +707,7 @@
         /* ── Donut catégories ── */
         var cats  = (d.by_category || []).slice(0, 10);
         var catWrap = document.getElementById('donut-cat-wrap');
+        Chart.getChart('donut-cat') && Chart.getChart('donut-cat').destroy();
         catWrap.innerHTML = '<canvas id="donut-cat" height="260"></canvas>';
         if (cats.length) {
           new Chart(document.getElementById('donut-cat'), {
@@ -754,6 +763,7 @@
         /* ── Bar horizontal top 10 applications ── */
         var apps    = (d.top_apps || []).slice(0, 10);
         var appWrap = document.getElementById('bar-apps-wrap');
+        Chart.getChart('bar-apps') && Chart.getChart('bar-apps').destroy();
         appWrap.innerHTML = '<canvas id="bar-apps" height="260"></canvas>';
         if (apps.length) {
           var appLabels = apps.map(function (a) { return a.name; });

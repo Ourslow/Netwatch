@@ -888,16 +888,20 @@ def api_reports_generate():
     if not os.path.isfile(script):
         return jsonify({"error": "generate-report-pdf.py introuvable"}), 503
     try:
+        # username/password passés par variables d'environnement (déjà lues en
+        # fallback par generate-report-pdf.py) plutôt qu'en argument CLI — un
+        # argument de ligne de commande est visible de tout utilisateur local
+        # via `ps`/`/proc/<pid>/cmdline` pendant l'exécution du subprocess.
         result = subprocess.run(
             ["python3", script,
              "--portal-url", request.host_url.rstrip("/"),
-             "--username", config.PORTAL_USERNAME,
-             "--password", config.PORTAL_PASSWORD,
              "--output-dir", _REPORTS_DIR],
             cwd=netwatch_root,
             capture_output=True,
             timeout=90,
             check=False,
+            env={**os.environ, "PORTAL_USERNAME": config.PORTAL_USERNAME,
+                 "PORTAL_PASSWORD": config.PORTAL_PASSWORD},
         )
         if result.returncode != 0:
             app.logger.warning("generate-report-pdf.py exited %d: %s", result.returncode,
@@ -1322,7 +1326,7 @@ def ip_detail(ip):
 def hostgroup_dashboard(name):
     groups = nw_hostgroups.load()
     if name not in groups:
-        flash(f"Hostgroup « {name} » introuvable.", "error")
+        flash(f"Hostgroup « {name} » introuvable.", "danger")
         return redirect(url_for("hostgroups_page"))
     ranges = nw_hostgroups.resolve_ranges(name, groups)
     dashboard = _perf_dashboard(ranges=ranges, talkers_size=15)

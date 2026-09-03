@@ -299,11 +299,17 @@
       const raw = el.getAttribute("data-ts");
       if (raw) el.textContent = NW.fmtTs(raw);
     });
-    /* Compteur topbar rendu côté serveur */
+    /* Compteur topbar — si le flux temps réel l'a déjà mis à jour (dataset.count),
+       retraduire cette valeur live plutôt que d'écraser avec l'attribut statique
+       du rendu serveur initial (qui reflèterait un nombre périmé). */
     const countLabel = document.getElementById("alert-count-label");
     if (countLabel) {
-      const v = countLabel.getAttribute("data-count-" + NW.lang);
-      if (v) countLabel.textContent = v;
+      if (countLabel.dataset.count !== undefined) {
+        countLabel.textContent = NW.t("alerts_label", { n: parseInt(countLabel.dataset.count, 10) });
+      } else {
+        const v = countLabel.getAttribute("data-count-" + NW.lang);
+        if (v) countLabel.textContent = v;
+      }
     }
   };
 

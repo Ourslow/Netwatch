@@ -1467,9 +1467,15 @@ def get_tcp_perf(ip=None):
             "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 100}}},
         })
         total_per_ip = {}
+        conn_total_real = 0
         if r_tot.status_code == 200:
-            for b in (r_tot.json().get("aggregations", {})
-                                   .get("per_ip", {}).get("buckets", [])):
+            r_tot_body = r_tot.json()
+            # hits.total.value = vrai total (non plafonné), à ne pas confondre
+            # avec la somme des buckets per_ip ci-dessous, cappée à size:100 —
+            # utilisée uniquement pour le détail par IP, pas pour le ratio global.
+            conn_total_real = int(r_tot_body.get("hits", {}).get("total", {}).get("value", 0))
+            for b in (r_tot_body.get("aggregations", {})
+                                 .get("per_ip", {}).get("buckets", [])):
                 total_per_ip[b["key"]] = b["doc_count"]
 
         r_rt = _es("/zeek-*/_search", {
@@ -1517,9 +1523,8 @@ def get_tcp_perf(ip=None):
             zw_total = int(zw_body.get("hits", {}).get("total", {}).get("value", 0))
             result["zero_windows_count"] = zw_total
 
-            conn_total = sum(total_per_ip.values())
-            if conn_total > 0:
-                result["zero_window_pct"] = round(zw_total / conn_total * 100, 2)
+            if conn_total_real > 0:
+                result["zero_window_pct"] = round(zw_total / conn_total_real * 100, 2)
 
             rows = []
             for b in zw_body.get("aggregations", {}).get("per_ip", {}).get("buckets", []):

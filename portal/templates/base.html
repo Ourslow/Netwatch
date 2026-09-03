@@ -478,7 +478,7 @@
     }
     if (type === 'domain') {
       return [
-        { icon: 'bi-window-stack', label: 'Voir dans Applications', url: '/applications' },
+        { icon: 'bi-window-stack', label: 'Voir dans Applications', url: '/applications?q=' + enc },
         { icon: 'bi-clipboard',    label: 'Copier le domaine',      copy: value },
       ];
     }
@@ -493,6 +493,10 @@
 
   function classify(el) {
     if (!el) return null;
+    // Limite le clic droit "intelligent" au contenu de page (tables, cartes...) —
+    // sans ça, l'auto-détection tourne aussi sur la sidebar/topbar/modales de
+    // chrome et peut classer à tort un texte court quelconque en IP/domaine.
+    if (!el.closest('.content-area')) return null;
     var tagged = el.closest('[data-pivot]');
     if (tagged) {
       var type = tagged.getAttribute('data-pivot');
