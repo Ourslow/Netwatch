@@ -254,6 +254,14 @@
   </div>
 </div>
 
+<!-- Menu contextuel clic droit — pivot IP / domaine / signature -->
+<div class="pivot-menu" id="pivot-menu">
+  <div class="pivot-menu-header">
+    <span id="pivot-menu-type"></span> · <code id="pivot-menu-value"></code>
+  </div>
+  <div class="pivot-menu-list" id="pivot-menu-list"></div>
+</div>
+
 <!-- Messages flash → convertis en toasts par netwatch.js -->
 <div id="flash-data" hidden>
   {% for category, message in get_flashed_messages(with_categories=true) %}
@@ -430,6 +438,112 @@
     else url.searchParams.delete('hostgroup');
     window.location.href = url.toString();
   });
+})();
+
+// ── Menu contextuel clic droit — pivot IP / domaine / signature (à la Riverbed) ──
+(function () {
+  var IPV4_RE   = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+  var DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+
+  var menu   = document.getElementById('pivot-menu');
+  var typeEl = document.getElementById('pivot-menu-type');
+  var valEl  = document.getElementById('pivot-menu-value');
+  var listEl = document.getElementById('pivot-menu-list');
+  if (!menu) return;
+
+  var LABELS = { ip: 'IP', domain: 'Domaine', sig: 'Signature' };
+  var ICONS  = { ip: 'bi-geo-alt', domain: 'bi-window-stack', sig: 'bi-shield-exclamation' };
+
+  function actionsFor(type, value) {
+    var enc = encodeURIComponent(value);
+    if (type === 'ip') {
+      return [
+        { icon: 'bi-search',      label: 'Voir le détail IP',      url: '/ip/' + enc },
+        { icon: 'bi-funnel',      label: 'Filtrer les alertes',    url: '/alerts?q=' + enc },
+        { icon: 'bi-clipboard',   label: 'Copier l\'IP',           copy: value },
+      ];
+    }
+    if (type === 'domain') {
+      return [
+        { icon: 'bi-window-stack', label: 'Voir dans Applications', url: '/applications' },
+        { icon: 'bi-clipboard',    label: 'Copier le domaine',      copy: value },
+      ];
+    }
+    if (type === 'sig') {
+      return [
+        { icon: 'bi-funnel',     label: 'Filtrer les alertes sur cette signature', url: '/alerts?q=' + enc },
+        { icon: 'bi-clipboard',  label: 'Copier la signature',    copy: value },
+      ];
+    }
+    return [];
+  }
+
+  function classify(el) {
+    if (!el) return null;
+    var tagged = el.closest('[data-pivot]');
+    if (tagged) {
+      var type = tagged.getAttribute('data-pivot');
+      var value = (tagged.textContent || '').trim();
+      if (!value) return null;
+      return { type: type, value: value, el: tagged };
+    }
+    var host = el.closest('a, code, span, td, div');
+    if (!host) return null;
+    var text = (host.textContent || '').trim();
+    if (!text || text.length > 80 || text.indexOf(' ') !== -1) return null;
+    if (IPV4_RE.test(text)) return { type: 'ip', value: text, el: host };
+    if (DOMAIN_RE.test(text)) return { type: 'domain', value: text, el: host };
+    return null;
+  }
+
+  function close() {
+    menu.classList.remove('pivot-open');
+  }
+
+  function open(x, y, hit) {
+    typeEl.textContent = LABELS[hit.type] || hit.type;
+    valEl.textContent  = hit.value;
+    var actions = actionsFor(hit.type, hit.value);
+    listEl.innerHTML = actions.map(function (a, i) {
+      return '<div class="pivot-item" data-idx="' + i + '"><i class="bi ' + a.icon + '"></i>' + a.label + '</div>';
+    }).join('');
+    listEl.querySelectorAll('.pivot-item').forEach(function (el, i) {
+      el.addEventListener('click', function () {
+        var a = actions[i];
+        close();
+        if (a.copy !== undefined) {
+          navigator.clipboard.writeText(a.copy).then(function () {
+            if (window.NW && NW.toast) NW.toast('Copié : ' + a.copy, 'success');
+          }).catch(function () {});
+        } else if (a.url) {
+          window.location.href = a.url;
+        }
+      });
+    });
+
+    // Position + reste dans le viewport
+    menu.classList.add('pivot-open');
+    var mw = menu.offsetWidth, mh = menu.offsetHeight;
+    var vx = Math.min(x, window.innerWidth  - mw - 8);
+    var vy = Math.min(y, window.innerHeight - mh - 8);
+    menu.style.left = Math.max(8, vx) + 'px';
+    menu.style.top  = Math.max(8, vy) + 'px';
+  }
+
+  document.addEventListener('contextmenu', function (e) {
+    var hit = classify(e.target);
+    if (!hit) { close(); return; }
+    e.preventDefault();
+    open(e.clientX, e.clientY, hit);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!menu.contains(e.target)) close();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
+  });
+  window.addEventListener('scroll', close, true);
 })();
 </script>
 </body>

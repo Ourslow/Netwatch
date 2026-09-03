@@ -195,7 +195,7 @@
               {% endif %}
             </td>
             <td class="small">
-              <span class="fw-medium">{{ a.signature }}</span>
+              <span class="fw-medium" data-pivot="sig">{{ a.signature }}</span>
               {% if a.category and a.category != '—' %}
                 <br><small class="text-muted">{{ a.category }}</small>
               {% endif %}
@@ -384,7 +384,7 @@ function refreshAlerts() {
           <td>${engineBadge(a.engine)}</td>
           <td>${severityBadge(a.severity)}</td>
           <td class="small">
-            <span class="fw-medium">${a.signature}</span>
+            <span class="fw-medium" data-pivot="sig">${a.signature}</span>
             ${a.category && a.category !== '—' ? `<br><small class="text-muted">${a.category}</small>` : ''}
           </td>
           <td class="fw-mono small">${a.src_ip}</td>
@@ -571,7 +571,7 @@ document.addEventListener('click', (e) => {
             ${a.engine === 'suricata' ? '<span class="badge engine-suricata">Suricata</span>' : '<span class="badge engine-snort">Snort</span>'}
             ${a.severity === 1 ? '<span class="sev sev-crit">Critique</span>' : a.severity === 2 ? '<span class="sev sev-med">Moyen</span>' : '<span class="sev sev-low">Faible</span>'}
             <div class="small">
-              <div class="fw-medium">${a.signature}</div>
+              <div class="fw-medium" data-pivot="sig">${a.signature}</div>
               ${a.mitre_tactic ? `<div class="text-muted">${a.mitre_tactic}${a.mitre_tech ? ' · ' + a.mitre_tech : ''}</div>` : ''}
             </div>
           </div>`).join('');
