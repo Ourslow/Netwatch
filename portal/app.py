@@ -27,6 +27,7 @@ from netwatch import audit as nw_audit
 from netwatch import incidents as nw_incidents
 from netwatch import hostgroups as nw_hostgroups
 from netwatch.experience import app_dictionary as nw_app_dictionary
+from netwatch import llmops as nw_llmops
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -718,6 +719,8 @@ def status():
         except Exception:
             pass
 
+    llmops_stats, _ = nw_llmops.get_llmops_stats(days=7)
+
     return render_template(
         "status.html",
         services=services,
@@ -731,6 +734,7 @@ def status():
         config_grafana_url=config.NETWATCH_GRAFANA_URL,
         config_prometheus_url=config.NETWATCH_PROMETHEUS_URL,
         config_autoblock_url=config.NETWATCH_AUTOBLOCK_URL,
+        llmops=llmops_stats,
     )
 
 
