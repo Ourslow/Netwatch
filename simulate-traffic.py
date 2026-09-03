@@ -251,6 +251,8 @@ def random_ts(base_time, jitter_seconds=300):
     ts = base_time + timedelta(seconds=offset)
     return ts.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
+CONN_HISTORY_BASE = ["ShADadFf", "ShADadfF", "Dd", "ShAdDaFf", "S", "OTH", "ShAFf"]
+
 def gen_conn_log(ts):
     src = random.choice(INTERNAL_IPS)
     dst = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
@@ -262,7 +264,7 @@ def gen_conn_log(ts):
     resp_bytes = random.randint(40, 500000)
     state = random.choice(CONN_STATES)
 
-    return {
+    doc = {
         "ts": ts,
         "@timestamp": ts,
         "uid": random_uid(),
@@ -283,6 +285,21 @@ def gen_conn_log(ts):
         "log_type": "zeek",
         "log_source": "conn"
     }
+
+    if proto == "tcp":
+        # history/rtt : champs Zeek natifs consommés par es_client.get_tcp_perf()
+        # (RTT, retransmissions "T"/"t", zero-windows "W"/"w"). ~6%/8% des connexions
+        # TCP simulées portent respectivement un évènement zero-window/retransmission,
+        # pour rendre ces indicateurs testables localement sans vrai trafic Zeek.
+        history = random.choice(CONN_HISTORY_BASE)
+        if random.random() < 0.06:
+            history += random.choice(["w", "W"])
+        if random.random() < 0.08:
+            history += random.choice(["t", "T"])
+        doc["history"] = history
+        doc["rtt"] = round(random.uniform(0.001, 0.35), 6)
+
+    return doc
 
 def gen_dns_log(ts, suspicious=False):
     src = random.choice(INTERNAL_IPS)

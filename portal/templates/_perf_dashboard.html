@@ -42,8 +42,10 @@
           <span class="fw-mono">{{ tcp.avg_rtt_ms if tcp.avg_rtt_ms is not none else '—' }} / {{ tcp.p95_rtt_ms if tcp.p95_rtt_ms is not none else '—' }} ms</span>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span class="text-muted small">Fenêtres nulles (24h)</span>
-          <span class="fw-mono {% if tcp.zero_windows_count %}text-warning{% endif %}">{{ tcp.zero_windows_count }}</span>
+          <span class="text-muted small">Zero-windows (24h)</span>
+          <span class="fw-mono {% if tcp.zero_window_pct %}{% if tcp.zero_window_pct > 3 %}text-danger{% else %}text-warning{% endif %}{% endif %}">
+            {{ tcp.zero_window_pct if tcp.zero_window_pct is not none else '—' }}% <span class="text-muted" style="font-size:.7rem">({{ tcp.zero_windows_count }})</span>
+          </span>
         </div>
         {% if tcp.top_retransmit_ips %}
         <div class="stat-label mb-1 mt-3">Top retransmissions</div>
@@ -51,6 +53,15 @@
         <div class="d-flex justify-content-between small">
           <a href="{{ url_for('ip_detail', ip=r.ip) }}" class="fw-mono text-decoration-none">{{ r.ip }}</a>
           <span class="text-warning">{{ r.retransmit_pct }}%</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if tcp.top_zero_window_ips %}
+        <div class="stat-label mb-1 mt-3">Top zero-windows</div>
+        {% for r in tcp.top_zero_window_ips[:5] %}
+        <div class="d-flex justify-content-between small">
+          <a href="{{ url_for('ip_detail', ip=r.ip) }}" class="fw-mono text-decoration-none">{{ r.ip }}</a>
+          <span class="text-warning">{{ r.zero_window_pct }}%</span>
         </div>
         {% endfor %}
         {% endif %}

@@ -1342,11 +1342,25 @@ def get_tcp_perf(ip=None):
         "p95_rtt_ms": None,
         "top_retransmit_ips": [],
         "zero_windows_count": 0,
+        "zero_window_pct": 0.0,
+        "top_zero_window_ips": [],
     }
 
     base = [
         {"range": {"@timestamp": {"gte": "now-24h"}}},
-        {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+        # should sur les deux discriminants de log : log.file.path (posé par Filebeat
+        # en prod) et log_source (posé par simulate-traffic.py) — sans ça, cette
+        # fonction retourne silencieusement des résultats vides contre les données
+        # de test simulées. Cf. mémoire project-netwatch-llmops-dem-pitch.
+        {
+            "bool": {
+                "should": [
+                    {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    {"term": {"log_source": "conn"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
         {"term": {"proto": "tcp"}},
     ] + _ip_filter(ip)
 
@@ -1411,7 +1425,11 @@ def get_tcp_perf(ip=None):
     except Exception:
         pass
 
-    # ── Zero-windows (history contient W ou w) ──
+    # ── Zero-windows (history contient W ou w) — ratio global + top IPs,
+    #    à la manière du "TCP zero-window" Netscout/Riverbed (cf.
+    #    docs/reports/gaps-vs-editeurs-commerciaux.md) : la donnée existe déjà
+    #    nativement dans conn.log.history, on l'expose en ratio exploitable
+    #    plutôt qu'en simple compteur brut. ──
     try:
         r_zw = _es("/zeek-*/_search", {
             "size": 0,
@@ -1421,11 +1439,26 @@ def get_tcp_perf(ip=None):
                     "must": [{"regexp": {"history.keyword": ".*[Ww].*"}}],
                 }
             },
+            "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
         })
         if r_zw.status_code == 200:
-            result["zero_windows_count"] = int(
-                r_zw.json().get("hits", {}).get("total", {}).get("value", 0)
-            )
+            zw_body = r_zw.json()
+            zw_total = int(zw_body.get("hits", {}).get("total", {}).get("value", 0))
+            result["zero_windows_count"] = zw_total
+
+            conn_total = sum(total_per_ip.values())
+            if conn_total > 0:
+                result["zero_window_pct"] = round(zw_total / conn_total * 100, 2)
+
+            rows = []
+            for b in zw_body.get("aggregations", {}).get("per_ip", {}).get("buckets", []):
+                ip  = b["key"]
+                cnt = b["doc_count"]
+                tot = total_per_ip.get(ip, cnt)
+                pct = round(cnt / tot * 100, 2) if tot > 0 else 0.0
+                rows.append({"ip": ip, "zero_window_pct": pct, "count": cnt})
+            rows.sort(key=lambda x: x["zero_window_pct"], reverse=True)
+            result["top_zero_window_ips"] = rows[:10]
     except Exception:
         pass
 
