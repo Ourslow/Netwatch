@@ -143,6 +143,27 @@
   --accent-glow:   rgba(8, 145, 178, .18);
 
   --shadow-card: 0 8px 24px -14px rgba(30, 41, 59, .28);
+
+  /* Sémantique sévérité / état — versions assombries : les teintes
+     sombres (#ff4d5e, #2ee6a6, #38bdf8, #a78bfa...) sont calibrées pour
+     ressortir sur fond quasi-noir, mais tombent sous le seuil de
+     contraste WCAG une fois utilisées comme texte/icône sur fond clair
+     (ex. .stat-icon, badges). Repris ici avec un ratio de contraste
+     correct sur fond blanc/quasi-blanc. */
+  --crit:      #d1293b;
+  --crit-soft: rgba(209, 41, 59, .10);
+  --med:       #b1650a;
+  --med-soft:  rgba(177, 101, 10, .10);
+  --low:       #5b6b80;
+  --ok:        #0f9d67;
+  --ok-soft:   rgba(15, 157, 103, .10);
+  --warn:      #b1650a;
+  --danger:    #d1293b;
+
+  --snort:      #d1295a;
+  --suricata:   #0369a1;
+  --mitre:      #7c3aed;
+  --mitre-soft: rgba(124, 58, 237, .12);
 }
 
 /* ============================================================
@@ -764,7 +785,8 @@ hr { border-color: var(--border); opacity: 1; }
 .modal-header, .modal-footer { border-color: var(--border); }
 .modal-title { color: var(--text-strong); }
 .modal-title .bi { color: var(--accent); }
-.btn-close { filter: invert(1) grayscale(1) brightness(1.6); opacity: .5; }
+:root:not([data-bs-theme="light"]) .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+.btn-close { opacity: .5; }
 .btn-close:hover { opacity: 1; }
 
 /* Encadré « réponse IA » dans le modal */
@@ -1100,7 +1122,8 @@ code {
   box-shadow: 0 8px 28px -10px rgba(0, 0, 0, .6);
 }
 .nw-toast .toast-body { font-size: .85rem; }
-.nw-toast .btn-close { filter: invert(1) grayscale(1) brightness(1.6); opacity: .5; }
+:root:not([data-bs-theme="light"]) .nw-toast .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+.nw-toast .btn-close { opacity: .5; }
 .nw-toast .btn-close:hover { opacity: 1; }
 .nw-toast-success { border-left-color: var(--ok); }
 .nw-toast-success .bi { color: var(--ok); }
