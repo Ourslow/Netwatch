@@ -146,7 +146,7 @@ La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallè
 | 🗂️ | **Hostgroups** | Import CSV type NetScout, dashboards réutilisables par device/groupe (Allegro/Keysight-like) |
 | 🧩 | **Analyse PCAP conversations** | Conversations TCP par point d'écoute — octets, durée, handshake rating, retransmissions, QoS/VLAN |
 | 📄 | **Rapports planifiables** | Génération PDF à la demande + exports CSV, historique consultable sur `/reports` |
-| 🏷️ | **Dictionnaire applicatif SNI** | Classification du trafic TLS par application métier (SNI → M365, Salesforce, Slack...) — Network Experience Monitoring sans agent, à la Riverbed/Aternity |
+| 🏷️ | **Dictionnaire applicatif SNI** | Classification du trafic TLS par application métier (SNI → M365, Salesforce, Slack...) — expérience applicative dérivée du réseau, sans agent poste client |
 | 🪟 | **Ratio zero-window TCP** | Indicateur de congestion applicative (`conn.log.history`), ratio global + top IPs par device/hostgroup |
 
 ---

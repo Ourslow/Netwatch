@@ -5,6 +5,7 @@ Injecte des logs simulés dans Elasticsearch pour alimenter tous les dashboards.
 Usage : python3 simulate-traffic.py [--hours 24] [--es http://localhost:9200] [--attack] [--intensity low|medium|high]
 """
 
+import hashlib
 import json
 import random
 import string
@@ -105,6 +106,11 @@ NORMAL_DOMAINS = [
     "office365.com", "outlook.com", "teams.microsoft.com",
     "slack.com", "zoom.us", "dropbox.com", "drive.google.com"
 ]
+
+# IP externe stable par domaine — simule une résolution DNS cohérente
+# (plusieurs domaines peuvent légitimement partager une IP, comme derrière
+# un même CDN). Voir gen_ssl_log() pour le pourquoi.
+DOMAIN_TO_IP = {d: EXTERNAL_IPS[i % len(EXTERNAL_IPS)] for i, d in enumerate(NORMAL_DOMAINS)}
 
 # Domaines suspects (haute entropie, type DGA)
 DGA_DOMAINS = [
@@ -253,6 +259,19 @@ def random_ts(base_time, jitter_seconds=300):
 
 CONN_HISTORY_BASE = ["ShADadFf", "ShADadfF", "Dd", "ShAdDaFf", "S", "OTH", "ShAFf"]
 
+def _ip_health_profile(ip):
+    """Profil de santé déterministe par IP destination (même IP -> même
+    comportement sur toute la simulation), pour un jeu de données contrasté
+    (quelques IPs à problèmes persistants) plutôt qu'un taux d'incidents
+    uniforme sur tout le trafic — sinon toutes les applications ressortent
+    "critiques" au même niveau et le score de santé composite n'a plus de
+    contraste démonstratif."""
+    h = int(hashlib.md5(ip.encode()).hexdigest(), 16)
+    if (h % 100) < 20:  # ~20% des IPs ont des problèmes de perf persistants
+        return {"zw_p": 0.12, "retrans_p": 0.15, "rtt_range": (0.08, 0.4)}
+    return {"zw_p": 0.005, "retrans_p": 0.01, "rtt_range": (0.001, 0.06)}
+
+
 def gen_conn_log(ts):
     src = random.choice(INTERNAL_IPS)
     dst = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
@@ -288,16 +307,17 @@ def gen_conn_log(ts):
 
     if proto == "tcp":
         # history/rtt : champs Zeek natifs consommés par es_client.get_tcp_perf()
-        # (RTT, retransmissions "T"/"t", zero-windows "W"/"w"). ~6%/8% des connexions
-        # TCP simulées portent respectivement un évènement zero-window/retransmission,
-        # pour rendre ces indicateurs testables localement sans vrai trafic Zeek.
+        # (RTT, retransmissions "T"/"t", zero-windows "W"/"w"). Taux dépendant du
+        # profil de santé de l'IP destination (voir _ip_health_profile) plutôt
+        # qu'uniforme, pour un jeu de données contrasté.
+        profile = _ip_health_profile(dst)
         history = random.choice(CONN_HISTORY_BASE)
-        if random.random() < 0.06:
+        if random.random() < profile["zw_p"]:
             history += random.choice(["w", "W"])
-        if random.random() < 0.08:
+        if random.random() < profile["retrans_p"]:
             history += random.choice(["t", "T"])
         doc["history"] = history
-        doc["rtt"] = round(random.uniform(0.001, 0.35), 6)
+        doc["rtt"] = round(random.uniform(*profile["rtt_range"]), 6)
 
     return doc
 
@@ -377,8 +397,14 @@ def gen_http_log(ts):
 
 def gen_ssl_log(ts, malicious=False):
     src = random.choice(INTERNAL_IPS)
-    dst = random.choice(EXTERNAL_IPS)
     server = random.choice(NORMAL_DOMAINS)
+    # IP stable par domaine (comme une vraie résolution DNS) plutôt que
+    # totalement décorrélée du domaine — sans ça, le dictionnaire applicatif
+    # (IP -> app, résolu via le SNI le plus vu sur cette IP) reçoit un signal
+    # bruité : une même IP externe se retrouve associée à des domaines
+    # différents d'un événement à l'autre, ce qui dilue le score de santé
+    # par application au lieu de refléter des IPs "à problèmes" persistantes.
+    dst = DOMAIN_TO_IP.get(server, random.choice(EXTERNAL_IPS))
     version = random.choice(TLS_VERSIONS)
     ja3 = random.choice(JA3_MALICIOUS if malicious else JA3_NORMAL)
     ja3s = random.choice(JA3S_VALUES)

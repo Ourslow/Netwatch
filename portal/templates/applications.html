@@ -17,8 +17,8 @@
 {% endif %}
 
 <p class="text-muted small mb-3">
-  Classification du trafic TLS par application métier (SNI → catalogue), à la manière du
-  dictionnaire applicatif Riverbed/Netscout — dérivée du réseau, sans agent poste client.
+  Classification du trafic TLS par application métier (SNI → catalogue) — dérivée
+  directement du trafic réseau, sans agent installé sur les postes.
   {% if hostgroup %}<span class="badge bg-info text-dark ms-1">Filtré : {{ hostgroup }}</span>{% endif %}
 </p>
 
@@ -26,7 +26,7 @@
 <div class="card mb-3">
   <div class="card-header">
     <i class="bi bi-heart-pulse me-2"></i>Score de santé applicatif
-    <span class="text-muted small ms-1">— ART/zero-window/retransmissions combinés, à la Netscout</span>
+    <span class="text-muted small ms-1">— combine zero-window, retransmissions et latence en un score 0-100</span>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
