@@ -131,6 +131,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ grafana_url | browser_url }}" target="_blank" class="nav-link">
+          <i class="bi bi-bar-chart-fill"></i> <span>Grafana</span>
+          <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.65rem;opacity:.5"></i>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('catalog') }}"
            class="nav-link {% if request.endpoint in ['catalog','tool_detail','deploy'] %}active{% endif %}">
           <i class="bi bi-grid-3x3-gap"></i> <span data-i18n="nav_catalog">Catalogue outils</span>
@@ -204,6 +210,13 @@
         <span class="badge bg-dark">
           <i class="bi bi-box me-1"></i>Proxmox {{ proxmox_node }}
         </span>
+        {% endif %}
+        {% if grafana_dashboard_uid %}
+        <a href="{{ (grafana_url.rstrip('/') + '/d/' + grafana_dashboard_uid) | browser_url }}"
+           target="_blank" class="btn btn-sm btn-outline-warning"
+           title="Ouvrir le dashboard Grafana correspondant à cette page">
+          <i class="bi bi-bar-chart-fill me-1"></i>Grafana
+        </a>
         {% endif %}
         {% block topbar_actions %}{% endblock %}
         <select id="hostgroup-filter" class="form-select form-select-sm" style="width:auto;max-width:220px"

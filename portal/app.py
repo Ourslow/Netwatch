@@ -477,6 +477,29 @@ def geo_flag(iso):
 
 app.jinja_env.filters["geo_flag"] = geo_flag
 
+
+# Dashboard Grafana correspondant à chaque page NetWatch — mis en avant via un
+# lien contextuel dans la topbar plutôt que de réimplémenter des dashboards
+# filtrables/éditables dans le portail : Grafana le fait déjà très bien.
+GRAFANA_DASHBOARDS = {
+    "dashboard":  "netwatch-overview",
+    "flows":      "netwatch-toptalkers",
+    "alerts":     "netwatch-security",
+    "zeek_logs":  "netwatch-overview",
+    "status":     "netwatch-vmhealth",
+    "topology":   "netwatch-snmp-ifaces",
+    "audit":      "netwatch-security",
+    "incidents":  "netwatch-beacons",
+}
+
+
+@app.context_processor
+def inject_grafana():
+    return {
+        "grafana_url": config.NETWATCH_GRAFANA_URL,
+        "grafana_dashboard_uid": GRAFANA_DASHBOARDS.get(request.endpoint),
+    }
+
 # ============================================================
 # Routes — Auth
 # ============================================================
