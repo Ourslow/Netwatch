@@ -8,7 +8,7 @@
       data-count-en="{{ alerts | length }} alerts">
   {% if alerts %}{{ alerts | length }} alertes{% endif %}
 </span>
-<span class="live-pill" id="alerts-live" title="Rafraîchi toutes les 30s">
+<span class="live-pill" id="alerts-live" title="Flux temps réel (SSE)">
   <span class="dot"></span><span class="rel-time">à l'instant</span>
 </span>
 {% endblock %}
@@ -322,9 +322,10 @@
 {% block scripts %}
 <script>
 /* ---- Auto-refresh alertes toutes les 30s ---- */
-const engine   = {{ engine | tojson }};
-const severity = {{ severity | tojson }};
-const search   = {{ search | tojson }};
+const engine    = {{ engine | tojson }};
+const severity  = {{ severity | tojson }};
+const search    = {{ search | tojson }};
+const hostgroup = {{ hostgroup | tojson }};
 
 /* Horloge relative « il y a Xs » de la puce live */
 const liveClock = NW.registerClock(document.getElementById('alerts-live'));
@@ -373,76 +374,99 @@ function mitreBadge(a) {
   return `<span class="badge mitre-badge" title="${esc(a.mitre_tech||'')}">${esc(a.mitre_tactic)}${tech}</span>`;
 }
 
-function refreshAlerts() {
-  let url = '/api/alerts';
-  const params = [];
-  if (engine)   params.push('engine='   + encodeURIComponent(engine));
-  if (severity) params.push('severity=' + encodeURIComponent(severity));
-  if (search)   params.push('q='        + encodeURIComponent(search));
-  if (params.length) url += '?' + params.join('&');
-
-  fetch(url)
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const tbody = document.getElementById('alerts-tbody');
-      if (!tbody) return;
-      const prevKeys = new Set(
-        [...tbody.querySelectorAll('tr[data-key]')].map(tr => tr.dataset.key));
-      tbody.innerHTML = data.map(a => `
-        <tr data-key="${encodeURIComponent(a.timestamp)}|${encodeURIComponent(a.signature)}">
-          <td class="text-muted fw-mono small">${fmtTs(a.timestamp)}</td>
-          <td>${engineBadge(a.engine)}</td>
-          <td>${severityBadge(a.severity)}</td>
-          <td class="small">
-            <span class="fw-medium" data-pivot="sig">${esc(a.signature)}</span>
-            ${a.category && a.category !== '—' ? `<br><small class="text-muted">${esc(a.category)}</small>` : ''}
-          </td>
-          <td class="fw-mono small">${esc(a.src_ip)}</td>
-          <td class="fw-mono small">${esc(a.dest_ip)}</td>
-          <td>${mitreBadge(a)}</td>
-          <td class="text-center">
-            <div class="d-flex gap-1 justify-content-center">
-              <button type="button" class="btn-ai-icon explain-btn"
-                      title="Expliquer (IA locale)"
-                      data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
-                <i class="bi bi-stars"></i>
-              </button>
-              ${a.engine === 'suricata' && a.community_id ? `<button type="button" class="btn-ai-icon correlate-btn" title="Corréler avec Zeek (Community ID)" data-cid="${esc(a.community_id)}"><i class="bi bi-link-45deg"></i></button>` : ''}
-            </div>
-          </td>
-        </tr>
-      `).join('');
-
-      /* Surligne les alertes nouvellement arrivées */
-      if (prevKeys.size) {
-        tbody.querySelectorAll('tr[data-key]').forEach(tr => {
-          if (!prevKeys.has(tr.dataset.key)) tr.classList.add('row-enter');
-        });
-      }
-
-      /* Compteur + pulse si la valeur a changé */
-      const label = document.getElementById('alert-count-label');
-      if (label) {
-        const prev = label.dataset.count;
-        const next = String(data.length);
-        label.textContent = NW.t('alerts_label', { n: data.length });
-        if (prev !== undefined && prev !== next) {
-          label.classList.remove('val-pulse');
-          void label.offsetWidth;
-          label.classList.add('val-pulse');
-        }
-        label.dataset.count = next;
-      }
-
-      /* Réinitialise l'horloge relative + rafraîchit les sparklines */
-      liveClock.ts = Date.now();
-      NW.loadAlertSparklines();
-    })
-    .catch(() => {});
+function renderAlertRow(a) {
+  return `
+    <tr data-key="${encodeURIComponent(a.timestamp)}|${encodeURIComponent(a.signature)}">
+      <td class="text-muted fw-mono small">${fmtTs(a.timestamp)}</td>
+      <td>${engineBadge(a.engine)}</td>
+      <td>${severityBadge(a.severity)}</td>
+      <td class="small">
+        <span class="fw-medium" data-pivot="sig">${esc(a.signature)}</span>
+        ${a.category && a.category !== '—' ? `<br><small class="text-muted">${esc(a.category)}</small>` : ''}
+      </td>
+      <td class="fw-mono small">${esc(a.src_ip)}</td>
+      <td class="fw-mono small">${esc(a.dest_ip)}</td>
+      <td>${mitreBadge(a)}</td>
+      <td class="text-center">
+        <div class="d-flex gap-1 justify-content-center">
+          <button type="button" class="btn-ai-icon explain-btn"
+                  title="Expliquer (IA locale)"
+                  data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
+            <i class="bi bi-stars"></i>
+          </button>
+          ${a.engine === 'suricata' && a.community_id ? `<button type="button" class="btn-ai-icon correlate-btn" title="Corréler avec Zeek (Community ID)" data-cid="${esc(a.community_id)}"><i class="bi bi-link-45deg"></i></button>` : ''}
+        </div>
+      </td>
+    </tr>`;
 }
 
-setInterval(refreshAlerts, 30000);
+function bumpAlertCount(delta) {
+  const label = document.getElementById('alert-count-label');
+  if (!label) return;
+  const prev = parseInt(label.dataset.count || '0', 10);
+  const next = prev + delta;
+  label.textContent = NW.t('alerts_label', { n: next });
+  label.dataset.count = String(next);
+  label.classList.remove('val-pulse');
+  void label.offsetWidth;
+  label.classList.add('val-pulse');
+}
+
+/* ---- Flux temps réel (SSE) — remplace le polling 30s ---- */
+let _sparkDebounce = null;
+
+function connectAlertStream() {
+  const tbody = document.getElementById('alerts-tbody');
+  const firstRow = tbody ? tbody.querySelector('tr[data-key]') : null;
+  const since = firstRow ? decodeURIComponent(firstRow.dataset.key.split('|')[0]) : '';
+
+  const params = [];
+  if (engine)    params.push('engine='    + encodeURIComponent(engine));
+  if (severity)  params.push('severity='  + encodeURIComponent(severity));
+  if (search)    params.push('q='         + encodeURIComponent(search));
+  if (hostgroup) params.push('hostgroup=' + encodeURIComponent(hostgroup));
+  if (since)     params.push('since='     + encodeURIComponent(since));
+
+  const es = new EventSource('/api/alerts/stream' + (params.length ? '?' + params.join('&') : ''));
+  const pill = document.getElementById('alerts-live');
+
+  es.onopen = () => {
+    if (pill) pill.classList.remove('stream-down');
+    liveClock.ts = Date.now();
+  };
+
+  es.onmessage = (ev) => {
+    let a;
+    try { a = JSON.parse(ev.data); } catch { return; }
+    if (!tbody) return;
+    tbody.insertAdjacentHTML('afterbegin', renderAlertRow(a));
+    const newRow = tbody.firstElementChild;
+    newRow.classList.add('row-enter');
+    bumpAlertCount(1);
+    liveClock.ts = Date.now();
+
+    /* Débounce les sparklines : un burst d'alertes ne doit pas déclencher
+       un fetch par alerte, juste un rafraîchissement groupé. */
+    clearTimeout(_sparkDebounce);
+    _sparkDebounce = setTimeout(() => NW.loadAlertSparklines(), 1000);
+
+    /* Garde-fou mémoire : une session ouverte des heures ne doit pas faire
+       grossir le DOM indéfiniment. */
+    const rows = tbody.querySelectorAll('tr[data-key]');
+    if (rows.length > 200) rows[rows.length - 1].remove();
+  };
+
+  es.addEventListener('stream-error', () => {
+    if (pill) pill.classList.add('stream-down');
+  });
+
+  es.onerror = () => {
+    /* EventSource se reconnecte automatiquement — juste un indicateur visuel */
+    if (pill) pill.classList.add('stream-down');
+  };
+}
+
+connectAlertStream();
 
 /* ---- Assistant IA — explication d'alerte (délégation d'événement) ---- */
 const explainModalEl = document.getElementById('explainModal');

@@ -11,7 +11,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 
-from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory
+from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 from flask_login import (LoginManager, UserMixin,
                          login_user, logout_user,
@@ -974,6 +974,63 @@ def api_alerts():
     if hostgroup:
         alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
     return jsonify(alerts_list)
+
+
+import time as _time_sse  # noqa: E402 — kept close to usage
+
+
+@app.route("/api/alerts/stream")
+@login_required
+def api_alerts_stream():
+    """
+    Flux temps réel des alertes IDS (Server-Sent Events) — remplace le
+    polling 30s de /api/alerts. Respecte les mêmes filtres engine/severity/
+    q/hostgroup que la page /alerts. `since` (ISO 8601, fourni par le
+    client au moment de l'ouverture du flux) évite de renvoyer en rafale
+    les alertes déjà affichées par le rendu initial de la page.
+    """
+    engine    = request.args.get("engine",   "")
+    severity  = request.args.get("severity", "")
+    search    = request.args.get("q",        "").strip()
+    hostgroup = request.args.get("hostgroup", "")
+    since     = request.args.get("since",    "")
+
+    def generate():
+        last_ts = since or None
+        # Envoi immédiat pour que le navigateur ouvre le flux sans attendre
+        # le premier cycle de poll (sinon EventSource paraît "figé" 3s).
+        yield "event: ping\ndata: {}\n\n"
+        while True:
+            try:
+                alerts_list, error = es_client.get_recent_alerts(
+                    size=20,
+                    engine=engine or None,
+                    severity=_safe_int(severity),
+                    search=search or None,
+                )
+                if error:
+                    yield f"event: stream-error\ndata: {json.dumps({'error': error})}\n\n"
+                else:
+                    if hostgroup:
+                        alerts_list = nw_hostgroups.filter_items_by_group(
+                            alerts_list, hostgroup, ["src_ip", "dest_ip"])
+                    new_alerts = [a for a in alerts_list if not last_ts or a["timestamp"] > last_ts]
+                    if new_alerts:
+                        last_ts = max(a["timestamp"] for a in alerts_list if a.get("timestamp"))
+                        for a in sorted(new_alerts, key=lambda x: x["timestamp"]):
+                            yield f"data: {json.dumps(a)}\n\n"
+                    else:
+                        yield "event: ping\ndata: {}\n\n"
+            except GeneratorExit:
+                raise
+            except Exception as e:
+                yield f"event: stream-error\ndata: {json.dumps({'error': str(e)[:120]})}\n\n"
+            _time_sse.sleep(3)
+
+    return Response(generate(), mimetype="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 
 @app.route("/alerts/export.csv")
@@ -2218,4 +2275,8 @@ if __name__ == "__main__":
             "⚠️  PORTAL_PASSWORD non défini — toute tentative de connexion sera refusée. "
             "Définissez la variable d'environnement PORTAL_PASSWORD pour activer l'accès."
         )
-    app.run(host="0.0.0.0", port=config.PORT, debug=config.FLASK_DEBUG)
+    # threaded=True : indispensable depuis l'ajout du flux SSE
+    # (/api/alerts/stream) — une connexion longue durée bloquerait sinon
+    # tout le reste du portail sur le serveur de dev Werkzeug (mono-thread
+    # par défaut).
+    app.run(host="0.0.0.0", port=config.PORT, debug=config.FLASK_DEBUG, threaded=True)

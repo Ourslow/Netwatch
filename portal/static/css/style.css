@@ -324,6 +324,12 @@ hr { border-color: var(--border); opacity: 1; }
   70%  { box-shadow: 0 0 0 6px rgba(46,230,166,0); }
   100% { box-shadow: 0 0 0 0 rgba(46,230,166,0); }
 }
+/* Flux SSE coupé — EventSource se reconnecte seul, juste un indicateur visuel */
+.live-pill.stream-down .dot {
+  background: var(--warn, #f5a524);
+  animation: none;
+  box-shadow: none;
+}
 
 /* ============================================================
    4. Cartes
