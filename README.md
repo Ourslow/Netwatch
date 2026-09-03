@@ -748,8 +748,9 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | **v2 Phase 5** | ✅ Juin 2026 | GoFlow2 NetFlow/IPFIX/sFlow · page /flows · ART applicatif · TCP health · npm-alerts |
 | **v2 Phase 6** | ✅ Juin 2026 | SNMP exporter IF-MIB · topologie D3.js /topology · app-classifier 425 ports · iface-saturation |
 | **v2 Phase 7** | ✅ Juin 2026 | Capacity planning predict_linear · VoIP MOS E-model G.107 · SLA compliance /sla · ITSM ServiceNow/JIRA |
-| **v2 Phase 8** | ✅ Septembre 2026 | Hostgroups CSV + dashboards réutilisables · Analyse PCAP conversations TCP · Rapports PDF/CSV planifiables · Dictionnaire applicatif SNI · Ratio zero-window TCP |
-| **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
+| **v2 Phase 8** | ✅ Septembre 2026 | Hostgroups CSV + dashboards réutilisables · Analyse PCAP conversations TCP · Rapports PDF/CSV planifiables · Dictionnaire applicatif SNI · Ratio zero-window TCP · LLMOps (observabilité assistant Ollama) · Menu contextuel clic droit IP/domaine/signature |
+| **v3 — Infra physique** | ✅ Septembre 2026 | Déploiement validé sur Shuttle Proxmox physique + capture SPAN (Intel i350-T2) |
+| **v3 — Portail & comparatif** | 📅 S2 2026 | Portail de gestion des VMs (start/stop/déploiement depuis le portail) · Comparaison open-source vs commercial |
 
 ---
 
