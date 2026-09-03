@@ -88,6 +88,13 @@
   var days     = 1;
   var simulation, gLinks, gNodes;
 
+  function esc(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function currentHostgroup() {
     var sel = document.getElementById('hostgroup-filter');
     return sel && sel.value ? sel.value : '';
@@ -168,9 +175,9 @@
     gNodes
       .on('mouseenter', function (ev, d) {
         tooltip.style.display = 'block';
-        tooltip.innerHTML = '<b>' + d.label + '</b><br>'
-          + (d.id !== d.label ? d.id + '<br>' : '')
-          + (d.category ? d.category + '<br>' : '')
+        tooltip.innerHTML = '<b>' + esc(d.label) + '</b><br>'
+          + (d.id !== d.label ? esc(d.id) + '<br>' : '')
+          + (d.category ? esc(d.category) + '<br>' : '')
           + fmtBytes(d.bytes) + ' échangés';
       })
       .on('mousemove', function (ev) {
