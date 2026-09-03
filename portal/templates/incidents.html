@@ -142,6 +142,30 @@
                 {{ inc.start[:19] | replace('T',' ') }} →
                 {{ inc.end[:19]   | replace('T',' ') }}
               </div>
+
+              {% if inc.kill_chain %}
+              <div class="mb-3">
+                <div class="small text-muted mb-2">
+                  <i class="bi bi-diagram-3 me-1"></i>Chaîne d'attaque reconstituée (MITRE ATT&amp;CK)
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-1 killchain-strip">
+                  {% for stage in inc.kill_chain %}
+                  <span class="killchain-stage"
+                        title="{{ stage.count }} alerte(s){% if stage.techniques %} · {{ stage.techniques | join(', ') }}{% endif %}">
+                    {{ stage.tactic }}
+                    <span class="killchain-count">{{ stage.count }}</span>
+                  </span>
+                  {% if not loop.last %}<i class="bi bi-chevron-right killchain-arrow"></i>{% endif %}
+                  {% endfor %}
+                  {% if inc.kill_chain_unmapped %}
+                  <span class="text-muted small ms-2">
+                    + {{ inc.kill_chain_unmapped }} alerte(s) non cartographiée(s) (hors MITRE)
+                  </span>
+                  {% endif %}
+                </div>
+              </div>
+              {% endif %}
+
               <table class="table table-sm mb-0">
                 <thead>
                   <tr>

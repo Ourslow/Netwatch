@@ -6,6 +6,41 @@ Chaque incident = cluster d'alertes dans une fenêtre de N minutes.
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
+# Ordre canonique des tactiques MITRE ATT&CK Enterprise (TA0043 → TA0040) —
+# reflète la progression d'une attaque, pas l'ordre chronologique des alertes.
+# Seul Suricata (metadata EVE) porte le mapping MITRE dans ce projet ; Snort
+# n'a pas d'équivalent natif, ses alertes restent hors chaîne (cf. _kill_chain).
+KILL_CHAIN_ORDER = [
+    "Reconnaissance", "Resource Development", "Initial Access", "Execution",
+    "Persistence", "Privilege Escalation", "Defense Evasion", "Credential Access",
+    "Discovery", "Lateral Movement", "Collection", "Command and Control",
+    "Exfiltration", "Impact",
+]
+_KILL_CHAIN_RANK = {name: i for i, name in enumerate(KILL_CHAIN_ORDER)}
+
+
+def _kill_chain(alerts):
+    """Regroupe les alertes d'un incident par tactique MITRE, dans l'ordre
+    canonique de la chaîne d'attaque — permet de voir d'un coup d'œil jusqu'où
+    un attaquant a progressé (reconnaissance seule ? exfiltration atteinte ?),
+    plutôt qu'une liste plate d'alertes non ordonnées."""
+    by_tactic = {}
+    unmapped = 0
+    for a in alerts:
+        tactic = a.get("mitre_tactic")
+        if not tactic:
+            unmapped += 1
+            continue
+        entry = by_tactic.setdefault(tactic, {"tactic": tactic, "count": 0, "techniques": set()})
+        entry["count"] += 1
+        if a.get("mitre_tech"):
+            entry["techniques"].add(a["mitre_tech"])
+
+    stages = sorted(by_tactic.values(), key=lambda e: _KILL_CHAIN_RANK.get(e["tactic"], 99))
+    for s in stages:
+        s["techniques"] = sorted(s["techniques"])
+    return stages, unmapped
+
 
 def _parse_ts(ts_str):
     if not ts_str:
@@ -94,6 +129,7 @@ def _finalize(inc, now):
         status, status_color = "clôturé",  "secondary"
 
     top_sig = Counter(a.get("signature", "") for a in alerts).most_common(1)
+    kill_chain, kill_chain_unmapped = _kill_chain(alerts)
 
     return {
         "start":         inc["_anchor"].isoformat(),
@@ -110,4 +146,6 @@ def _finalize(inc, now):
         "status":        status,
         "status_color":  status_color,
         "alerts":        alerts[:10],
+        "kill_chain":          kill_chain,
+        "kill_chain_unmapped": kill_chain_unmapped,
     }

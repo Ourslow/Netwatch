@@ -663,6 +663,33 @@ hr { border-color: var(--border); opacity: 1; }
 }
 .mitre-tech { font-family: var(--font-mono); font-size: .9em; opacity: .85; }
 
+/* Chaîne d'attaque reconstituée (incidents) — étapes MITRE dans l'ordre
+   canonique, façon stepper, chaque étape = une tactique observée. */
+.killchain-strip { row-gap: .4rem; }
+.killchain-stage {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--mitre-soft);
+  color: var(--mitre);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-pill);
+  padding: .3rem .7rem;
+  font-size: .74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.killchain-count {
+  background: var(--mitre);
+  color: var(--bg-base);
+  border-radius: var(--r-pill);
+  font-size: .66rem;
+  font-weight: 700;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 .3rem;
+}
+.killchain-arrow { color: var(--text-dim); font-size: .7rem; }
+
 /* ============================================================
    7. Tableaux
    ============================================================ */
