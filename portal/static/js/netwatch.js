@@ -54,7 +54,9 @@
       "empty_filter":      "Aucune alerte pour ces filtres",
       "empty_no_data":     "Aucune alerte — stack silencieuse ou Elasticsearch vide (<code>make sim</code> pour générer du trafic)",
       /* Navigation sidebar */
-      "nav_supervision":   "Supervision",
+      "nav_overview":      "Vue d'ensemble",
+      "nav_analysis":      "Analyse réseau",
+      "nav_org":           "Organisation",
       "nav_dashboard":     "Dashboard",
       "nav_alerts":        "Alertes IDS",
       "nav_audit":         "Audit réseau",
@@ -171,7 +173,9 @@
       "empty_filter":      "No alerts match the current filters",
       "empty_no_data":     "No alerts — stack silent or Elasticsearch empty (<code>make sim</code> to generate traffic)",
       /* Navigation sidebar */
-      "nav_supervision":   "Monitoring",
+      "nav_overview":      "Overview",
+      "nav_analysis":      "Network Analysis",
+      "nav_org":           "Organization",
       "nav_dashboard":     "Dashboard",
       "nav_alerts":        "IDS Alerts",
       "nav_audit":         "Network Audit",
