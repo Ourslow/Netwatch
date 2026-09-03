@@ -41,6 +41,21 @@ REMEDIATION = {
     "DNS à haute entropie":           "Secure DNS / proxy filtrant · SOC",
     "Scans de ports":                 "NGFW · supervision managée",
     "Alertes critiques":              "SOC managé (MDR) · réponse à incident",
+    "Logiciels obsolètes":            "Gestion de patchs (WSUS/RMM) · durcissement postes",
+}
+
+# Version de référence (major, minor) par logiciel, pour la détection passive
+# de versions obsolètes (software.log). Une entrée strictement antérieure à
+# ce seuil est considérée obsolète — liste volontairement restreinte à ce qui
+# apparaît dans le trafic observé, pas une base CVE exhaustive.
+SOFTWARE_CURRENT_VERSIONS = {
+    "Chrome": (115, 0),
+    "Firefox": (115, 0),
+    "Safari": (16, 0),
+    "Edge": (115, 0),
+    "OpenSSH": (8, 5),
+    "curl": (8, 0),
+    "Internet Explorer": (999, 0),  # IE est toujours obsolète/non supporté, quelle que soit la version
 }
 
 
@@ -95,6 +110,16 @@ def _zeek_q(log_type, *extra_filters):
     if not extra_filters:
         return disc
     return {"bool": {"filter": [disc, *extra_filters]}}
+
+
+def _parse_major_minor(version_str):
+    """'122.0.6261.128' -> (122, 0). None si non parsable (chaîne vide, texte
+    libre) — un logiciel non reconnu n'est ni signalé ni ignoré à tort."""
+    try:
+        parts = version_str.split(".")
+        return int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    except (ValueError, IndexError, AttributeError):
+        return None
 
 
 def _grade(count, warn_at=1, crit_at=None):
@@ -248,11 +273,49 @@ def run_audit():
                         "count": total_alerts, "detail": "Activité de détection sur la période.",
                         "reco": "—", "ref": "—", "examples": []})
 
+    # ════ Axe 5 — Inventaire logiciel ════ (software.log Zeek — inventaire
+    # passif via User-Agent HTTP, sans agent installé sur les postes)
+    sw_data = _search(ZEEK, {
+        "size": 300,
+        "query": _zeek_q("software"),
+        "_source": ["name", "unparsed_version", "host"],
+    })
+    if sw_data is None:
+        outdated_count = None
+        outdated_ex = []
+    else:
+        sw_hits = sw_data.get("hits", {}).get("hits", [])
+        outdated_seen = {}
+        for h in sw_hits:
+            src = h["_source"]
+            name = src.get("name")
+            version = src.get("unparsed_version", "")
+            ref = SOFTWARE_CURRENT_VERSIONS.get(name)
+            mm = _parse_major_minor(version)
+            if ref and mm and mm < ref:
+                key = f"{name} {version}"
+                outdated_seen[key] = outdated_seen.get(key, 0) + 1
+        outdated_count = sum(outdated_seen.values())
+        outdated_ex = [f"{k} ({c} vu(s))" for k, c in
+                        sorted(outdated_seen.items(), key=lambda x: -x[1])[:6]]
+
+    software = [
+        _finding("Logiciels obsolètes détectés (navigateurs, outils, SSH)", outdated_count,
+                 _grade(outdated_count, warn_at=1, crit_at=5),
+                 f"{outdated_count} instance(s) de logiciel obsolète ou non supporté détectée(s) "
+                 "sur le réseau, identifiées passivement (User-Agent HTTP, bannières) sans agent "
+                 "installé sur les postes.",
+                 "Planifier la mise à jour des postes/services concernés ; bannir les logiciels "
+                 "non supportés (ex. Internet Explorer).",
+                 "NIS2 21.2.e · ISO A.8.8 (gestion des vulnérabilités techniques)", outdated_ex),
+    ]
+
     axes = [
         {"id": "crypto",   "name": "Hygiène chiffrement",   "icon": "bi-lock",              "findings": crypto},
         {"id": "surface",  "name": "Exposition & surface",  "icon": "bi-diagram-3",          "findings": surface},
         {"id": "behavior", "name": "Comportements suspects","icon": "bi-graph-up-arrow",     "findings": behavior},
         {"id": "threats",  "name": "Menaces IDS",           "icon": "bi-shield-exclamation", "findings": threats},
+        {"id": "software", "name": "Inventaire logiciel",   "icon": "bi-boxes",              "findings": software},
     ]
 
     counts = {"critical": 0, "warning": 0, "info": 0, "ok": 0}

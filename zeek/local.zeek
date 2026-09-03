@@ -12,6 +12,11 @@
 @load policy/protocols/ssl/expiring-certs
 @load policy/protocols/ssl/validate-certs
 
+# Inventaire logiciel passif (software.log) — identifie navigateurs/outils via
+# le User-Agent HTTP, sans agent installé sur les postes. Alimente l'axe
+# "Inventaire logiciel" de /audit (détection de versions obsolètes).
+@load protocols/http/software
+
 # Community ID (RFC draft) — corrèle conn.log Zeek avec alertes Suricata/Snort
 @load policy/protocols/conn/community-id-logging
 

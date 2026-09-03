@@ -453,6 +453,39 @@ def gen_ssh_log(ts, malicious=False):
         "log_source": "ssh"
     }
 
+# Catalogue logiciel simulé (software.log Zeek) — mélange de versions à jour
+# et volontairement obsolètes/non supportées, pour que l'inventaire actif sur
+# /audit ait des instances réelles à détecter (~15% des entrées).
+SOFTWARE_CURRENT = [
+    {"type": "HTTP::BROWSER", "name": "Chrome",  "version": "122.0.6261.128"},
+    {"type": "HTTP::BROWSER", "name": "Firefox", "version": "123.0"},
+    {"type": "HTTP::BROWSER", "name": "Safari",  "version": "17.3"},
+    {"type": "HTTP::BROWSER", "name": "Edge",    "version": "121.0.2277.128"},
+    {"type": "SSH::SERVER",   "name": "OpenSSH", "version": "9.6"},
+    {"type": "HTTP::SCRIPT",  "name": "curl",    "version": "8.5.0"},
+]
+SOFTWARE_OUTDATED = [
+    {"type": "HTTP::BROWSER", "name": "Chrome",  "version": "74.0.3729.169"},
+    {"type": "HTTP::BROWSER", "name": "Internet Explorer", "version": "8.0"},
+    {"type": "HTTP::BROWSER", "name": "Firefox", "version": "52.0"},
+    {"type": "SSH::SERVER",   "name": "OpenSSH", "version": "7.4"},
+    {"type": "HTTP::SCRIPT",  "name": "curl",    "version": "7.29.0"},
+]
+
+def gen_software_log(ts):
+    host = random.choice(INTERNAL_IPS)
+    entry = random.choice(SOFTWARE_OUTDATED) if random.random() < 0.15 else random.choice(SOFTWARE_CURRENT)
+    return {
+        "ts": ts,
+        "@timestamp": ts,
+        "host": host,
+        "software_type": entry["type"],
+        "name": entry["name"],
+        "unparsed_version": entry["version"],
+        "log_type": "zeek",
+        "log_source": "software",
+    }
+
 def gen_intel_log(ts):
     src = random.choice(INTERNAL_IPS)
     hit_type = random.choice(["Intel::ADDR", "Intel::DOMAIN"])
@@ -766,6 +799,11 @@ def main():
         for _ in range(max(1, int(events_count * 0.05))):
             ts = random_ts(current_time, 300)
             batch.append(gen_ssh_log(ts))
+
+        # --- Inventaire logiciel passif (software.log, 5% du trafic) ---
+        for _ in range(max(1, int(events_count * 0.05))):
+            ts = random_ts(current_time, 300)
+            batch.append(gen_software_log(ts))
 
         # --- IDS alertes baseline (trafic normal) ---
         ids_count = max(1, int(events_count * 0.03))
