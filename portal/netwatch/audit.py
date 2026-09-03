@@ -78,6 +78,25 @@ def _top(index, field, query, size=5, fmt="{k}"):
     return [fmt.format(k=k, c=c) for k, c in rows]
 
 
+def _zeek_q(log_type, *extra_filters):
+    """Clause de filtre Zeek robuste aux deux discriminants de log possibles :
+    log.file.path (posé par Filebeat en prod) et log_source (posé par
+    simulate-traffic.py) — sans ce should dual, toute requête ne matche que
+    l'un des deux environnements. Même pattern que es_client.py."""
+    disc = {
+        "bool": {
+            "should": [
+                {"term": {"log.file.path.keyword": f"/zeek/logs/{log_type}.log"}},
+                {"term": {"log_source": log_type}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+    if not extra_filters:
+        return disc
+    return {"bool": {"filter": [disc, *extra_filters]}}
+
+
 def _grade(count, warn_at=1, crit_at=None):
     if count is None:
         return "info"
@@ -105,17 +124,17 @@ def _finding(title, count, severity, detail_if, reco, ref, examples=None):
 
 # ── Audit ───────────────────────────────────────────────────
 def run_audit():
-    ssl_q = {"term": {"log_source": "ssl"}}
+    ssl_q = _zeek_q("ssl")
 
     # ════ Axe 1 — Hygiène chiffrement ════ (Zeek brut)
     tls_n = _count(ZEEK, {"bool": {"filter": [ssl_q, {"terms": {"version.keyword": OBSOLETE_TLS}}]}})
     tls_ex = _top(ZEEK, "server_name.keyword",
                   {"bool": {"filter": [ssl_q, {"terms": {"version.keyword": OBSOLETE_TLS}}]}},
                   6, "{k} ({c})")
-    clr_q = {"bool": {"filter": [{"term": {"log_source": "http"}}, {"term": {"id.resp_p": 80}}, {"match": {"method": "POST"}}]}}
+    clr_q = _zeek_q("http", {"term": {"id.resp_p": 80}}, {"match": {"method": "POST"}})
     clr_n = _count(ZEEK, clr_q)
     clr_ex = _top(ZEEK, "host.keyword", clr_q, 6, "{k} ({c})")
-    cert_n = _count(ZEEK, {"bool": {"filter": [{"term": {"log_source": "notice"}}],
+    cert_n = _count(ZEEK, {"bool": {"filter": [_zeek_q("notice")],
                                     "should": [{"term": {"note.keyword": "SSL::Certificate_Expired"}},
                                                {"term": {"note.keyword": "SSL::Certificate_Not_Valid_Yet"}}],
                                     "minimum_should_match": 1}})
@@ -138,19 +157,25 @@ def run_audit():
     ]
 
     # ════ Axe 2 — Exposition & surface ════
-    intel_n = _count(ZEEK, {"term": {"log_source": "intel"}})
-    intel_ex = _top(ZEEK, "seen.indicator.keyword", {"term": {"log_source": "intel"}}, 6, "{k} ({c})")
-    # Ports à risque exposés (Zeek conn)
-    conn_ports = _terms(ZEEK, "id.resp_p", {"term": {"log_source": "conn"}}, 25) or []
-    risky_found = [(RISKY_PORTS[p], c) for p, c in conn_ports if p in RISKY_PORTS]
-    risky_total = sum(c for _, c in risky_found)
-    risky_ex = [f"{name} ({c})" for name, c in sorted(risky_found, key=lambda x: -x[1])[:6]]
-    top_ports_ex = [f"port {p} ({c})" for p, c in conn_ports[:6]]
+    intel_n = _count(ZEEK, _zeek_q("intel"))
+    intel_ex = _top(ZEEK, "seen.indicator.keyword", _zeek_q("intel"), 6, "{k} ({c})")
+    # Ports à risque exposés (Zeek conn) — garder None distinct de [] pour ne pas
+    # afficher "conforme" quand la requête a en fait échoué (cf. finding audit review).
+    conn_ports = _terms(ZEEK, "id.resp_p", _zeek_q("conn"), 25)
+    if conn_ports is None:
+        risky_total = None
+        risky_found, risky_ex, top_ports_ex = [], [], []
+    else:
+        risky_found = [(RISKY_PORTS[p], c) for p, c in conn_ports if p in RISKY_PORTS]
+        risky_total = sum(c for _, c in risky_found)
+        risky_ex = [f"{name} ({c})" for name, c in sorted(risky_found, key=lambda x: -x[1])[:6]]
+        top_ports_ex = [f"port {p} ({c})" for p, c in conn_ports[:6]]
     # Origine géographique des menaces (GeoIP sur la source des alertes)
     geo = _terms(ALERTS, "source.geo.country_name.keyword",
                  {"bool": {"should": [{"term": {"event_type": "alert"}}, {"exists": {"field": "rule"}}],
-                           "minimum_should_match": 1}}, 8) or []
-    geo_ex = [f"{c_name} ({c})" for c_name, c in geo]
+                           "minimum_should_match": 1}}, 8)
+    geo_count = None if geo is None else len(geo)
+    geo_ex = [f"{c_name} ({c})" for c_name, c in geo] if geo else []
     surface = [
         _finding("Communications avec des IoC connus (threat intel)", intel_n,
                  _grade(intel_n, warn_at=1, crit_at=1),
@@ -162,7 +187,7 @@ def run_audit():
                  f"Trafic vers des services sensibles ({', '.join(n for n, _ in risky_found) or '—'}) — à exposer le moins possible.",
                  "Vérifier la légitimité de ces services, restreindre/segmenter (Telnet, SMB, RDP, bases de données).",
                  "NIS2 21.2.i · ISO A.8.20 · ANSSI cartographie", risky_ex),
-        _finding("Origine géographique des menaces (GeoIP)", (len(geo) if geo else 0), "info",
+        _finding("Origine géographique des menaces (GeoIP)", geo_count, "info",
                  "Pays d'origine des alertes IDS (nécessite l'enrichissement GeoIP).",
                  "Surveiller le trafic en provenance de zones inhabituelles pour l'organisation.",
                  "NIST DE.AE", geo_ex),
@@ -174,10 +199,10 @@ def run_audit():
 
     # ════ Axe 3 — Comportements suspects ════
     beacon_n = _count(BEACON, {"match_all": {}})
-    dns_q = {"bool": {"filter": [{"term": {"log_source": "notice"}}, {"term": {"note.keyword": "DNSEntropy::High_Entropy_DNS"}}]}}
+    dns_q = _zeek_q("notice", {"term": {"note.keyword": "DNSEntropy::High_Entropy_DNS"}})
     dns_n = _count(ZEEK, dns_q)
     dns_ex = _top(ZEEK, "msg.keyword", dns_q, 5, "{k}")
-    scan_q = {"bool": {"filter": [{"term": {"log_source": "notice"}}, {"term": {"note.keyword": "PortScan::Port_Scan_Detected"}}]}}
+    scan_q = _zeek_q("notice", {"term": {"note.keyword": "PortScan::Port_Scan_Detected"}})
     scan_n = _count(ZEEK, scan_q)
     scan_ex = _top(ZEEK, "src.keyword", scan_q, 6, "{k} ({c})")
     behavior = [
@@ -199,9 +224,10 @@ def run_audit():
     ]
 
     # ════ Axe 4 — Menaces IDS ════
-    crit_sur = _count("suricata-*", {"bool": {"filter": [{"term": {"event_type": "alert"}}, {"term": {"alert.severity": 1}}]}}) or 0
-    crit_sno = _count("snort-*",    {"bool": {"filter": [{"exists": {"field": "rule"}}, {"term": {"priority": 1}}]}}) or 0
-    crit_total = crit_sur + crit_sno
+    crit_sur = _count("suricata-*", {"bool": {"filter": [{"term": {"event_type": "alert"}}, {"term": {"alert.severity": 1}}]}})
+    crit_sno = _count("snort-*",    {"bool": {"filter": [{"exists": {"field": "rule"}}, {"term": {"priority": 1}}]}})
+    # None + None → indisponible (pas 0/"conforme") ; un seul des deux dispo suffit à compter.
+    crit_total = None if (crit_sur is None and crit_sno is None) else (crit_sur or 0) + (crit_sno or 0)
     crit_ex = _top("suricata-*", "alert.signature.keyword",
                    {"bool": {"filter": [{"term": {"event_type": "alert"}}, {"term": {"alert.severity": 1}}]}}, 5, "{k} ({c})")
     total_alerts = _count(ALERTS, {"bool": {"should": [{"term": {"event_type": "alert"}}, {"exists": {"field": "rule"}}], "minimum_should_match": 1}})
