@@ -2072,6 +2072,18 @@ def api_pcap_analysis():
     netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cache_file    = os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json")
     script        = os.path.join(netwatch_root, "scripts", "security", "pcap-tcp-analysis.py")
+    pcap_dir      = os.path.join(netwatch_root, "pcap")
+
+    pcap_path = None
+    if single_file:
+        # os.path.basename() élimine tout composant de répertoire (y compris un
+        # chemin absolu, que os.path.join sinon laisserait remplacer le préfixe
+        # netwatch_root/pcap en entier) — puis vérification de confinement en
+        # profondeur avec le chemin résolu, avant de le passer à tshark.
+        candidate = os.path.realpath(os.path.join(pcap_dir, os.path.basename(single_file)))
+        if os.path.commonpath([os.path.realpath(pcap_dir), candidate]) != os.path.realpath(pcap_dir):
+            return jsonify({"error": "Nom de fichier PCAP invalide"}), 400
+        pcap_path = candidate
 
     now = _time_pcap.monotonic()
 
@@ -2084,8 +2096,8 @@ def api_pcap_analysis():
         return jsonify({"error": "pcap-tcp-analysis.py introuvable"}), 503
 
     cmd = ["python3", script, "--output", cache_file]
-    if single_file:
-        cmd += ["--pcap", os.path.join(netwatch_root, "pcap", single_file)]
+    if pcap_path:
+        cmd += ["--pcap", pcap_path]
 
     try:
         result = subprocess.run(
