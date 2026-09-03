@@ -1,7 +1,8 @@
 """
 Alertes sur seuil — surveille en continu une métrique (score de santé
-applicatif, RTT, zero-window, retransmissions) et notifie au premier
-franchissement plutôt que d'attendre qu'un opérateur consulte une page.
+applicatif, RTT, zero-window, retransmissions, volume de connexions) et
+notifie au premier franchissement plutôt que d'attendre qu'un opérateur
+consulte une page.
 
 Règles stockées dans data/thresholds.json (même pattern que
 netwatch.hostgroups). L'état courant (breach/ok par règle+cible) est
@@ -30,6 +31,7 @@ METRICS = {
     "zero_window_pct": {"label": "Zero-window",         "unit": "%",  "default_op": ">"},
     "retransmit_pct":  {"label": "Retransmissions",     "unit": "%",  "default_op": ">"},
     "avg_rtt_ms":      {"label": "RTT moyen",           "unit": "ms", "default_op": ">"},
+    "conns":           {"label": "Volume de connexions", "unit": "",  "default_op": "<"},
 }
 
 
