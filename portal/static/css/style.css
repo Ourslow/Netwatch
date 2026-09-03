@@ -116,6 +116,36 @@
 }
 
 /* ============================================================
+   1bis. Thème clair — surcharge des tokens de surface/texte/accent.
+   Les couleurs sémantiques (sévérité, moteurs, MITRE) restent
+   inchangées : déjà assez saturées pour rester lisibles sur fond clair.
+   ============================================================ */
+[data-bs-theme="light"] {
+  --bg-base:    #eef1f6;
+  --bg-elev-1:  #ffffff;
+  --bg-elev-2:  #ffffff;
+  --bg-elev-3:  #f3f5f9;
+  --bg-inset:   #e9ecf2;
+
+  --border:        #dde2ea;
+  --border-strong: #c5cddb;
+
+  --text:        #24303f;
+  --text-strong: #0c1420;
+  --text-muted:  #5b6a7f;
+  --text-dim:    #8896a8;
+
+  --accent:        #0891b2;
+  --accent-bright: #0e7490;
+  --accent-deep:   #155e75;
+  --accent-soft:   rgba(8, 145, 178, .10);
+  --accent-line:   rgba(8, 145, 178, .32);
+  --accent-glow:   rgba(8, 145, 178, .18);
+
+  --shadow-card: 0 8px 24px -14px rgba(30, 41, 59, .28);
+}
+
+/* ============================================================
    2. Base
    ============================================================ */
 
@@ -210,7 +240,7 @@ hr { border-color: var(--border); opacity: 1; }
   color: var(--text-dim);
 }
 
-/* Sections de navigation */
+/* Sections de navigation — repliables */
 .nav-section {
   font-size: .64rem;
   text-transform: uppercase;
@@ -218,7 +248,18 @@ hr { border-color: var(--border); opacity: 1; }
   color: var(--text-dim);
   padding: 0 .8rem;
   margin: 1.1rem 0 .35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
 }
+.nav-section:hover { color: var(--text-muted); }
+.nav-section-caret {
+  font-size: .62rem;
+  transition: transform var(--t-fast);
+}
+.nav-section[aria-expanded="false"] .nav-section-caret { transform: rotate(-90deg); }
 
 .sidebar .nav-link {
   color: var(--text-muted);

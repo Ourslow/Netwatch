@@ -3,6 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    /* Applique le thème sauvegardé avant le rendu CSS — évite un flash du
+       mauvais thème (sombre par défaut si aucune préférence enregistrée). */
+    (function () {
+      try {
+        var t = localStorage.getItem("nw_theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-bs-theme", t);
+      } catch (e) {}
+    })();
+  </script>
   <title>{% block title %}NetWatch Portal{% endblock %}</title>
 
   {# Favicon — radar cyan inline (pas de fichier, pas de build) #}
@@ -31,8 +41,12 @@
       </span>
     </a>
 
-    <div class="nav-section" data-i18n="nav_overview">Vue d'ensemble</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-overview"
+         role="button" aria-expanded="true" aria-controls="nav-sec-overview">
+      <span data-i18n="nav_overview">Vue d'ensemble</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-overview">
       <li class="nav-item">
         <a href="{{ url_for('dashboard') }}"
            class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
@@ -60,8 +74,12 @@
       </li>
     </ul>
 
-    <div class="nav-section" data-i18n="nav_analysis">Analyse réseau</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-analysis"
+         role="button" aria-expanded="true" aria-controls="nav-sec-analysis">
+      <span data-i18n="nav_analysis">Analyse réseau</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-analysis">
       <li class="nav-item">
         <a href="{{ url_for('zeek_logs') }}"
            class="nav-link {% if request.endpoint == 'zeek_logs' %}active{% endif %}">
@@ -112,8 +130,12 @@
       </li>
     </ul>
 
-    <div class="nav-section" data-i18n="nav_org">Organisation</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-org"
+         role="button" aria-expanded="true" aria-controls="nav-sec-org">
+      <span data-i18n="nav_org">Organisation</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-org">
       <li class="nav-item">
         <a href="{{ url_for('hostgroups_page') }}"
            class="nav-link {% if request.endpoint == 'hostgroups_page' %}active{% endif %}">
@@ -140,8 +162,12 @@
       </li>
     </ul>
 
-    <div class="nav-section" data-i18n="nav_infra">Infrastructure</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-infra"
+         role="button" aria-expanded="true" aria-controls="nav-sec-infra">
+      <span data-i18n="nav_infra">Infrastructure</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-infra">
       <li class="nav-item">
         <a href="{{ url_for('vms') }}"
            class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
@@ -174,8 +200,12 @@
       </li>
     </ul>
 
-    <div class="nav-section">Équipe IA</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-ai"
+         role="button" aria-expanded="true" aria-controls="nav-sec-ai">
+      <span>Équipe IA</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-ai">
       <li class="nav-item">
         <a href="{{ url_for('agents_page') }}"
            class="nav-link {% if request.endpoint == 'agents_page' %}active{% endif %}">
@@ -184,8 +214,12 @@
       </li>
     </ul>
 
-    <div class="nav-section" data-i18n="nav_report_sec">Rapport</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-report"
+         role="button" aria-expanded="true" aria-controls="nav-sec-report">
+      <span data-i18n="nav_report_sec">Rapport</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-report">
       <li class="nav-item">
         <a href="{{ url_for('exec_page') }}"
            class="nav-link {% if request.endpoint == 'exec_page' %}active{% endif %}">
@@ -252,6 +286,12 @@
           <span class="lang-active">FR</span>
           <span class="text-muted mx-1">|</span>
           <span class="lang-other" style="opacity:.45">EN</span>
+        </button>
+        <button id="theme-toggle" onclick="NW.switchTheme()"
+                class="btn btn-sm btn-outline-secondary"
+                title="Thème clair / sombre">
+          <i class="bi bi-sun-fill" id="theme-icon-light"></i>
+          <i class="bi bi-moon-stars-fill" id="theme-icon-dark" style="display:none"></i>
         </button>
         <a href="{{ url_for('logout') }}"
            class="btn btn-sm btn-outline-secondary"

@@ -318,6 +318,26 @@
     localStorage.setItem("nw_lang", NW.lang);
     NW.applyLang();
   };
+
+  /* ---- Thème clair / sombre ---------------------------------- */
+  NW.theme = localStorage.getItem("nw_theme") || "dark";
+
+  NW.applyTheme = function () {
+    document.documentElement.setAttribute("data-bs-theme", NW.theme);
+    const iconLight = document.getElementById("theme-icon-light");
+    const iconDark  = document.getElementById("theme-icon-dark");
+    if (iconLight && iconDark) {
+      /* Icône affichée = action possible (soleil en mode sombre = "passer au clair") */
+      iconLight.style.display = NW.theme === "dark" ? "" : "none";
+      iconDark.style.display  = NW.theme === "dark" ? "none" : "";
+    }
+  };
+
+  NW.switchTheme = function () {
+    NW.theme = NW.theme === "dark" ? "light" : "dark";
+    localStorage.setItem("nw_theme", NW.theme);
+    NW.applyTheme();
+  };
   const prefersReduced = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -469,11 +489,42 @@
     });
   };
 
+  /* ---- Sections du menu latéral repliables -------------------- */
+  NW.initNavSections = function () {
+    document.querySelectorAll(".nav-section[data-bs-target]").forEach(function (trigger) {
+      const targetId = trigger.getAttribute("data-bs-target").slice(1);
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const containsActive = !!target.querySelector(".nav-link.active");
+      const storageKey = "nw_navsec_" + targetId;
+      const saved = localStorage.getItem(storageKey);
+      /* La section de la page active reste toujours ouverte, quelle que
+         soit la préférence sauvegardée — naviguer ne doit jamais masquer
+         l'endroit où on se trouve. */
+      const expanded = containsActive || saved !== "closed";
+
+      trigger.setAttribute("aria-expanded", expanded ? "true" : "false");
+      target.classList.toggle("show", expanded);
+
+      target.addEventListener("shown.bs.collapse", function () {
+        trigger.setAttribute("aria-expanded", "true");
+        localStorage.setItem(storageKey, "open");
+      });
+      target.addEventListener("hidden.bs.collapse", function () {
+        trigger.setAttribute("aria-expanded", "false");
+        localStorage.setItem(storageKey, "closed");
+      });
+    });
+  };
+
   document.addEventListener("DOMContentLoaded", function () {
     NW.autoCountUp();
     NW.loadAlertSparklines();
     NW.flushFlashes();
     NW.applyLang();
+    NW.applyTheme();
+    NW.initNavSections();
   });
 
   window.NW = NW;
