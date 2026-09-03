@@ -1063,15 +1063,17 @@ def api_hostgroups():
 @login_required
 def applications_page():
     days = request.args.get("days", default=1, type=int)
-    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days)
-    return render_template("applications.html", apps=apps, unmatched=unmatched, error=err, days=days)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
+    return render_template("applications.html", apps=apps, unmatched=unmatched, error=err, days=days, hostgroup=hostgroup)
 
 
 @app.route("/api/applications")
 @login_required
 def api_applications():
     days = request.args.get("days", default=1, type=int)
-    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
     if err:
         return jsonify({"error": err}), 503
     return jsonify({"apps": apps, "unmatched": unmatched})

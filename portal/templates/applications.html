@@ -4,9 +4,9 @@
 
 {% block topbar_actions %}
 <div class="btn-group btn-group-sm" role="group">
-  <a href="{{ url_for('applications_page', days=1) }}" class="btn btn-outline-secondary {% if days == 1 %}active{% endif %}">24h</a>
-  <a href="{{ url_for('applications_page', days=7) }}" class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7j</a>
-  <a href="{{ url_for('applications_page', days=30) }}" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30j</a>
+  <a href="{{ url_for('applications_page', days=1, hostgroup=hostgroup or none) }}" class="btn btn-outline-secondary {% if days == 1 %}active{% endif %}">24h</a>
+  <a href="{{ url_for('applications_page', days=7, hostgroup=hostgroup or none) }}" class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7j</a>
+  <a href="{{ url_for('applications_page', days=30, hostgroup=hostgroup or none) }}" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30j</a>
 </div>
 {% endblock %}
 
@@ -19,43 +19,74 @@
 <p class="text-muted small mb-3">
   Classification du trafic TLS par application métier (SNI → catalogue), à la manière du
   dictionnaire applicatif Riverbed/Netscout — dérivée du réseau, sans agent poste client.
+  {% if hostgroup %}<span class="badge bg-info text-dark ms-1">Filtré : {{ hostgroup }}</span>{% endif %}
 </p>
+
+{% if apps %}
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
+    <div class="input-group input-group-sm" style="max-width:260px">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" id="app-search" class="form-control" placeholder="Application, catégorie ou IP…">
+    </div>
+    <select id="app-cat-filter" class="form-select form-select-sm" style="max-width:220px">
+      <option value="">Toutes catégories</option>
+      {% for cat in apps | map(attribute='category') | unique | sort %}
+      <option value="{{ cat }}">{{ cat }}</option>
+      {% endfor %}
+    </select>
+    <span class="text-muted small ms-auto" id="app-count"></span>
+  </div>
+</div>
+{% endif %}
 
 <div class="card mb-4">
   <div class="card-body p-0">
     {% if apps %}
     <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0 align-middle">
+      <table class="table table-sm table-hover mb-0 align-middle" id="app-table">
         <thead>
           <tr>
             <th>Application</th>
             <th>Catégorie</th>
             <th class="text-end">Sessions TLS</th>
             <th></th>
+            <th>Top devices</th>
           </tr>
         </thead>
         <tbody>
           {% set max_sessions = apps[0].sessions if apps else 1 %}
           {% for a in apps %}
-          <tr>
+          <tr data-name="{{ a.name | lower }}" data-category="{{ a.category }}"
+              data-ips="{{ a.top_ips[:3] | map(attribute='ip') | join(' ') }}">
             <td>{{ a.name }}</td>
             <td class="text-muted small">{{ a.category }}</td>
             <td class="text-end"><span class="badge bg-dark">{{ a.sessions }}</span></td>
-            <td style="width:30%">
+            <td style="width:22%">
               <div class="progress" style="height:6px">
                 <div class="progress-bar" role="progressbar"
                      style="width: {{ (a.sessions / max_sessions * 100) | round(1) }}%"></div>
               </div>
             </td>
+            <td class="small text-muted">
+              {% for ip in a.top_ips[:3] %}
+                <a href="{{ url_for('ip_detail', ip=ip.ip) }}" class="fw-mono text-decoration-none">{{ ip.ip }}</a>
+                <span class="text-muted">({{ ip.sessions }})</span>{% if not loop.last %}, {% endif %}
+              {% endfor %}
+              {% if not a.top_ips %}—{% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      <div id="app-no-match" class="text-center text-muted py-4" style="display:none">
+        <i class="bi bi-funnel fs-3 d-block mb-2"></i>Aucune application ne correspond à ce filtre.
+      </div>
     </div>
     {% else %}
     <div class="text-center text-muted py-5">
       <i class="bi bi-diagram-3 fs-1 d-block mb-2"></i>
-      Aucun trafic TLS classifié sur la période.
+      Aucun trafic TLS classifié sur la période{% if hostgroup %} pour ce hostgroup{% endif %}.
     </div>
     {% endif %}
   </div>
@@ -83,4 +114,41 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var search  = document.getElementById('app-search');
+  var catSel  = document.getElementById('app-cat-filter');
+  var table   = document.getElementById('app-table');
+  if (!table) return;
+  var rows    = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+  var noMatch = document.getElementById('app-no-match');
+  var countEl = document.getElementById('app-count');
+
+  function applyFilter() {
+    var q   = (search.value || '').trim().toLowerCase();
+    var cat = catSel.value;
+    var visible = 0;
+    rows.forEach(function (tr) {
+      var matchQuery = !q
+        || tr.dataset.name.indexOf(q) !== -1
+        || tr.dataset.category.toLowerCase().indexOf(q) !== -1
+        || tr.dataset.ips.indexOf(q) !== -1;
+      var matchCat = !cat || tr.dataset.category === cat;
+      var show = matchQuery && matchCat;
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    noMatch.style.display = visible === 0 ? '' : 'none';
+    table.style.display = visible === 0 ? 'none' : '';
+    countEl.textContent = visible + ' / ' + rows.length + ' application(s)';
+  }
+
+  search.addEventListener('input', applyFilter);
+  catSel.addEventListener('change', applyFilter);
+  applyFilter();
+})();
+</script>
 {% endblock %}

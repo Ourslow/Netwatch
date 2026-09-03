@@ -182,7 +182,10 @@ def get_zeek_flow_by_community_id(community_id):
     body = {
         "size": 1,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"community_id": community_id}},
+        # community_id est mappé "text" (mapping dynamique ES), pas "keyword" —
+        # un term query sur le champ nu ne matche jamais la valeur exacte
+        # (tokenisée par l'analyzer standard). D'où .keyword ici.
+        "query": {"term": {"community_id.keyword": community_id}},
         "_source": [
             "@timestamp", "ts", "id",
             "proto", "service", "duration",
@@ -229,7 +232,7 @@ def get_alerts_by_community_id(community_id):
         "sort": [{"@timestamp": {"order": "desc"}}],
         "query": {
             "bool": {
-                "must": [{"term": {"community_id": community_id}}],
+                "must": [{"term": {"community_id.keyword": community_id}}],
                 "should": [
                     {"term": {"event_type": "alert"}},
                     {"exists": {"field": "rule"}},
@@ -614,7 +617,15 @@ def get_tls_certs(size=50):
     body = {
         "size": size,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"log.file.path.keyword": "/zeek/logs/x509.log"}},
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"log.file.path.keyword": "/zeek/logs/x509.log"}},
+                    {"term": {"log_source": "x509"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
         "_source": [
             "@timestamp", "certificate",
         ],
@@ -676,7 +687,15 @@ def get_suspicious_files(size=50):
         "sort": [{"@timestamp": {"order": "desc"}}],
         "query": {
             "bool": {
-                "must": [{"term": {"log.file.path.keyword": "/zeek/logs/files.log"}}],
+                "must": [{
+                    "bool": {
+                        "should": [
+                            {"term": {"log.file.path.keyword": "/zeek/logs/files.log"}},
+                            {"term": {"log_source": "files"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                }],
                 "should": [{"term": {"mime_type": m}} for m in _SUSPICIOUS_MIMES],
                 "minimum_should_match": 1,
             }
@@ -902,7 +921,15 @@ def get_weird_events(size=50):
     body = {
         "size": size,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"log.file.path.keyword": "/zeek/logs/weird.log"}},
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"log.file.path.keyword": "/zeek/logs/weird.log"}},
+                    {"term": {"log_source": "weird"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
         "_source": ["@timestamp", "name", "addl", "id"],
     }
     try:
@@ -1038,7 +1065,17 @@ def get_flows_stats():
             "bool": {
                 "filter": [
                     {"range": {"@timestamp": {"gte": "now-24h"}}},
-                    {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    # should dual log.file.path (prod Filebeat) / log_source
+                    # (simulate-traffic.py) — cf. mémoire project-netwatch-llmops-dem-pitch
+                    {
+                        "bool": {
+                            "should": [
+                                {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                                {"term": {"log_source": "conn"}},
+                            ],
+                            "minimum_should_match": 1,
+                        }
+                    },
                 ]
             }
         },
@@ -1258,7 +1295,15 @@ def get_art_stats(ip=None):
                 "bool": {
                     "filter": [
                         {"range": {"@timestamp": {"gte": "now-24h"}}},
-                        {"term":  {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                        {
+                            "bool": {
+                                "should": [
+                                    {"term": {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                                    {"term": {"log_source": "dns"}},
+                                ],
+                                "minimum_should_match": 1,
+                            }
+                        },
                         {"exists": {"field": "rtt"}},
                     ] + ip_filter
                 }
@@ -1302,7 +1347,15 @@ def get_art_stats(ip=None):
                     "bool": {
                         "filter": [
                             {"range": {"@timestamp": {"gte": "now-24h"}}},
-                            {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                            {
+                                "bool": {
+                                    "should": [
+                                        {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                                        {"term": {"log_source": "conn"}},
+                                    ],
+                                    "minimum_should_match": 1,
+                                }
+                            },
                             {"exists": {"field": "duration"}},
                         ] + extra_filter + ip_filter,
                     }
@@ -1478,7 +1531,15 @@ def get_top_talkers(size=10, ip_ranges=None):
         "size": 0,
         "query": {"bool": {"filter": [
             {"range": {"@timestamp": {"gte": "now-24h"}}},
-            {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+            {
+                "bool": {
+                    "should": [
+                        {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                        {"term": {"log_source": "conn"}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
         ]}},
         "aggs": {
             "by_ip": {
@@ -1663,7 +1724,15 @@ def get_sla_stats(days=7):
             "target_ms": config.SLA_HTTP_TARGET_MS,
             "index":     "zeek-*",
             "filters":   [
-                {"term":   {"log.file.path.keyword": "/zeek/logs/http.log"}},
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"log.file.path.keyword": "/zeek/logs/http.log"}},
+                            {"term": {"log_source": "http"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                },
                 {"exists": {"field": "duration"}},
             ],
             "field":    "duration",
@@ -1674,7 +1743,15 @@ def get_sla_stats(days=7):
             "target_ms": config.SLA_DNS_TARGET_MS,
             "index":     "zeek-*",
             "filters":   [
-                {"term":   {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                            {"term": {"log_source": "dns"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                },
                 {"exists": {"field": "rtt"}},
             ],
             "field":    "rtt",
@@ -1685,7 +1762,15 @@ def get_sla_stats(days=7):
             "target_ms": config.SLA_RTT_TARGET_MS,
             "index":     "zeek-*",
             "filters":   [
-                {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                            {"term": {"log_source": "conn"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                },
                 {"term":  {"proto": "tcp"}},
                 {"range": {"rtt": {"gt": 0}}},
             ],

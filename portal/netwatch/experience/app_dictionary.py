@@ -16,6 +16,7 @@ import os
 import requests
 
 from .. import es_client
+from .. import hostgroups as nw_hostgroups
 
 _CATALOG_PATH = os.path.join(os.path.dirname(__file__), "app_catalog.json")
 
@@ -34,13 +35,20 @@ def _match(domain):
     return None, None
 
 
-def get_app_traffic_stats(days=1, size=200):
+def get_app_traffic_stats(days=1, size=200, hostgroup=None):
     """
     Agrège le trafic SSL (SNI) par application métier sur les `days`
-    derniers jours.
+    derniers jours, avec un breakdown par IP source par appli — pour
+    répondre à "quel device/hostgroup pèse dans telle catégorie".
+
+    hostgroup : nom d'un hostgroup (cf. netwatch.hostgroups) pour restreindre
+    l'agrégation aux IPs de ce groupe uniquement. Filtré côté Python après
+    une agrégation plus large (même pattern que filter_items_by_group /
+    get_top_talkers ip_ranges ailleurs dans le portail).
 
     Retourne (apps, unmatched, error) :
-      - apps: [{name, category, sessions}] trié par volume décroissant
+      - apps: [{name, category, sessions, top_ips: [{ip, sessions}]}]
+        trié par volume décroissant
       - unmatched: [{domain, sessions}] top 20 des SNI non catalogués
         (candidats à ajouter à app_catalog.json)
       - error: str | None
@@ -60,7 +68,14 @@ def get_app_traffic_stats(days=1, size=200):
                 "minimum_should_match": 1,
             }
         },
-        "aggs": {"by_sni": {"terms": {"field": "server_name.keyword", "size": size}}},
+        "aggs": {
+            "by_sni": {
+                "terms": {"field": "server_name.keyword", "size": size},
+                "aggs": {
+                    "by_ip": {"terms": {"field": "id.orig_h.keyword", "size": 50}},
+                },
+            }
+        },
     }
     try:
         r = es_client._es("/zeek-*/_search", body)
@@ -71,20 +86,38 @@ def get_app_traffic_stats(days=1, size=200):
     except Exception as e:
         return [], [], str(e)[:120]
 
+    matcher = nw_hostgroups.make_matcher(hostgroup) if hostgroup else None
+
     app_sessions = {}
+    app_ip_counts = {}
     unmatched = []
     for b in buckets:
-        domain, count = b["key"], b["doc_count"]
+        domain = b["key"]
+        ip_buckets = b.get("by_ip", {}).get("buckets", [])
+        if matcher:
+            ip_buckets = [ib for ib in ip_buckets if matcher(ib["key"])]
+        count = sum(ib["doc_count"] for ib in ip_buckets)
+        if count == 0:
+            continue
+
         name, category = _match(domain)
         if name:
             key = (name, category)
             app_sessions[key] = app_sessions.get(key, 0) + count
+            ip_counts = app_ip_counts.setdefault(key, {})
+            for ib in ip_buckets:
+                ip_counts[ib["key"]] = ip_counts.get(ib["key"], 0) + ib["doc_count"]
         else:
             unmatched.append({"domain": domain, "sessions": count})
 
-    apps = sorted(
-        ({"name": n, "category": c, "sessions": s} for (n, c), s in app_sessions.items()),
-        key=lambda a: -a["sessions"],
-    )
+    apps = []
+    for (n, c), s in app_sessions.items():
+        top_ips = sorted(
+            ({"ip": ip, "sessions": cnt} for ip, cnt in app_ip_counts.get((n, c), {}).items()),
+            key=lambda x: -x["sessions"],
+        )[:5]
+        apps.append({"name": n, "category": c, "sessions": s, "top_ips": top_ips})
+    apps.sort(key=lambda a: -a["sessions"])
+
     unmatched.sort(key=lambda u: -u["sessions"])
     return apps, unmatched[:20], None
