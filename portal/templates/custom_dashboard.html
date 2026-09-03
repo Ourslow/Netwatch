@@ -41,6 +41,12 @@
     <i class="bi bi-arrow-counterclockwise me-1"></i>Réinitialiser
   </button>
 </div>
+<select id="refresh-interval" class="form-select form-select-sm ms-2" style="width:auto" title="Rafraîchissement automatique">
+  <option value="0">Pas de refresh</option>
+  <option value="30000">30 s</option>
+  <option value="60000" selected>1 min</option>
+  <option value="300000">5 min</option>
+</select>
 {% endblock %}
 
 {% block content %}
@@ -81,6 +87,10 @@
     services_status:   { title: 'Statut des services',         icon: 'bi-hdd-network' },
     threshold_events:  { title: 'Événements seuils récents',   icon: 'bi-bell' },
     top_talkers:       { title: 'Top talkers réseau',          icon: 'bi-bar-chart-line' },
+    mitre_top:         { title: 'Top MITRE ATT&CK',            icon: 'bi-bullseye' },
+    geo_top:           { title: 'Origine géographique',        icon: 'bi-globe' },
+    sla_compliance:    { title: 'Conformité SLA',               icon: 'bi-patch-check' },
+    hostgroups_summary:{ title: 'Résumé hostgroups',            icon: 'bi-collection' },
   };
 
   function esc(s) {
@@ -183,6 +193,52 @@
         body.innerHTML = top.slice(0, 5).map(function (t) {
           return '<div class="d-flex justify-content-between widget-body-mini"><span class="fw-mono">' + esc(t.ip) + '</span>' +
                  '<span class="text-muted">' + (t.count || 0) + ' conn.</span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    mitre_top: function (body) {
+      fetch('/api/stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var mitre = (d && d.mitre) || [];
+        if (!mitre.length) { body.innerHTML = '<div class="text-muted small">Aucune donnée</div>'; return; }
+        var max = mitre[0][1] || 1;
+        body.innerHTML = mitre.slice(0, 5).map(function (m) {
+          return '<div class="mb-1 widget-body-mini">' +
+                 '<div class="d-flex justify-content-between"><span>' + esc(m[0]) + '</span><span class="text-muted">' + m[1] + '</span></div>' +
+                 '<div class="progress" style="height:4px"><div class="progress-bar bg-danger" style="width:' + Math.round(m[1] / max * 100) + '%"></div></div></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    geo_top: function (body) {
+      fetch('/api/geo').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var countries = (d && d.countries) || [];
+        if (!countries.length) { body.innerHTML = '<div class="text-muted small">Aucune donnée</div>'; return; }
+        body.innerHTML = countries.slice(0, 5).map(function (c) {
+          return '<div class="d-flex justify-content-between widget-body-mini">' +
+                 '<span>' + esc(c.country) + '</span>' +
+                 '<span><span class="badge bg-danger">' + (c.critical || 0) + '</span> <span class="text-muted">' + c.count + '</span></span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    sla_compliance: function (body) {
+      fetch('/api/sla-stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var slas = (d && d.slas) || [];
+        if (!slas.length) { body.innerHTML = '<div class="text-muted small">Aucune donnée</div>'; return; }
+        body.innerHTML = slas.map(function (s) {
+          var color = s.status === 'ok' ? 'success' : s.status === 'warning' ? 'warning' : 'danger';
+          return '<div class="d-flex justify-content-between align-items-center mb-1 widget-body-mini">' +
+                 '<span>' + esc(s.name) + '</span>' +
+                 '<span class="badge bg-' + color + '">' + s.compliance_pct + '%</span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    hostgroups_summary: function (body) {
+      fetch('/api/hostgroups').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var groups = Array.isArray(d) ? d : [];
+        if (!groups.length) { body.innerHTML = '<div class="text-muted small">Aucun hostgroup importé</div>'; return; }
+        body.innerHTML = groups.slice(0, 6).map(function (g) {
+          return '<div class="d-flex justify-content-between widget-body-mini">' +
+                 '<code>' + esc(g.name) + '</code>' +
+                 '<span class="text-muted">' + g.host_count + ' hôte(s)</span></div>';
         }).join('');
       }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
     },
@@ -329,7 +385,39 @@
     new bootstrap.Modal(document.getElementById('addWidgetModal')).show();
   });
 
+  /* ── Rafraîchissement automatique — re-fetch chaque widget sans reconstruire
+     la grille (évite de perdre l'état édition/drag en cours). ── */
+  var refreshTimer = null;
+  var refreshSelect = document.getElementById('refresh-interval');
+
+  function refreshAllWidgets() {
+    layout.forEach(function (w) {
+      var el = grid.querySelector('[data-id="' + w.id + '"]');
+      if (!el) return;
+      var body = el.querySelector('.widget-body');
+      var fn = RENDERERS[w.type];
+      if (fn && body) fn(body);
+    });
+  }
+
+  function applyRefreshInterval() {
+    clearInterval(refreshTimer);
+    var ms = parseInt(refreshSelect.value, 10);
+    if (ms > 0) refreshTimer = setInterval(refreshAllWidgets, ms);
+  }
+
+  try {
+    var saved = localStorage.getItem('nw_dashboard_refresh_ms');
+    if (saved !== null) refreshSelect.value = saved;
+  } catch (e) {}
+
+  refreshSelect.addEventListener('change', function () {
+    try { localStorage.setItem('nw_dashboard_refresh_ms', refreshSelect.value); } catch (e) {}
+    applyRefreshInterval();
+  });
+
   renderGrid();
+  applyRefreshInterval();
 })();
 </script>
 {% endblock %}

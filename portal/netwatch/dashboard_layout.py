@@ -18,6 +18,7 @@ LAYOUT_PATH = os.path.join(DATA_DIR, "dashboard_layout.json")
 WIDGET_TYPES = [
     "alert_stats", "app_health", "recent_alerts", "tcp_health",
     "top_apps", "services_status", "threshold_events", "top_talkers",
+    "mitre_top", "geo_top", "sla_compliance", "hostgroups_summary",
 ]
 
 DEFAULT_LAYOUT = [
