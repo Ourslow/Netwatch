@@ -30,6 +30,7 @@ from netwatch import hostgroups as nw_hostgroups
 from netwatch.experience import app_dictionary as nw_app_dictionary
 from netwatch import llmops as nw_llmops
 from netwatch import thresholds as nw_thresholds
+from netwatch import dashboard_layout as nw_dashboard_layout
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -1237,6 +1238,28 @@ def api_thresholds_events():
     if err:
         return jsonify({"error": err}), 503
     return jsonify(events)
+
+
+@app.route("/custom-dashboard")
+@login_required
+def custom_dashboard_page():
+    return render_template("custom_dashboard.html", layout=nw_dashboard_layout.load())
+
+
+@app.route("/api/dashboard-layout", methods=["GET", "POST"])
+@login_required
+def api_dashboard_layout():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        clean = nw_dashboard_layout.save(data.get("layout", []))
+        return jsonify({"layout": clean})
+    return jsonify({"layout": nw_dashboard_layout.load()})
+
+
+@app.route("/api/dashboard-layout/reset", methods=["POST"])
+@login_required
+def api_dashboard_layout_reset():
+    return jsonify({"layout": nw_dashboard_layout.reset()})
 
 
 @app.route("/app-map")

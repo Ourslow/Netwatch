@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord personnalisé — NetWatch Portal{% endblock %}
+{% block page_title %}Tableau de bord personnalisé{% endblock %}
+
+{% block head %}
+<style>
+  #widget-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+  @media (max-width: 900px) { #widget-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { #widget-grid { grid-template-columns: 1fr; } }
+  .widget[data-size="sm"] { grid-column: span 1; }
+  .widget[data-size="md"] { grid-column: span 2; }
+  .widget[data-size="lg"] { grid-column: span 4; }
+  @media (max-width: 900px) { .widget[data-size="lg"], .widget[data-size="md"] { grid-column: span 2; } }
+  @media (max-width: 560px) { .widget { grid-column: span 1 !important; } }
+
+  .widget { min-height: 160px; }
+  .widget-drag-handle { cursor: grab; opacity: .55; }
+  .widget-drag-handle:hover { opacity: 1; }
+  #widget-grid.edit-mode .widget { border: 1px dashed var(--border-strong, #2a3a52); }
+  .widget.drag-over { outline: 2px dashed var(--accent, #22d3ee); outline-offset: 2px; }
+  .widget-body-mini { font-size: .8rem; }
+  .widget-stat { text-align: center; }
+  .widget-stat .v { font-size: 1.4rem; font-weight: 700; }
+  .widget-stat .l { font-size: .68rem; color: var(--text-muted, #8fa0b8); text-transform: uppercase; letter-spacing: .04em; }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="btn-group btn-group-sm">
+  <button class="btn btn-outline-secondary" id="btn-edit-toggle">
+    <i class="bi bi-pencil-square me-1"></i>Modifier
+  </button>
+  <button class="btn btn-outline-success d-none" id="btn-add-widget">
+    <i class="bi bi-plus-lg me-1"></i>Ajouter
+  </button>
+  <button class="btn btn-outline-secondary d-none" id="btn-reset-layout">
+    <i class="bi bi-arrow-counterclockwise me-1"></i>Réinitialiser
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p class="text-muted small mb-3">
+  Choisis les widgets à afficher, réordonne-les par glisser-déposer (clique "Modifier" pour
+  activer l'édition) — disposition partagée pour tout le portail.
+</p>
+
+<div id="widget-grid" data-layout='{{ layout | tojson }}'></div>
+
+<!-- Sélecteur de widget à ajouter -->
+<div class="modal fade" id="addWidgetModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Ajouter un widget</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="list-group" id="widget-picker-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var WIDGET_CATALOG = {
+    alert_stats:      { title: 'Statistiques alertes',        icon: 'bi-shield-exclamation' },
+    app_health:        { title: 'Score de santé applicatif',   icon: 'bi-heart-pulse' },
+    recent_alerts:     { title: 'Alertes récentes',            icon: 'bi-list-ul' },
+    tcp_health:        { title: 'Santé TCP',                   icon: 'bi-activity' },
+    top_apps:          { title: 'Top applications',            icon: 'bi-window-stack' },
+    services_status:   { title: 'Statut des services',         icon: 'bi-hdd-network' },
+    threshold_events:  { title: 'Événements seuils récents',   icon: 'bi-bell' },
+    top_talkers:       { title: 'Top talkers réseau',          icon: 'bi-bar-chart-line' },
+  };
+
+  function esc(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  var grid = document.getElementById('widget-grid');
+  var layout = [];
+  try { layout = JSON.parse(grid.dataset.layout) || []; } catch (e) { layout = []; }
+  var editMode = false;
+
+  /* ── Rendu des widgets — chaque type sait fetcher + afficher ses propres données ── */
+  var RENDERERS = {
+    alert_stats: function (body) {
+      fetch('/api/stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!d || d.error) { body.innerHTML = '<div class="text-muted small">Indisponible</div>'; return; }
+        body.innerHTML = '<div class="row g-2">' +
+          ['total', 'last_24h', 'critical', 'medium'].map(function (k) {
+            var labels = { total: 'Total', last_24h: '24h', critical: 'Critiques', medium: 'Moyennes' };
+            return '<div class="col-6 widget-stat"><div class="v">' + (d[k] != null ? d[k] : '—') +
+                   '</div><div class="l">' + labels[k] + '</div></div>';
+          }).join('') + '</div>';
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    app_health: function (body) {
+      fetch('/api/applications/health').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var scores = (d && d.scores) || [];
+        if (!scores.length) { body.innerHTML = '<div class="text-muted small">Aucune donnée</div>'; return; }
+        body.innerHTML = scores.slice(0, 5).map(function (s) {
+          var color = s.grade_color === 'ok' ? 'success' : s.grade_color === 'warn' ? 'warning' : 'danger';
+          return '<div class="d-flex justify-content-between align-items-center mb-1 widget-body-mini">' +
+                 '<span>' + esc(s.name) + '</span>' +
+                 '<span class="badge bg-' + color + '">' + s.score + '</span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    recent_alerts: function (body) {
+      fetch('/api/alerts').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var alerts = Array.isArray(d) ? d : [];
+        if (!alerts.length) { body.innerHTML = '<div class="text-muted small">Aucune alerte</div>'; return; }
+        body.innerHTML = '<table class="table table-sm mb-0"><tbody>' +
+          alerts.slice(0, 5).map(function (a) {
+            var sev = a.severity === 1 ? 'danger' : a.severity === 2 ? 'warning' : 'secondary';
+            return '<tr><td class="small"><span class="badge bg-' + sev + '">sev' + a.severity + '</span></td>' +
+                   '<td class="small">' + esc(a.signature) + '</td>' +
+                   '<td class="small text-muted fw-mono">' + esc(a.src_ip) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    tcp_health: function (body) {
+      fetch('/api/tcp-perf').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!d) { body.innerHTML = '<div class="text-muted small">Indisponible</div>'; return; }
+        body.innerHTML = '<div class="row g-2">' +
+          '<div class="col-6 widget-stat"><div class="v">' + (d.avg_rtt_ms != null ? d.avg_rtt_ms : '—') + '</div><div class="l">RTT moy (ms)</div></div>' +
+          '<div class="col-6 widget-stat"><div class="v">' + (d.zero_window_pct != null ? d.zero_window_pct + '%' : '—') + '</div><div class="l">Zero-window</div></div>' +
+          '</div>';
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    top_apps: function (body) {
+      fetch('/api/applications?days=1').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var apps = (d && d.apps) || [];
+        if (!apps.length) { body.innerHTML = '<div class="text-muted small">Aucune donnée</div>'; return; }
+        var max = apps[0].sessions || 1;
+        body.innerHTML = apps.slice(0, 5).map(function (a) {
+          return '<div class="mb-1 widget-body-mini">' +
+                 '<div class="d-flex justify-content-between"><span>' + esc(a.name) + '</span><span class="text-muted">' + a.sessions + '</span></div>' +
+                 '<div class="progress" style="height:4px"><div class="progress-bar" style="width:' + Math.round(a.sessions / max * 100) + '%"></div></div></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    services_status: function (body) {
+      fetch('/api/status').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var services = (d && d.services) || [];
+        if (!services.length) { body.innerHTML = '<div class="text-muted small">Indisponible</div>'; return; }
+        body.innerHTML = services.map(function (s) {
+          var color = s.status === 'up' ? 'success' : s.status === 'degraded' ? 'warning' : 'danger';
+          return '<div class="d-flex justify-content-between align-items-center mb-1 widget-body-mini">' +
+                 '<span>' + esc(s.name) + '</span><span class="badge bg-' + color + '">' + s.status + '</span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    threshold_events: function (body) {
+      fetch('/api/thresholds/events').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var events = Array.isArray(d) ? d : [];
+        if (!events.length) { body.innerHTML = '<div class="text-muted small">Aucun événement</div>'; return; }
+        body.innerHTML = events.slice(0, 5).map(function (e) {
+          var badge = e.kind === 'breach' ? '<span class="badge bg-danger">Franchi</span>' : '<span class="badge bg-success">OK</span>';
+          return '<div class="d-flex justify-content-between align-items-center mb-1 widget-body-mini">' +
+                 badge + '<span>' + esc(e.app) + '</span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+    top_talkers: function (body) {
+      fetch('/api/flows-stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var top = (d && d.top_src) || [];
+        if (!top.length) { body.innerHTML = '<div class="text-muted small">Aucune donnée</div>'; return; }
+        body.innerHTML = top.slice(0, 5).map(function (t) {
+          return '<div class="d-flex justify-content-between widget-body-mini"><span class="fw-mono">' + esc(t.ip) + '</span>' +
+                 '<span class="text-muted">' + (t.count || 0) + ' conn.</span></div>';
+        }).join('');
+      }).catch(function () { body.innerHTML = '<div class="text-danger small">Erreur</div>'; });
+    },
+  };
+
+  function widgetHtml(w) {
+    var cat = WIDGET_CATALOG[w.type] || { title: w.type, icon: 'bi-square' };
+    return (
+      '<div class="card widget" data-size="' + w.size + '" data-id="' + w.id + '" data-type="' + w.type + '">' +
+        '<div class="card-header d-flex align-items-center justify-content-between py-2">' +
+          '<span><i class="bi ' + cat.icon + ' me-2"></i>' + esc(cat.title) + '</span>' +
+          '<span class="d-flex align-items-center gap-2 widget-controls" style="display:none">' +
+            '<i class="bi bi-grip-vertical widget-drag-handle" draggable="true"></i>' +
+            '<select class="form-select form-select-sm widget-size-select" style="width:auto">' +
+              ['sm', 'md', 'lg'].map(function (s) { return '<option value="' + s + '"' + (s === w.size ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+            '</select>' +
+            '<button class="btn btn-sm btn-outline-danger widget-remove-btn" title="Retirer"><i class="bi bi-x-lg"></i></button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="card-body widget-body py-2"><div class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Chargement…</div></div>' +
+      '</div>'
+    );
+  }
+
+  function renderGrid() {
+    grid.innerHTML = layout.map(widgetHtml).join('');
+    layout.forEach(function (w) {
+      var el = grid.querySelector('[data-id="' + w.id + '"]');
+      var body = el.querySelector('.widget-body');
+      var fn = RENDERERS[w.type];
+      if (fn) fn(body); else body.innerHTML = '<div class="text-muted small">Type inconnu</div>';
+    });
+    applyEditMode();
+    wireDragAndDrop();
+    wireWidgetControls();
+  }
+
+  function applyEditMode() {
+    grid.classList.toggle('edit-mode', editMode);
+    grid.querySelectorAll('.widget-controls').forEach(function (el) {
+      el.style.display = editMode ? 'flex' : 'none';
+    });
+    grid.querySelectorAll('.widget-drag-handle').forEach(function (el) {
+      el.setAttribute('draggable', editMode ? 'true' : 'false');
+    });
+  }
+
+  function wireWidgetControls() {
+    grid.querySelectorAll('.widget-remove-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.closest('.widget').dataset.id;
+        layout = layout.filter(function (w) { return w.id !== id; });
+        renderGrid();
+      });
+    });
+    grid.querySelectorAll('.widget-size-select').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var id = sel.closest('.widget').dataset.id;
+        layout.forEach(function (w) { if (w.id === id) w.size = sel.value; });
+        renderGrid();
+      });
+    });
+  }
+
+  /* ── Glisser-déposer natif (réordonnancement) ── */
+  var draggedId = null;
+  function wireDragAndDrop() {
+    grid.querySelectorAll('.widget-drag-handle').forEach(function (handle) {
+      handle.addEventListener('dragstart', function (e) {
+        draggedId = handle.closest('.widget').dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+      });
+    });
+    grid.querySelectorAll('.widget').forEach(function (el) {
+      el.addEventListener('dragover', function (e) {
+        if (!editMode || !draggedId) return;
+        e.preventDefault();
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('dragleave', function () { el.classList.remove('drag-over'); });
+      el.addEventListener('drop', function (e) {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        var targetId = el.dataset.id;
+        if (!draggedId || draggedId === targetId) return;
+        var from = layout.findIndex(function (w) { return w.id === draggedId; });
+        var to = layout.findIndex(function (w) { return w.id === targetId; });
+        if (from === -1 || to === -1) return;
+        var moved = layout.splice(from, 1)[0];
+        layout.splice(to, 0, moved);
+        draggedId = null;
+        renderGrid();
+      });
+    });
+  }
+
+  function saveLayout() {
+    fetch('/api/dashboard-layout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ layout: layout }),
+    }).then(function () {
+      if (window.NW && NW.toast) NW.toast('Disposition enregistrée', 'success');
+    }).catch(function () {});
+  }
+
+  document.getElementById('btn-edit-toggle').addEventListener('click', function () {
+    editMode = !editMode;
+    this.classList.toggle('btn-primary', editMode);
+    this.classList.toggle('btn-outline-secondary', !editMode);
+    document.getElementById('btn-add-widget').classList.toggle('d-none', !editMode);
+    document.getElementById('btn-reset-layout').classList.toggle('d-none', !editMode);
+    if (!editMode) saveLayout();
+    applyEditMode();
+  });
+
+  document.getElementById('btn-reset-layout').addEventListener('click', function () {
+    if (!confirm('Réinitialiser la disposition par défaut ?')) return;
+    fetch('/api/dashboard-layout/reset', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { layout = d.layout; renderGrid(); });
+  });
+
+  document.getElementById('btn-add-widget').addEventListener('click', function () {
+    var list = document.getElementById('widget-picker-list');
+    var present = new Set(layout.map(function (w) { return w.type; }));
+    var available = Object.keys(WIDGET_CATALOG).filter(function (t) { return !present.has(t); });
+    if (!available.length) {
+      list.innerHTML = '<div class="text-muted small p-2">Tous les widgets disponibles sont déjà affichés.</div>';
+    } else {
+      list.innerHTML = available.map(function (t) {
+        var cat = WIDGET_CATALOG[t];
+        return '<button type="button" class="list-group-item list-group-item-action" data-type="' + t + '">' +
+               '<i class="bi ' + cat.icon + ' me-2"></i>' + esc(cat.title) + '</button>';
+      }).join('');
+      list.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          layout.push({ id: btn.dataset.type + '-' + Date.now(), type: btn.dataset.type, size: 'sm' });
+          renderGrid();
+          bootstrap.Modal.getInstance(document.getElementById('addWidgetModal')).hide();
+        });
+      });
+    }
+    new bootstrap.Modal(document.getElementById('addWidgetModal')).show();
+  });
+
+  renderGrid();
+})();
+</script>
+{% endblock %}

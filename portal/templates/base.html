@@ -40,6 +40,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('custom_dashboard_page') }}"
+           class="nav-link {% if request.endpoint == 'custom_dashboard_page' %}active{% endif %}">
+          <i class="bi bi-grid-3x2-gap-fill"></i> <span>Tableau personnalisé</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('alerts') }}"
            class="nav-link {% if request.endpoint in ['alerts', 'alerts_export_csv'] %}active{% endif %}">
           <i class="bi bi-shield-exclamation"></i> <span data-i18n="nav_alerts">Alertes IDS</span>
@@ -303,6 +309,7 @@
 (function () {
   var NAV = [
     { icon: 'bi-grid-1x2',           label: 'Dashboard',            url: '/',            hint: 'Vue globale' },
+    { icon: 'bi-grid-3x2-gap-fill',  label: 'Tableau personnalisé', url: '/custom-dashboard', hint: 'Widgets réordonnables, glisser-déposer' },
     { icon: 'bi-shield-exclamation',  label: 'Alertes IDS',          url: '/alerts',      hint: 'Snort · Suricata' },
     { icon: 'bi-layers',              label: 'Incidents',            url: '/incidents',   hint: 'Fenêtres 5 min' },
     { icon: 'bi-file-earmark-binary', label: 'Analyse Zeek',         url: '/zeek',        hint: 'Logs protocolaires' },
