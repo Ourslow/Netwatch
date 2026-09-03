@@ -124,6 +124,43 @@ def get_app_traffic_stats(days=1, size=200, hostgroup=None):
     return apps, unmatched[:20], None
 
 
+def _resolve_ip_apps(days, size=300):
+    """
+    dst_ip -> {"name", "category"} via le SNI déjà résolu par ssl.log —
+    partagé entre get_app_dependency_map() et get_app_health_scores() pour
+    ne pas dupliquer la même requête ES. Best-effort : une IP non résolue
+    n'apparaît simplement pas dans le mapping retourné.
+    """
+    ip_app = {}
+    r = es_client._es("/zeek-*/_search", {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [{"range": {"@timestamp": {"gte": f"now-{days}d"}}}],
+                "should": [
+                    {"term": {"log.file.path.keyword": "/zeek/logs/ssl.log"}},
+                    {"term": {"log_source": "ssl"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "aggs": {
+            "by_ip": {
+                "terms": {"field": "id.resp_h.keyword", "size": size},
+                "aggs": {"domain": {"terms": {"field": "server_name.keyword", "size": 1}}},
+            }
+        },
+    })
+    r.raise_for_status()
+    for b in r.json()["aggregations"]["by_ip"]["buckets"]:
+        dom_buckets = b.get("domain", {}).get("buckets", [])
+        if dom_buckets:
+            name, category = _match(dom_buckets[0]["key"])
+            if name:
+                ip_app[b["key"]] = {"name": name, "category": category}
+    return ip_app
+
+
 def get_app_dependency_map(days=1, hostgroup=None, size=150):
     """
     Carte des dépendances applicatives ("qui parle à qui") — à la Riverbed
@@ -139,40 +176,12 @@ def get_app_dependency_map(days=1, hostgroup=None, size=150):
     """
     matcher = nw_hostgroups.make_matcher(hostgroup) if hostgroup else None
 
-    # 1. dst_ip -> app label, via le SNI déjà résolu par ssl.log — best-effort,
-    # une IP non résolue en app connue s'affiche juste sous sa forme brute.
-    ip_app = {}
     try:
-        r = es_client._es("/zeek-*/_search", {
-            "size": 0,
-            "query": {
-                "bool": {
-                    "filter": [{"range": {"@timestamp": {"gte": f"now-{days}d"}}}],
-                    "should": [
-                        {"term": {"log.file.path.keyword": "/zeek/logs/ssl.log"}},
-                        {"term": {"log_source": "ssl"}},
-                    ],
-                    "minimum_should_match": 1,
-                }
-            },
-            "aggs": {
-                "by_ip": {
-                    "terms": {"field": "id.resp_h.keyword", "size": 300},
-                    "aggs": {"domain": {"terms": {"field": "server_name.keyword", "size": 1}}},
-                }
-            },
-        })
-        r.raise_for_status()
-        for b in r.json()["aggregations"]["by_ip"]["buckets"]:
-            dom_buckets = b.get("domain", {}).get("buckets", [])
-            if dom_buckets:
-                name, category = _match(dom_buckets[0]["key"])
-                if name:
-                    ip_app[b["key"]] = {"name": name, "category": category}
+        ip_app = _resolve_ip_apps(days)
     except requests.exceptions.ConnectionError:
         return {"nodes": [], "edges": []}, "Elasticsearch non joignable"
     except Exception:
-        pass  # étiquetage par appli = bonus, ne doit pas bloquer le graphe brut
+        ip_app = {}  # étiquetage par appli = bonus, ne doit pas bloquer le graphe brut
 
     # 2. Paires (src, dst) agrégées depuis conn.log
     body = {
@@ -246,3 +255,131 @@ def get_app_dependency_map(days=1, hostgroup=None, size=150):
 
     edges.sort(key=lambda e: -e["bytes"])
     return {"nodes": list(nodes.values()), "edges": edges}, None
+
+
+def _penalty(value, warn_at, crit_at, max_penalty):
+    """Pénalité 0..max_penalty, interpolée linéairement entre warn_at (0) et
+    crit_at (max_penalty) — mêmes seuils que les badges déjà utilisés sur
+    /flows (retransmit/zero-window : <1% ok, 1-3% warn, >3% crit)."""
+    if value <= warn_at:
+        return 0.0
+    if value >= crit_at:
+        return max_penalty
+    return max_penalty * (value - warn_at) / (crit_at - warn_at)
+
+
+def _grade(score):
+    if score >= 90:
+        return "excellent", "ok"
+    if score >= 75:
+        return "bon", "ok"
+    if score >= 50:
+        return "dégradé", "warn"
+    return "critique", "crit"
+
+
+def get_app_health_scores(days=1, hostgroup=None):
+    """
+    Score de santé composite par application (0-100), à la manière du
+    "Service Health Score" Netscout — combine des indicateurs déjà calculés
+    ailleurs dans le portail (zero-window, retransmissions, RTT) mais jamais
+    agrégés par application métier plutôt que par IP/service isolément.
+
+    Pour chaque IP serveur résolue en application connue (via le
+    dictionnaire SNI, cf. _resolve_ip_apps), agrège les connexions
+    conn.log vers cette IP : ratio zero-window, ratio retransmissions,
+    RTT moyen. Pénalise le score selon les mêmes seuils que les badges
+    déjà affichés sur /flows.
+
+    Retourne (scores: list[{name, category, score, grade, grade_color,
+    conns, zero_window_pct, retransmit_pct, avg_rtt_ms}], error: str|None),
+    trié du moins bon au meilleur (les problèmes en premier).
+    """
+    matcher = nw_hostgroups.make_matcher(hostgroup) if hostgroup else None
+
+    try:
+        ip_app = _resolve_ip_apps(days)
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:120]
+
+    if not ip_app:
+        return [], None
+
+    body = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "filter": [{"range": {"@timestamp": {"gte": f"now-{days}d"}}}],
+                "should": [
+                    {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    {"term": {"log_source": "conn"}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+        "aggs": {
+            "by_ip": {
+                "terms": {"field": "id.resp_h.keyword", "size": 300},
+                "aggs": {
+                    "zero_window": {"filter": {"regexp": {"history.keyword": ".*[Ww].*"}}},
+                    "retransmit":  {"filter": {"regexp": {"history.keyword": ".*[Tt].*"}}},
+                    "avg_rtt":     {"avg": {"field": "rtt"}},
+                },
+            }
+        },
+    }
+    try:
+        r = es_client._es("/zeek-*/_search", body)
+        r.raise_for_status()
+        buckets = r.json()["aggregations"]["by_ip"]["buckets"]
+    except requests.exceptions.ConnectionError:
+        return [], "Elasticsearch non joignable"
+    except Exception as e:
+        return [], str(e)[:120]
+
+    agg = {}  # (name, category) -> {"conns", "zw", "retrans", "rtt_sum", "rtt_n"}
+    for b in buckets:
+        ip = b["key"]
+        if matcher and not matcher(ip):
+            continue
+        app = ip_app.get(ip)
+        if not app:
+            continue
+        key = (app["name"], app["category"])
+        a = agg.setdefault(key, {"conns": 0, "zw": 0, "retrans": 0, "rtt_sum": 0.0, "rtt_n": 0})
+        a["conns"]   += b["doc_count"]
+        a["zw"]      += b["zero_window"]["doc_count"]
+        a["retrans"] += b["retransmit"]["doc_count"]
+        rtt = b.get("avg_rtt", {}).get("value")
+        if rtt is not None:
+            a["rtt_sum"] += rtt * b["doc_count"]
+            a["rtt_n"]   += b["doc_count"]
+
+    scores = []
+    for (name, category), a in agg.items():
+        conns = a["conns"]
+        if conns == 0:
+            continue
+        zw_pct      = round(a["zw"] / conns * 100, 2)
+        retrans_pct = round(a["retrans"] / conns * 100, 2)
+        avg_rtt_ms  = round(a["rtt_sum"] / a["rtt_n"] * 1000, 1) if a["rtt_n"] else None
+
+        score = 100.0
+        score -= _penalty(zw_pct, 1, 3, 35)
+        score -= _penalty(retrans_pct, 1, 3, 35)
+        if avg_rtt_ms is not None:
+            score -= _penalty(avg_rtt_ms, 50, 150, 30)
+        score = round(max(0.0, score))
+
+        grade, grade_color = _grade(score)
+        scores.append({
+            "name": name, "category": category,
+            "score": score, "grade": grade, "grade_color": grade_color,
+            "conns": conns, "zero_window_pct": zw_pct,
+            "retransmit_pct": retrans_pct, "avg_rtt_ms": avg_rtt_ms,
+        })
+
+    scores.sort(key=lambda s: s["score"])
+    return scores, None

@@ -1158,7 +1158,9 @@ def applications_page():
     days = request.args.get("days", default=1, type=int)
     hostgroup = request.args.get("hostgroup", "").strip()
     apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
-    return render_template("applications.html", apps=apps, unmatched=unmatched, error=err, days=days, hostgroup=hostgroup)
+    scores, _ = nw_app_dictionary.get_app_health_scores(days=days, hostgroup=hostgroup or None)
+    return render_template("applications.html", apps=apps, unmatched=unmatched, error=err,
+                           days=days, hostgroup=hostgroup, scores=scores)
 
 
 @app.route("/api/applications")
@@ -1170,6 +1172,17 @@ def api_applications():
     if err:
         return jsonify({"error": err}), 503
     return jsonify({"apps": apps, "unmatched": unmatched})
+
+
+@app.route("/api/applications/health")
+@login_required
+def api_applications_health():
+    days = request.args.get("days", default=1, type=int)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    scores, err = nw_app_dictionary.get_app_health_scores(days=days, hostgroup=hostgroup or None)
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify({"scores": scores})
 
 
 @app.route("/app-map")

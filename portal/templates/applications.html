@@ -22,6 +22,51 @@
   {% if hostgroup %}<span class="badge bg-info text-dark ms-1">Filtré : {{ hostgroup }}</span>{% endif %}
 </p>
 
+{% if scores %}
+<div class="card mb-3">
+  <div class="card-header">
+    <i class="bi bi-heart-pulse me-2"></i>Score de santé applicatif
+    <span class="text-muted small ms-1">— ART/zero-window/retransmissions combinés, à la Netscout</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Application</th>
+            <th class="text-end">Score</th>
+            <th></th>
+            <th class="text-end">Zero-window</th>
+            <th class="text-end">Retrans.</th>
+            <th class="text-end">RTT moy.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in scores[:10] %}
+          <tr>
+            <td>
+              {{ s.name }}
+              <span class="badge {% if s.grade_color == 'ok' %}bg-success{% elif s.grade_color == 'warn' %}bg-warning text-dark{% else %}bg-danger{% endif %} ms-1" style="font-size:.65rem">{{ s.grade }}</span>
+            </td>
+            <td class="text-end fw-mono">{{ s.score }}</td>
+            <td style="width:18%">
+              <div class="progress" style="height:6px">
+                <div class="progress-bar {% if s.grade_color == 'ok' %}bg-success{% elif s.grade_color == 'warn' %}bg-warning{% else %}bg-danger{% endif %}"
+                     role="progressbar" style="width: {{ s.score }}%"></div>
+              </div>
+            </td>
+            <td class="text-end small {% if s.zero_window_pct > 3 %}text-danger{% elif s.zero_window_pct > 1 %}text-warning{% endif %}">{{ s.zero_window_pct }}%</td>
+            <td class="text-end small {% if s.retransmit_pct > 3 %}text-danger{% elif s.retransmit_pct > 1 %}text-warning{% endif %}">{{ s.retransmit_pct }}%</td>
+            <td class="text-end small">{{ s.avg_rtt_ms if s.avg_rtt_ms is not none else '—' }} ms</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if apps %}
 <div class="card mb-3">
   <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
