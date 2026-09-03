@@ -534,12 +534,16 @@ def get_alert_stats(days=7):
                 "filter": {"range": {"@timestamp": {"gte": "now-24h"}}},
                 "aggs": {
                     "by_severity_24h": {
-                        "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+                        # value_type force un type numérique cohérent : sans lui, ES
+                        # infère "string" côté shards sans mapping alert.severity
+                        # (index snort-*), ce qui casse le reduce inter-shards
+                        # (StringTerms vs LongTerms) avec une erreur 400.
+                        "terms": {"field": "alert.severity", "size": 5, "missing": 3, "value_type": "long"}
                     }
                 },
             },
             "by_severity": {
-                "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+                "terms": {"field": "alert.severity", "size": 5, "missing": 3, "value_type": "long"}
             },
             "by_mitre": {
                 "terms": {
@@ -734,7 +738,7 @@ def get_exec_stats():
         },
         "aggs": {
             "by_severity": {
-                "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+                "terms": {"field": "alert.severity", "size": 5, "missing": 3, "value_type": "long"}
             },
             "top_src_ip": {
                 "terms": {"field": "src_ip", "size": 3},
