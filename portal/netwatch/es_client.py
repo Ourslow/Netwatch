@@ -1202,6 +1202,7 @@ def get_art_stats(ip=None):
     ip_filter = _ip_filter(ip)
     _svc0 = {"p50": None, "p95": None, "p99": None, "count": 0}
     result = {"http": dict(_svc0), "dns": dict(_svc0), "tls": dict(_svc0)}
+    _err = None
 
     def _ms(v):
         """Float secondes → ms arrondi, ou None si absent/NaN."""
@@ -1251,8 +1252,8 @@ def get_art_stats(ip=None):
                 elif "art_ms" in src:
                     art_field = "art_ms"
                     svc_field = "service"
-    except Exception:
-        pass
+    except Exception as e:
+        _err = str(e)[:120]
 
     if art_field:
         try:
@@ -1296,9 +1297,9 @@ def get_art_stats(ip=None):
                     "p99":   _ms_direct(pts.get("99.0")),
                     "count": int(b.get("cnt", {}).get("value") or 0),
                 }
-            return result, None
-        except Exception:
-            pass
+            return result, _err
+        except Exception as e:
+            _err = str(e)[:120]
 
     # ── 2. DNS rtt natif du dns.log Zeek ──
     try:
@@ -1337,8 +1338,8 @@ def get_art_stats(ip=None):
                     "p99":   _ms(pts.get("99.0")),
                     "count": cnt,
                 }
-    except Exception:
-        pass
+    except Exception as e:
+        _err = str(e)[:120]
 
     # ── 3. HTTP & TLS : durée conn.log par service ──
     for svc_key, extra_filter in [
@@ -1389,10 +1390,10 @@ def get_art_stats(ip=None):
                         "p99":   _ms(pts.get("99.0")),
                         "count": cnt,
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            _err = str(e)[:120]
 
-    return result, None
+    return result, _err
 
 
 def get_tcp_perf(ip=None):
@@ -1411,6 +1412,10 @@ def get_tcp_perf(ip=None):
         "zero_window_pct": 0.0,
         "top_zero_window_ips": [],
     }
+    # (data, error) : chaque bloc ci-dessous est best-effort (une métrique
+    # indisponible ne doit pas faire échouer les autres), mais une vraie
+    # erreur ne doit pas non plus disparaître silencieusement en error=None.
+    _err = None
 
     base = [
         {"range": {"@timestamp": {"gte": "now-24h"}}},
@@ -1451,8 +1456,8 @@ def get_tcp_perf(ip=None):
                     result["avg_rtt_ms"] = round(float(avg) * 1000, 2)
                 if p95 is not None and not math.isnan(float(p95)):
                     result["p95_rtt_ms"] = round(float(p95) * 1000, 2)
-    except Exception:
-        pass
+    except Exception as e:
+        _err = str(e)[:120]
 
     # ── Top IPs par retransmissions (history contient T ou t) ──
     try:
@@ -1488,8 +1493,8 @@ def get_tcp_perf(ip=None):
                 rows.append({"ip": ip, "retransmit_pct": pct, "count": cnt})
             rows.sort(key=lambda x: x["retransmit_pct"], reverse=True)
             result["top_retransmit_ips"] = rows[:10]
-    except Exception:
-        pass
+    except Exception as e:
+        _err = str(e)[:120]
 
     # ── Zero-windows (history contient W ou w) — ratio global + top IPs,
     #    à la manière du "TCP zero-window" Netscout/Riverbed (cf.
@@ -1525,10 +1530,10 @@ def get_tcp_perf(ip=None):
                 rows.append({"ip": ip, "zero_window_pct": pct, "count": cnt})
             rows.sort(key=lambda x: x["zero_window_pct"], reverse=True)
             result["top_zero_window_ips"] = rows[:10]
-    except Exception:
-        pass
+    except Exception as e:
+        _err = str(e)[:120]
 
-    return result, None
+    return result, _err
 
 
 def get_top_talkers(size=10, ip_ranges=None):
@@ -1604,7 +1609,7 @@ def _run_sla_query(index, base_filters, field, days, biz_filter=None):
     """
     date_histogram 1h query for SLA compliance.
     biz_filter: None (all hours) | "business" | "off"
-    Returns list of bucket dicts; [] on any error.
+    Returns (buckets: list, error: str|None) ; ([], error) on failure.
     """
     extra = []
     if biz_filter == "business":
@@ -1641,9 +1646,9 @@ def _run_sla_query(index, base_filters, field, days, biz_filter=None):
     try:
         r = _es(f"/{index}/_search", body)
         r.raise_for_status()
-        return r.json().get("aggregations", {}).get("per_hour", {}).get("buckets", [])
-    except Exception:
-        return []
+        return r.json().get("aggregations", {}).get("per_hour", {}).get("buckets", []), None
+    except Exception as e:
+        return [], str(e)[:120]
 
 
 def _compute_sla_compliance(name, target_ms, target_pct, buckets, scale_ms, days):
@@ -1798,15 +1803,18 @@ def get_sla_stats(days=7):
         "off_hours":      {"slas": []},
     }
 
+    _err = None
     for spec in sla_specs:
         for biz_filter, target_key in [
             (None,       "slas"),
             ("business", "business_hours"),
             ("off",      "off_hours"),
         ]:
-            buckets = _run_sla_query(
+            buckets, err = _run_sla_query(
                 spec["index"], spec["filters"], spec["field"], days, biz_filter
             )
+            if err:
+                _err = err
             entry = _compute_sla_compliance(
                 spec["name"], spec["target_ms"], target_pct,
                 buckets, spec["scale_ms"], days,
@@ -1816,4 +1824,4 @@ def get_sla_stats(days=7):
             else:
                 result[target_key]["slas"].append(entry)
 
-    return result, None
+    return result, _err
