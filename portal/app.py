@@ -424,6 +424,15 @@ def proxmox_required(f):
     return decorated
 
 
+def _safe_int(value, default=None):
+    """int() défensif pour les query params — une valeur non numérique ne doit
+    jamais faire planter la route (500) mais retomber sur `default`."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def fmt_bytes(b):
     if b is None:
         return "—"
@@ -694,7 +703,7 @@ def deploy(px, tool_id):
             disk_gb = int(request.form.get("disk_gb", tool["disk_gb"]))
         except (ValueError, TypeError):
             flash("Valeur numérique invalide pour RAM, CPU ou disque.", "danger")
-            return redirect(url_for("deploy_tool", tool_id=tool_id))
+            return redirect(url_for("deploy", tool_id=tool_id))
 
         if not template_id:
             flash("Sélectionner un template Proxmox", "warning")
@@ -928,7 +937,7 @@ def alerts():
     alerts_list, error = es_client.get_recent_alerts(
         size=100,
         engine=engine   or None,
-        severity=int(severity) if severity else None,
+        severity=_safe_int(severity),
         search=search   or None,
     )
     if hostgroup:
@@ -957,7 +966,7 @@ def api_alerts():
     alerts_list, error = es_client.get_recent_alerts(
         size=50,
         engine=engine or None,
-        severity=int(severity) if severity else None,
+        severity=_safe_int(severity),
         search=search or None,
     )
     if error:
@@ -979,7 +988,7 @@ def alerts_export_csv():
     alerts_list, _ = es_client.get_recent_alerts(
         size=1000,
         engine=engine   or None,
-        severity=int(severity) if severity else None,
+        severity=_safe_int(severity),
         search=search   or None,
     )
     if hostgroup:
@@ -1505,7 +1514,7 @@ def api_exec_stats():
 @login_required
 def sla():
     """Page SLA Compliance — gauges, timeline 7j, analyse Business Hours."""
-    days = int(request.args.get("days", 7))
+    days = _safe_int(request.args.get("days"), 7)
     days = max(1, min(days, 30))
     sla_data, es_error = es_client.get_sla_stats(days=days)
     no_data = all(s["buckets_total"] == 0 for s in sla_data.get("slas", []))
@@ -1522,7 +1531,7 @@ def sla():
 @login_required
 def api_sla_stats():
     """SLA compliance data (JSON) — consommé par le refresh auto."""
-    days = int(request.args.get("days", 7))
+    days = _safe_int(request.args.get("days"), 7)
     days = max(1, min(days, 30))
     data, error = es_client.get_sla_stats(days=days)
     if error:

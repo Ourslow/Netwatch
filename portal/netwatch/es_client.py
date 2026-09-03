@@ -470,6 +470,19 @@ def get_ip_events(ip, size=200):
         "size": 0,
         "query": {
             "bool": {
+                # scope à conn.log — sans ce discriminant, l'agg mélange tous les
+                # types de logs Zeek mentionnant cette IP (dns, http, ssl, weird,
+                # files, notice, x509 ont aussi id.orig_h/id.resp_h), gonflant
+                # total_conns/total_bytes/top_ports au-delà des vraies connexions.
+                "filter": [{
+                    "bool": {
+                        "should": [
+                            {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                            {"term": {"log_source": "conn"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                }],
                 "should": [
                     {"term": {"id.orig_h": ip}},
                     {"term": {"id.resp_h": ip}},
