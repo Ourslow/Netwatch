@@ -118,7 +118,7 @@
           </tbody>
         </table>
         {% else %}
-        <div class="empty-state py-4"><i class="bi bi-inbox empty-icon"></i><div class="small" data-i18n="dash_no_flows">Aucun flux sur 24 h — Zeek silencieux ou Elasticsearch vide</div></div>
+        <div class="empty-state py-4"><i class="bi bi-inbox empty-icon"></i><div class="small">Aucun flux sur {{ range_label }} — Zeek silencieux ou Elasticsearch vide</div></div>
         {% endif %}
       </div>
     </div>
@@ -255,10 +255,10 @@
         sub.textContent = 'NetFlow / IPFIX';
       } else if (d.source === 'zeek') {
         badge.innerHTML = '<span class="src-badge warn">Zeek conn.log</span>';
-        sub.textContent = 'Zeek conn.log · 24 h';
+        sub.textContent = 'Zeek conn.log · {{ range_label }}';
       }
       if (!tl.length || !total) {
-        wrap.innerHTML = '<div class="chart-loading"><i class="bi bi-inbox me-2"></i>Aucun flux sur 24 h</div>';
+        wrap.innerHTML = '<div class="chart-loading"><i class="bi bi-inbox me-2"></i>Aucun flux sur {{ range_label }}</div>';
         return;
       }
       wrap.innerHTML = '<canvas id="line-tl"></canvas>';
