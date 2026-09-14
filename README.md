@@ -90,6 +90,7 @@
 **Utiliser**
 - [Portail web](#portail-web)
 - [Quickstart](#quickstart)
+- [Parcours de démo (10 min)](docs/demo-parcours.md)
 - [Détection](#détection)
 - [Dashboards Grafana](#dashboards-grafana)
 
@@ -424,6 +425,11 @@ docker compose ps   # 14 conteneurs attendus
 | **Grafana** | `http://<IP_VM>:3000` | `admin` / `<GRAFANA_ADMIN_PASSWORD>` |
 | **Portail Flask** | `http://<IP_VM>:5050` | `admin` / `netwatch` |
 | **Elasticsearch** | `http://<IP_VM>:9200` | — |
+| **Kibana** · **ntopng** · **Blackbox** | `:5601` · `:3001` · `:9115` (localhost) | — |
+| **Arkime** | `http://localhost:8005` | sans login en labo (`ARKIME_AUTH_MODE=form` en prod) |
+| **NetBox** | `http://localhost:8000` | `admin` / `<NETBOX_SUPERUSER_PASSWORD>` |
+
+> Parcours de démonstration guidé (10 min, une question client par étape) : [docs/demo-parcours.md](docs/demo-parcours.md).
 
 ### 7. Initialiser GeoIP & Threat Intel (optionnel)
 
@@ -777,7 +783,8 @@ python3 simulate-traffic.py --hours 6 --intensity medium --attack
 ```bash
 # Stack
 docker compose up -d                                              # Démarrer
-docker compose ps                                                 # Vérifier les 14 conteneurs
+docker compose ps                                                 # Vérifier les 24 conteneurs
+make observability && make kibana-setup && make demo-netbox      # Services complémentaires + data views + démo NetBox
 docker compose logs -f beacon-detect                             # Logs d'un service
 docker compose build snort --no-cache && docker compose up -d snort  # Rebuild
 
