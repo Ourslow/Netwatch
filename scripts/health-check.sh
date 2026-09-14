@@ -334,6 +334,17 @@ check_goflow2() {
   report_service "GoFlow2" "ok" "running — ${idx_count} index netflow-* (${total_docs} docs)"
 }
 
+# Services complémentaires (optionnels) : une absence = avertissement, pas une erreur
+check_optional_http() {
+  local name="$1" url="$2" code
+  code=$(http_code "$url")
+  case "$code" in
+    000)             report_service "$name" "warn" "inaccessible (service optionnel)" ;;
+    2*|3*|401|403)   report_service "$name" "ok"   "HTTP ${code}" ;;
+    *)               report_service "$name" "warn" "HTTP ${code}" ;;
+  esac
+}
+
 # ============================================================
 # Main
 # ============================================================
@@ -367,6 +378,13 @@ check_docker_container "Suricata"      "netwatch-suricata"
 
 # --- GoFlow2 (NetFlow / IPFIX / sFlow) ---
 check_goflow2
+
+# --- Observabilité complémentaire (Blackbox, Kibana, ntopng, Arkime, NetBox) ---
+check_optional_http "Blackbox" "${NETWATCH_BLACKBOX_URL:-http://localhost:9115}/-/healthy"
+check_optional_http "Kibana"   "${NETWATCH_KIBANA_URL:-http://localhost:5601}/api/status"
+check_optional_http "ntopng"   "${NETWATCH_NTOPNG_URL:-http://localhost:3001}/"
+check_optional_http "Arkime"   "${NETWATCH_ARKIME_URL:-http://localhost:8005}/"
+check_optional_http "NetBox"   "${NETWATCH_NETBOX_URL:-http://localhost:8000}/login/"
 
 # ============================================================
 # Résumé

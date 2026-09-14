@@ -4,6 +4,11 @@
 
 {% block topbar_actions %}
 <span class="text-muted small" id="pcap-count-label"></span>
+{% if tool_urls.arkime %}
+<a href="{{ tool_urls.arkime | browser_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Full packet capture indexée — sessions & extraction PCAP (Arkime)">
+  <i class="bi bi-hdd-stack-fill me-1"></i>Arkime
+</a>
+{% endif %}
 <a href="{{ url_for('pcap_analysis_export_csv') }}" class="btn btn-sm btn-outline-success">
   <i class="bi bi-download me-1"></i>Export CSV
 </a>

@@ -45,6 +45,12 @@
     'Grafana':       'bi-bar-chart-fill',
     'Prometheus':    'bi-graph-up-arrow',
     'AutoBlock':     'bi-shield-fill-check',
+    'Assistant IA (Ollama)': 'bi-robot',
+    'Blackbox (sondes)': 'bi-broadcast',
+    'Kibana':        'bi-search',
+    'ntopng':        'bi-pie-chart',
+    'Arkime':        'bi-hdd-stack-fill',
+    'NetBox':        'bi-diagram-3',
   } %}
   {% for svc in services %}
   <div class="col-md-6 col-xl-3">
@@ -63,7 +69,7 @@
           {% endif %}
         </div>
 
-        <h6 class="fw-bold mb-1">{{ svc.name }}</h6>
+        <h6 class="fw-bold mb-1">{{ svc.name }}{% if svc.optional %} <span class="hint" title="Service complémentaire : son absence ne rend pas la stack indisponible">· optionnel</span>{% endif %}</h6>
         <small class="text-muted d-block mb-2" style="word-break:break-all">{{ svc.url }}</small>
 
         {% if svc.detail %}
@@ -159,6 +165,40 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Sondes actives Blackbox -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-broadcast me-2"></i>Sondes actives <span class="hint">· Blackbox exporter · {{ range_label }}</span></span>
+    {% if probes %}
+    <span class="badge {% if probes_summary.down %}bg-danger{% else %}bg-success{% endif %}">{{ probes_summary.up }} / {{ probes_summary.total }} OK</span>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if probes %}
+    <table class="table table-sm table-hover mb-0 align-middle" data-nw-table>
+      <thead><tr><th>Cible</th><th>Type</th><th>Groupe</th><th class="text-end">Latence</th><th class="text-end" data-desc>Disponibilité</th><th>État</th></tr></thead>
+      <tbody>
+        {% for p in probes %}
+        <tr>
+          <td><b>{{ p.name }}</b> <span class="hint fw-mono">{{ p.target }}</span></td>
+          <td><span class="badge bg-dark">{{ p.module }}</span></td>
+          <td class="text-muted small">{{ p.group or '—' }}</td>
+          <td class="text-end tnum">{{ p.latency_ms if p.latency_ms is not none else '—' }} ms</td>
+          <td class="text-end tnum {% if p.availability_pct is not none %}{% if p.availability_pct < 99 %}text-warning{% endif %}{% if p.availability_pct < 95 %}text-danger{% endif %}{% endif %}" data-sort="{{ p.availability_pct or 0 }}">{{ p.availability_pct if p.availability_pct is not none else '—' }} %</td>
+          <td>{% if p.up %}<span class="badge bg-success">UP</span>{% else %}<span class="badge bg-danger">DOWN</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state py-4">
+      <i class="bi bi-broadcast empty-icon"></i>
+      <div class="small">{% if probes_err %}{{ probes_err }}{% else %}Aucune sonde — démarrer <code>blackbox</code> et déclarer des cibles dans <code>prometheus/blackbox-targets.yml</code>.{% endif %}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
 
 <!-- Ressources Proxmox -->
 {% if proxmox_ok and node_status %}

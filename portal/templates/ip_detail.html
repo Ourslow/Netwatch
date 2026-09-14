@@ -3,6 +3,16 @@
 {% block page_title %}Pivot IP : <code style="font-size:1rem">{{ ip }}</code>{% endblock %}
 
 {% block topbar_actions %}
+{% if netbox and netbox.url %}
+<a href="{{ netbox.url | browser_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Fiche NetBox">
+  <i class="bi bi-diagram-3 me-1"></i>NetBox
+</a>
+{% endif %}
+{% if tool_urls.arkime %}
+<a href="{{ tool_urls.arkime | browser_url }}/sessions?expression=ip%3D%3D{{ ip }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Sessions capturées (Arkime)">
+  <i class="bi bi-hdd-stack-fill me-1"></i>PCAP
+</a>
+{% endif %}
 <a href="{{ url_for('alerts', q=ip) }}" class="btn btn-sm btn-outline-secondary">
   <i class="bi bi-shield-exclamation me-1"></i>Alertes
 </a>
@@ -61,6 +71,32 @@
     </div>
   </div>
 </div>
+
+{% if netbox %}
+<!-- Contexte métier NetBox : qui est ce device, où, pour qui -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-diagram-3 me-2"></i>Contexte NetBox</span>
+    {% if netbox.url %}<a href="{{ netbox.url | browser_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">Ouvrir <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.7rem"></i></a>{% endif %}
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for label, val in [('Device', netbox.device), ('Interface', netbox.interface), ('Nom DNS', netbox.dns_name), ('Description', netbox.description),
+                            ('Site', netbox.site), ('Préfixe', netbox.prefix), ('VLAN', netbox.vlan), ('Rôle', netbox.role or netbox.prefix_role),
+                            ('Tenant', netbox.tenant), ('Statut', netbox.status)] %}
+      {% if val %}
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-label">{{ label }}</div>
+        <div class="{% if label in ['Device','Nom DNS','Préfixe'] %}fw-mono{% endif %}">{{ val }}</div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% elif netbox_err %}
+<div class="hint mb-3"><i class="bi bi-diagram-3 me-1"></i>NetBox : {{ netbox_err }}</div>
+{% endif %}
 
 {% include "_perf_dashboard.html" %}
 

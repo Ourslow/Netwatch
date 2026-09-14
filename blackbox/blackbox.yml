@@ -1,0 +1,50 @@
+# Blackbox exporter — sondes ACTIVES (le reste de NetWatch est passif : Zeek
+# ne voit que le trafic qui existe). Chaque module = une façon de tester une
+# cible ; les cibles sont listées dans prometheus/blackbox-targets.yml.
+# Métriques produites : probe_success, probe_duration_seconds, probe_http_status_code…
+modules:
+
+  # HTTP(S) : 2xx attendu, suit les redirections, IPv4 d'abord
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: []          # [] = 2xx
+      follow_redirects: true
+      preferred_ip_protocol: ip4
+      tls_config:
+        insecure_skip_verify: true    # labo : certificats auto-signés fréquents
+
+  # HTTP(S) : n'importe quelle réponse (page de login 302/401 = service vivant)
+  http_alive:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200, 201, 204, 301, 302, 303, 307, 308, 401, 403]
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+      tls_config:
+        insecure_skip_verify: true
+
+  # ICMP : latence / perte vers une passerelle, un serveur, un site distant
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: ip4
+
+  # TCP : port ouvert (SMB, RDP, base de données…)
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: ip4
+
+  # DNS : résolution d'un nom via le résolveur ciblé
+  dns_a:
+    prober: dns
+    timeout: 5s
+    dns:
+      query_name: "www.google.com"
+      query_type: "A"
+      preferred_ip_protocol: ip4

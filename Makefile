@@ -1,4 +1,27 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init observability observability-stop
+
+# ============================================================
+# Services d'observabilité complémentaires
+#   Blackbox (sondes actives) · Kibana · ntopng (nDPI) · Arkime (PCAP) · NetBox (IPAM)
+# ============================================================
+
+# Démarrer / arrêter uniquement les services complémentaires (le cœur reste intact)
+observability:
+	docker compose up -d blackbox kibana ntopng arkime netbox-postgres netbox-redis netbox-redis-cache netbox netbox-worker
+	@echo ""
+	@echo "Kibana  → http://localhost:5601      ntopng → http://localhost:3001"
+	@echo "Arkime  → http://localhost:8005      NetBox → http://localhost:8000"
+	@echo "Blackbox→ http://localhost:9115      (cibles : prometheus/blackbox-targets.yml)"
+
+observability-stop:
+	docker compose stop blackbox kibana ntopng arkime netbox-worker netbox netbox-redis netbox-redis-cache netbox-postgres
+
+# Premier lancement d'Arkime : création des index ES (arkime_*). L'utilisateur
+# admin/admin est créé au démarrage du service (--add-admin) — changer le mot de
+# passe ensuite dans le viewer (Users). Répondre INIT si db.pl le demande.
+arkime-init:
+	@echo "=== Arkime : initialisation de la base (index ES arkime_*) ==="
+	docker compose run --rm arkime db.pl --wait-for-db http://127.0.0.1:9200 -- http://127.0.0.1:9200 init
 
 ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434

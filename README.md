@@ -9,7 +9,7 @@
 ---
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blueviolet.svg?style=for-the-badge)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker_Compose-14_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
+[![Docker](https://img.shields.io/badge/Docker_Compose-24_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
 [![École 2600](https://img.shields.io/badge/École_2600-SideQuest_MVP-22D3EE.svg?style=for-the-badge)](https://www.ecole2600.com)
 [![Axians](https://img.shields.io/badge/Axians-Vinci_Energies-E30613.svg?style=for-the-badge)](https://www.axians.fr)
 
@@ -112,7 +112,7 @@
 
 **NetWatch** est un NDR *(Network Detection & Response)* open-source qui reproduit les fonctionnalités clés d'outils commerciaux comme **Netscout nGeniusONE**, **Corelight** ou **Riverbed** — déployable en moins de 30 minutes sur n'importe quelle VM.
 
-La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, GoFlow2 pour la collecte NetFlow/IPFIX/sFlow, SNMP exporter pour la supervision des interfaces, une couverture de 4 référentiels de conformité, CrowdSec pour le blocage collaboratif et n8n pour l'automatisation des alertes.
+La v2 passe de 4 à **24 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, GoFlow2 pour la collecte NetFlow/IPFIX/sFlow, SNMP exporter pour la supervision des interfaces, une couverture de 4 référentiels de conformité, CrowdSec pour le blocage collaboratif et n8n pour l'automatisation des alertes.
 
 > 🎯 **Pourquoi NetWatch** — Netscout, Riverbed ou Corelight coûtent 10 000 à 100 000+ €/an et restent hors de portée des PME/TPE. NetWatch en reproduit les fonctionnalités clés (IDS multi-moteurs, NPM, Network Experience Monitoring à la Aternity, IA locale) avec des briques 100% open-source, **gratuites**, et **100% on-prem** — zéro donnée qui sort du réseau surveillé.
 
@@ -120,7 +120,7 @@ La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallè
 <tr>
 <td align="center" width="25%">🆓<br/><strong>0 €</strong><br/><sub>vs 10-100k€/an</sub></td>
 <td align="center" width="25%">🔐<br/><strong>100% on-prem</strong><br/><sub>IA locale incluse</sub></td>
-<td align="center" width="25%">⚡<br/><strong>14 services</strong><br/><sub>déployés en 30 min</sub></td>
+<td align="center" width="25%">⚡<br/><strong>24 services</strong><br/><sub>déployés en 30 min</sub></td>
 <td align="center" width="25%">📊<br/><strong>22 pages</strong><br/><sub>portail web unifié</sub></td>
 </tr>
 </table>
@@ -154,8 +154,13 @@ La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallè
 | 🎟️ | **Intégration ITSM** | Sync automatique → ServiceNow (INC) ou JIRA (NOC) via n8n |
 | 🎫 | **Ticketing automatique** | n8n → YAML ticket créé automatiquement sur alerte critique ES |
 | 📅 | **Rapport hebdomadaire** | n8n cron lundi 08h00 → agrège 7j d'alertes ES → Teams Adaptive Card |
-| ⚙️ | **Health check 14 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
-| 🗂️ | **Hostgroups** | Import CSV type NetScout, dashboards réutilisables par device/groupe (Allegro/Keysight-like) |
+| ⚙️ | **Health check 24 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
+| 📡 | **Sondes actives (Blackbox)** | HTTP · ICMP · TCP · DNS mesurés *depuis* la sonde — disponibilité et latence même sans trafic, SLA actifs sur `/sla`, triage de la home |
+| 💾 | **Full packet capture (Arkime)** | Sessions indexées dans l'ES existant, PCAP complet sur disque, extraction à la demande — le « point d'écoute » matérialisé |
+| 🧭 | **Inventaire / IPAM (NetBox)** | IP → device, site, VLAN, rôle, tenant sur le pivot `/ip/<ip>` ; import des préfixes en hostgroups |
+| 🥧 | **Visibilité applicative nDPI (ntopng)** | 300+ protocoles en temps réel — complète et valide le dictionnaire applicatif SNI |
+| 🔎 | **Exploration des logs (Kibana)** | Discover sur `zeek-*` / `suricata-*` / `snort-*` : recherche libre, pivot sur les champs |
+| 🗂️ | **Hostgroups** | Import CSV type NetScout ou préfixes NetBox, dashboards réutilisables par device/groupe (Allegro/Keysight-like) |
 | 🧩 | **Analyse PCAP conversations** | Conversations TCP par point d'écoute — octets, durée, handshake rating, retransmissions, QoS/VLAN |
 | 📄 | **Rapports planifiables** | Génération PDF à la demande + exports CSV, historique consultable sur `/reports` |
 | 🏷️ | **Dictionnaire applicatif SNI** | Classification du trafic TLS par application métier (SNI → M365, Salesforce, Slack...) — expérience applicative dérivée du réseau, sans agent poste client |
@@ -295,19 +300,47 @@ Le portail Flask (`:5050`) centralise toutes les données en une interface unifi
 | `/topology` | Carte réseau L2/L3 D3.js force-directed — routeurs, switchs, firewalls, hôtes |
 | `/hostgroups` | Import CSV type NetScout (plages, CIDR, groupes imbriqués) → filtre global + dashboard par groupe |
 | `/ip/<ip>` | Pivot device : mêmes widgets de performance qu'un hostgroup ou que la home (esprit Allegro) |
-| `/sla` · `/thresholds` | Compliance SLA HTTP/DNS/RTT, Business Hours vs Off-hours · alertes sur franchissement de seuil (métrique, portée, opérateur) |
+| `/sla` · `/thresholds` | Compliance SLA HTTP/DNS/RTT (passif) + SLA actifs Blackbox, Business Hours vs Off-hours · alertes sur franchissement de seuil (métrique, portée, opérateur) |
 | `/alerts` | Alertes en temps réel (flux SSE), sparklines, filtres moteur/sévérité |
 | `/incidents` · `/zeek` · `/geomap` | Fenêtres d'incidents 5 min + chaîne d'attaque MITRE · weird/files/x509 Zeek · carte GeoIP des menaces |
 | `/graph` | Graphe IOC D3.js interactif — IPs, règles, TTPs, enrichissement AbuseIPDB |
 | `/audit` | Constats priorisés, score de posture /100, hygiène TLS/certificats, inventaire logiciel passif |
 | `/exec` | Dashboard RSSI / direction — KPIs exécutifs, score IOC composite, escalade n8n |
 | `/report` · `/reports` | Rapport exécutif HTML imprimable · génération PDF (wkhtmltopdf) à la demande + historique |
-| `/status` · `/compliance` · `/agents` | Santé des 14 services + LLMOps · matrices NIS2/NIST/ANSSI/ISO · monitoring des agents IA |
+| `/status` · `/compliance` · `/agents` | Santé des 24 services + sondes actives + LLMOps · matrices NIS2/NIST/ANSSI/ISO · monitoring des agents IA |
 | `✨ IA` | Explication des alertes et des conversations TCP via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
 > Interface disponible en **FR / EN** (switch côté client, localStorage).
 > Design system unique dans `portal/static/css/style.css` (thème « SOC Console » sombre + variante claire, tokens → composants), assets vendorés dans `portal/static/vendor/` — **aucun CDN**, fonctionne en labo isolé.
 > Côté serveur : cache TTL sur les agrégations Elasticsearch, requêtes fusionnées (ART, TCP, SLA en une seule recherche), appels indépendants parallélisés, cache négatif Proxmox.
+
+---
+
+## Observabilité complémentaire
+
+Cinq services choisis pour combler un **trou** de la stack de base, pas pour la longueur de la liste. Tous sont liés à `localhost`, démarrés séparément du cœur (`make observability`) et intégrés au portail (health check `/status`, liens contextuels, données enrichies).
+
+| Service | Le trou qu'il comble | Où ça se voit dans le portail |
+|---|---|---|
+| **Blackbox exporter** `:9115` | NetWatch est **passif** : Zeek ne voit que le trafic qui existe. Blackbox mesure disponibilité et latence *depuis la sonde* (HTTP, ICMP, TCP, DNS). | `/sla` → « SLA actifs », `/status` → sondes, triage de la home (sonde KO = critique). Cibles dans `prometheus/blackbox-targets.yml` (rechargé à chaud). |
+| **Arkime** `:8005` | Pas de **PCAP complet** interrogeable : l'analyse tshark porte sur des fichiers déposés. Arkime capture en continu et indexe les sessions dans l'ES existant. | Bouton « Arkime » sur `/pcap-analysis`, « PCAP » sur `/ip/<ip>` (sessions filtrées sur l'adresse). Premier lancement : `make arkime-init`. |
+| **NetBox** `:8000` | Des adresses **nues** : rien ne dit qui est 10.0.3.14. NetBox est la source de vérité inventaire/IPAM. | `/ip/<ip>` → carte « Contexte NetBox » (device, site, VLAN, rôle, tenant) ; `/hostgroups` → « Importer depuis NetBox » (un groupe par préfixe). Token API v2 dans `.env` (`NETBOX_TOKEN_KEY` + `NETBOX_TOKEN`). |
+| **ntopng** `:3001` | Classification applicative limitée au SNI. nDPI reconnaît 300+ protocoles en temps réel. | Bouton « ntopng » sur `/flows`. Capture sur `IFACE` (mode `host`), Redis embarqué dans l'image. |
+| **Kibana** `:5601` | Grafana est fait pour les dashboards, pas pour **fouiller** un log. | Bouton « Kibana » sur `/zeek` (Discover). Même version qu'Elasticsearch (8.13). |
+
+```bash
+# 1. Secrets dans .env (voir .env.example : ARKIME_PASSWORD_SECRET, NETBOX_*, NETBOX_TOKEN_KEY, NETBOX_TOKEN)
+# 2. Démarrer les services complémentaires
+make observability
+# 3. Arkime uniquement, une fois : index ES + utilisateur admin
+make arkime-init
+# 4. Vérifier
+make health
+```
+
+> **Labo isolé (sans internet)** : exporter les images depuis un poste connecté — `docker save prom/blackbox-exporter:v0.25.0 docker.elastic.co/kibana/kibana:8.13.0 ntop/ntopng:stable redis:7-alpine ghcr.io/arkime/arkime/arkime:v6-latest netboxcommunity/netbox:v4.7-5.1.1 postgres:16-alpine | gzip > netwatch-observability.tar.gz` puis `docker load` sur la VM.
+
+> **Étape suivante (architecture)** : quand la stack aura une dizaine de sources, un **OpenTelemetry Collector** comme point d'entrée unique (receivers syslog/SNMP/NetFlow → processors d'enrichissement hostgroup/site → exporters ES/Prometheus) évitera de dupliquer parsing et enrichissement dans chaque pipeline. Ce n'est pas un prérequis pour les services ci-dessus.
 
 ---
 
@@ -509,6 +542,11 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | Métriques système | Prometheus + node-exporter | 2.51 / 1.7 |
 | **Collecte NetFlow/IPFIX/sFlow** | **GoFlow2** | **latest** |
 | **Supervision SNMP interfaces** | **SNMP Exporter (prom/snmp-exporter)** | **latest** |
+| Sondes actives HTTP/ICMP/TCP/DNS | Blackbox exporter | 0.25 |
+| Full packet capture indexée | Arkime | 6.x |
+| Inventaire / IPAM | NetBox (+ PostgreSQL 16, Redis 7) | 4.7 |
+| Visibilité applicative nDPI | ntopng (community) | stable |
+| Exploration des logs | Kibana | 8.13 |
 | Portail web | Flask | 3.x |
 | IA locale | Ollama / Mistral | — |
 | IPS collaboratif | CrowdSec | latest |
@@ -557,7 +595,7 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 
 ```
 netwatch/
-├── docker-compose.yml              # Orchestration 14 services
+├── docker-compose.yml              # Orchestration 24 services
 ├── .env.example                    # Template de configuration
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
 ├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch

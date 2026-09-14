@@ -4,6 +4,11 @@
 
 {% block topbar_actions %}
 <span class="text-muted small">weird · files · x509</span>
+{% if tool_urls.kibana %}
+<a href="{{ tool_urls.kibana | browser_url }}/app/discover" target="_blank" class="btn btn-sm btn-outline-secondary" title="Recherche libre dans les logs Zeek / IDS (Kibana Discover)">
+  <i class="bi bi-search me-1"></i>Kibana
+</a>
+{% endif %}
 <span class="badge bg-dark border text-muted">
   <i class="bi bi-arrow-repeat me-1"></i>live Zeek
 </span>

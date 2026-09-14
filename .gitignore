@@ -1,6 +1,9 @@
 # Données
 pcap/*.pcap
 pcap/*.pcapng
+# Arkime : PCAP bruts (volumineux)
+arkime/raw/*
+!arkime/raw/.gitkeep
 portal/data/
 reports/*.pdf
 reports/index.json

@@ -32,6 +32,8 @@ from netwatch.experience import app_dictionary as nw_app_dictionary
 from netwatch import llmops as nw_llmops
 from netwatch import thresholds as nw_thresholds
 from netwatch import dashboard_layout as nw_dashboard_layout
+from netwatch import probes as nw_probes
+from netwatch import netbox as nw_netbox
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -556,6 +558,14 @@ def _inject_globals():
         "range_days":        max(1, min(30, range_hours // 24 or 1)),
         "range_label":       RANGE_LABELS[range_key],
         "range_options":     [(k, RANGE_LABELS[k]) for k in RANGES],
+        # Outils complémentaires (liens externes du menu / boutons contextuels)
+        "tool_urls": {
+            "kibana": config.NETWATCH_KIBANA_URL,
+            "ntopng": config.NETWATCH_NTOPNG_URL,
+            "arkime": config.NETWATCH_ARKIME_URL,
+            "netbox": config.NETWATCH_NETBOX_URL,
+        },
+        "netbox_enabled": nw_netbox.configured(),
     }
 
 
@@ -626,7 +636,7 @@ def _safe(fn, default):
         return default
 
 
-def _triage(alert_stats, perf, services, sla, breaches):
+def _triage(alert_stats, perf, services, sla, breaches, probes=None):
     """
     Bandeau de triage de la home : liste des points qui demandent attention,
     triés par gravité, chacun avec un lien vers la page de diagnostic.
@@ -638,13 +648,25 @@ def _triage(alert_stats, perf, services, sla, breaches):
     def add(level, icon, text, href):
         items.append({"level": level, "icon": icon, "text": text, "href": href})
 
-    # Services
-    down     = [s["name"] for s in services if s["status"] == "down"]
+    # Services — un service optionnel (Kibana, ntopng…) absent n'est qu'un avertissement
+    down     = [s["name"] for s in services if s["status"] == "down" and not s.get("optional")]
+    opt_down = [s["name"] for s in services if s["status"] == "down" and s.get("optional")]
     degraded = [s["name"] for s in services if s["status"] == "degraded"]
     if down:
         add("crit", "bi-x-octagon", f"{', '.join(down)} : indisponible", url_for("status"))
     if degraded:
         add("warn", "bi-exclamation-triangle", f"{', '.join(degraded)} : dégradé", url_for("status"))
+    if opt_down:
+        add("warn", "bi-plug", f"{', '.join(opt_down)} : non démarré (optionnel)", url_for("status"))
+
+    # Sondes actives Blackbox — une cible injoignable est un fait mesuré, pas une supposition
+    for p in (probes or []):
+        if not p["up"]:
+            add("crit", "bi-broadcast", f"Sonde KO : {p['name']} ({p['module']})", url_for("sla") + "#probes")
+    for p in (probes or []):
+        av = p.get("availability_pct")
+        if p["up"] and av is not None and av < 99:
+            add("warn", "bi-broadcast", f"Disponibilité {av} % : {p['name']}", url_for("sla") + "#probes")
 
     # Alertes IDS
     stats = alert_stats or {}
@@ -712,13 +734,14 @@ def dashboard():
     _, hours = _range()
     sla_days = max(1, min(30, hours // 24 or 1))
     ((recent_alerts, _), (alert_stats, _), perf, (services, global_status),
-     (sla, _), (breaches, _)) = es_client.run_parallel(
+     (sla, _), (breaches, _), (probes, _)) = es_client.run_parallel(
         lambda: es_client.get_recent_alerts(size=8),
         lambda: es_client.get_alert_stats(hours=hours),
         lambda: _perf_dashboard(talkers_size=8, hours=hours),
         _check_health,
         lambda: _safe(lambda: es_client.get_sla_stats(days=sla_days), ({}, None)),
         lambda: _safe(nw_thresholds.evaluate, ([], None)),
+        lambda: _safe(lambda: nw_probes.get_probes(hours=hours), ([], None)),
     )
     pcap_points, pcap_top = _pcap_overview()
     return render_template(
@@ -730,7 +753,8 @@ def dashboard():
         global_status=global_status,
         pcap_points=pcap_points,
         pcap_top=pcap_top,
-        triage=_triage(alert_stats, perf, services, sla, breaches),
+        probes_summary=nw_probes.summarize(probes),
+        triage=_triage(alert_stats, perf, services, sla, breaches, probes),
     )
 
 
@@ -883,13 +907,23 @@ def deploy(px, tool_id):
 
 
 def _check_health():
-    """Health check de tous les services (ES, Grafana, Prometheus, AutoBlock, Ollama)."""
+    """Health check de tous les services : cœur (ES, Grafana, Prometheus,
+    AutoBlock, Ollama) + complémentaires optionnels (Blackbox, Kibana, ntopng,
+    Arkime, NetBox) quand leur URL est configurée."""
     return nw_health.check_all(
         es_url         = config.NETWATCH_ES_URL,
         grafana_url    = config.NETWATCH_GRAFANA_URL,
         prometheus_url = config.NETWATCH_PROMETHEUS_URL,
         autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
         ollama_url     = config.OLLAMA_URL,
+        extra          = nw_health.extra_checks(
+            blackbox_url = config.NETWATCH_BLACKBOX_URL,
+            kibana_url   = config.NETWATCH_KIBANA_URL,
+            ntopng_url   = config.NETWATCH_NTOPNG_URL,
+            arkime_url   = config.NETWATCH_ARKIME_URL,
+            netbox_url   = config.NETWATCH_NETBOX_URL,
+            netbox_auth  = nw_netbox.auth_header(),
+        ),
     )
 
 
@@ -910,17 +944,21 @@ def _proxmox_snapshot(px, with_vms=False):
 @login_required
 def status():
     px = get_proxmox()
-    # Health checks HTTP, Proxmox et stats LLMOps : indépendants → en parallèle
-    (services, global_status), (node_status, _), (llmops_stats, _) = es_client.run_parallel(
+    # Health checks HTTP, Proxmox, stats LLMOps, sondes actives : indépendants → en parallèle
+    (services, global_status), (node_status, _), (llmops_stats, _), (probes, probes_err) = es_client.run_parallel(
         _check_health,
         lambda: _proxmox_snapshot(px),
         lambda: nw_llmops.get_llmops_stats(days=7),
+        lambda: _safe(lambda: nw_probes.get_probes(hours=_range()[1]), ([], None)),
     )
 
     return render_template(
         "status.html",
         services=services,
         global_status=global_status,
+        probes=probes,
+        probes_err=probes_err,
+        probes_summary=nw_probes.summarize(probes),
         node_status=node_status,
         proxmox_ok=(px is not None),
         proxmox_configured=bool(config.PROXMOX_HOST),
@@ -1436,6 +1474,23 @@ def api_hostgroups_import():
     return jsonify({"imported": len(parsed), "groups": sorted(parsed.keys())})
 
 
+@app.route("/api/hostgroups/import-netbox", methods=["POST"])
+@login_required
+def api_hostgroups_import_netbox():
+    """Préfixes IPAM NetBox → hostgroups (un groupe par préfixe actif)."""
+    prefixes, err = nw_netbox.list_prefixes()
+    if err:
+        return jsonify({"error": err}), 503
+    parsed = nw_netbox.prefixes_to_hostgroups(prefixes)
+    if not parsed:
+        return jsonify({"error": "Aucun préfixe actif dans NetBox"}), 404
+    existing = nw_hostgroups.load()
+    existing.update(parsed)
+    nw_hostgroups.save(existing)
+    flash(f"{len(parsed)} groupe(s) importé(s) depuis NetBox.", "success")
+    return jsonify({"imported": len(parsed), "groups": sorted(parsed.keys())})
+
+
 @app.route("/api/hostgroups/<path:name>", methods=["DELETE"])
 @login_required
 def api_hostgroups_delete(name):
@@ -1594,13 +1649,14 @@ def _perf_dashboard(ip=None, ranges=None, talkers_size=10, hours=24):
 @login_required
 def ip_detail(ip):
     _, hours = _range()
-    (alerts_list, conn_stats, error), dashboard = es_client.run_parallel(
+    (alerts_list, conn_stats, error), dashboard, (netbox_ctx, netbox_err) = es_client.run_parallel(
         lambda: es_client.get_ip_events(ip),
         lambda: _perf_dashboard(ip=ip, hours=hours),
+        lambda: _safe(lambda: nw_netbox.lookup_ip(ip), (None, None)),
     )
     return render_template("ip_detail.html", ip=ip,
                            alerts=alerts_list, conn=conn_stats, error=error,
-                           dashboard=dashboard)
+                           dashboard=dashboard, netbox=netbox_ctx, netbox_err=netbox_err)
 
 
 @app.route("/hostgroups/<path:name>/dashboard")
@@ -1852,7 +1908,10 @@ def sla():
     """Page SLA Compliance — gauges, timeline, analyse Business Hours.
     Fenêtre = plage globale en jours (défaut historique 7 j si aucune plage choisie)."""
     days = _range_days(default=7)
-    sla_data, es_error = es_client.get_sla_stats(days=days)
+    (sla_data, es_error), (probes, probes_err) = es_client.run_parallel(
+        lambda: es_client.get_sla_stats(days=days),
+        lambda: _safe(lambda: nw_probes.get_probes(hours=days * 24), ([], None)),
+    )
     no_data = all(s["buckets_total"] == 0 for s in sla_data.get("slas", []))
     return render_template(
         "sla.html",
@@ -1860,6 +1919,9 @@ def sla():
         no_data   = no_data,
         days      = days,
         error     = es_error,
+        probes    = probes,
+        probes_err = probes_err,
+        probes_summary = nw_probes.summarize(probes),
     )
 
 

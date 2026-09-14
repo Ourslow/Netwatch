@@ -1,0 +1,23 @@
+# Cibles des sondes actives Blackbox (file_sd — rechargé par Prometheus toutes
+# les 30 s, pas de redémarrage nécessaire). Une entrée = { targets, labels }.
+#   module : http_2xx | http_alive | icmp | tcp_connect | dns_a  (cf. blackbox/blackbox.yml)
+#   name   : libellé affiché dans le portail (/sla, /status, triage de la home)
+# Depuis le conteneur Blackbox, l'hôte Docker = host.docker.internal.
+
+# ── Services NetWatch (auto-surveillance) ──
+- targets: ["http://host.docker.internal:5050/login"]
+  labels: { module: http_alive, name: "Portail NetWatch", group: netwatch }
+- targets: ["http://grafana:3000/api/health"]
+  labels: { module: http_2xx, name: "Grafana", group: netwatch }
+- targets: ["http://elasticsearch:9200/_cluster/health"]
+  labels: { module: http_2xx, name: "Elasticsearch", group: netwatch }
+
+# ── Réseau surveillé — À ADAPTER : passerelle, DNS interne, serveurs critiques ──
+- targets: ["192.168.1.1"]
+  labels: { module: icmp, name: "Passerelle LAN", group: reseau }
+- targets: ["192.168.1.1"]
+  labels: { module: dns_a, name: "Résolveur DNS interne", group: reseau }
+- targets: ["1.1.1.1"]
+  labels: { module: icmp, name: "Internet (1.1.1.1)", group: internet }
+- targets: ["https://www.google.com"]
+  labels: { module: http_2xx, name: "Sortie web (google.com)", group: internet }

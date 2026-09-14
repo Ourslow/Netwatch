@@ -187,6 +187,17 @@
           <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.65rem;opacity:.5"></i>
         </a>
       </li>
+      {# Outils complémentaires — liens externes, affichés si l'URL est configurée #}
+      {% for key, label, icon in [('kibana','Kibana','bi-search'), ('ntopng','ntopng','bi-pie-chart'), ('arkime','Arkime','bi-hdd-stack-fill'), ('netbox','NetBox','bi-diagram-3')] %}
+      {% if tool_urls[key] %}
+      <li class="nav-item">
+        <a href="{{ tool_urls[key] | browser_url }}" target="_blank" class="nav-link">
+          <i class="bi {{ icon }}"></i> <span>{{ label }}</span>
+          <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.65rem;opacity:.5"></i>
+        </a>
+      </li>
+      {% endif %}
+      {% endfor %}
       <li class="nav-item">
         <a href="{{ url_for('vms') }}" class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
           <i class="bi bi-hdd-stack"></i> <span data-i18n="nav_vms">Machines virtuelles</span>
@@ -374,6 +385,11 @@
     { icon: 'bi-bar-chart-steps',        label: 'Comparaison',               url: '/compare',          hint: 'OS vs Commercial' },
     { icon: 'bi-clipboard2-check',       label: 'Conformité',                url: '/compliance',       hint: 'NIS2 · NIST · ISO' },
     { icon: 'bi-robot',                  label: 'Agents IA',                 url: '/agents',           hint: 'Statut des agents' },
+    { icon: 'bi-bar-chart-fill',         label: 'Grafana',                   url: '{{ grafana_url | browser_url }}', hint: 'Dashboards · alerting', blank: true },
+    {% if tool_urls.kibana %}{ icon: 'bi-search',        label: 'Kibana',  url: '{{ tool_urls.kibana | browser_url }}/app/discover', hint: 'Explorer les logs Zeek / IDS', blank: true },{% endif %}
+    {% if tool_urls.ntopng %}{ icon: 'bi-pie-chart',     label: 'ntopng',  url: '{{ tool_urls.ntopng | browser_url }}', hint: 'Visibilité applicative nDPI', blank: true },{% endif %}
+    {% if tool_urls.arkime %}{ icon: 'bi-hdd-stack-fill', label: 'Arkime', url: '{{ tool_urls.arkime | browser_url }}', hint: 'Full packet capture · sessions', blank: true },{% endif %}
+    {% if tool_urls.netbox %}{ icon: 'bi-diagram-3',     label: 'NetBox',  url: '{{ tool_urls.netbox | browser_url }}', hint: 'Inventaire · IPAM', blank: true },{% endif %}
   ];
   var IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
   var overlay = document.getElementById('cmd-overlay');

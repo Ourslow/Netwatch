@@ -154,6 +154,53 @@
 </div>
 
 {# ══════════════════════════════════════════════════════════════════════
+   Section 3b — SLA actifs (sondes Blackbox : disponibilité mesurée depuis la sonde)
+   ══════════════════════════════════════════════════════════════════════ #}
+<div class="card mb-4" id="probes">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-broadcast me-2"></i>SLA actifs — sondes Blackbox <span class="hint">· disponibilité sur {{ days }} j · latence instantanée</span></span>
+    {% if probes %}
+    <span class="badge {% if probes_summary.down %}bg-danger{% else %}bg-success{% endif %}">{{ probes_summary.up }} / {{ probes_summary.total }} UP</span>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if probes %}
+    <table class="table table-hover align-middle mb-0" data-nw-table>
+      <thead>
+        <tr>
+          <th class="ps-4">Cible</th>
+          <th>Type</th>
+          <th class="text-end">Latence</th>
+          <th class="text-end" data-desc>Disponibilité</th>
+          <th style="min-width:140px" data-nosort>Barre</th>
+          <th class="pe-4">Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in probes %}
+        {% set av = p.availability_pct %}
+        {% set tone = 'ok' if (av is not none and av >= sla_data.slas[0].target_pct if sla_data.slas else av >= 99) else ('warn' if (av is not none and av >= 95) else 'crit') %}
+        <tr>
+          <td class="ps-4"><b>{{ p.name }}</b> <span class="hint fw-mono">{{ p.target }}</span></td>
+          <td><span class="badge bg-dark">{{ p.module }}</span></td>
+          <td class="text-end tnum">{{ p.latency_ms if p.latency_ms is not none else '—' }} ms</td>
+          <td class="text-end fw-bold tone-text-{{ tone }}" data-sort="{{ av or 0 }}">{{ av if av is not none else '—' }} %</td>
+          <td><div class="compliance-bar"><div class="compliance-bar-fill fill-{{ tone }}" style="width:{{ av or 0 }}%"></div></div></td>
+          <td class="pe-4">{% if p.up %}<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>UP</span>{% else %}<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>DOWN</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state py-4">
+      <i class="bi bi-broadcast empty-icon"></i>
+      <div class="small">{% if probes_err %}{{ probes_err }}{% else %}Aucune sonde active — démarrer le service <code>blackbox</code> et déclarer des cibles dans <code>prometheus/blackbox-targets.yml</code>.{% endif %}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════
    Section 4 — Business Hours vs Off-hours (côte à côte)
    ══════════════════════════════════════════════════════════════════════ #}
 <div class="row g-4">

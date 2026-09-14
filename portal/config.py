@@ -45,6 +45,19 @@ NETWATCH_GRAFANA_URL    = os.getenv("NETWATCH_GRAFANA_URL",    "http://localhost
 NETWATCH_PROMETHEUS_URL = os.getenv("NETWATCH_PROMETHEUS_URL", "http://localhost:9090")
 NETWATCH_AUTOBLOCK_URL  = os.getenv("NETWATCH_AUTOBLOCK_URL",  "http://localhost:5001")
 
+# Services d'observabilité complémentaires — chaîne vide = désactivé (pas de
+# check /status, pas de lien dans le menu). Défauts = stack docker-compose locale.
+NETWATCH_BLACKBOX_URL = os.getenv("NETWATCH_BLACKBOX_URL", "http://localhost:9115")
+NETWATCH_KIBANA_URL   = os.getenv("NETWATCH_KIBANA_URL",   "http://localhost:5601")
+NETWATCH_NTOPNG_URL   = os.getenv("NETWATCH_NTOPNG_URL",   "http://localhost:3001")
+NETWATCH_ARKIME_URL   = os.getenv("NETWATCH_ARKIME_URL",   "http://localhost:8005")
+NETWATCH_NETBOX_URL   = os.getenv("NETWATCH_NETBOX_URL",   "http://localhost:8000")
+# API NetBox (enrichissement IP, import préfixes). Token v2 (NetBox ≥ 4.6) = KEY (12) + TOKEN (40)
+# → « Bearer nbt_KEY.TOKEN » ; sans KEY, NETBOX_TOKEN est traité comme token v1 (« Token … »)
+# ou comme token v2 complet s'il commence par nbt_.
+NETBOX_TOKEN_KEY      = os.getenv("NETBOX_TOKEN_KEY", "")
+NETBOX_TOKEN          = os.getenv("NETBOX_TOKEN", "")
+
 # Assistant IA local (Ollama) — explication des alertes, résumé exécutif
 # 100% on-prem, aucune donnée envoyée hors du SI
 OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")

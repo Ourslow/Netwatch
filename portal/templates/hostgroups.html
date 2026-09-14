@@ -26,6 +26,12 @@
       <button type="submit" class="btn btn-sm btn-primary">
         <i class="bi bi-upload me-1"></i><span data-i18n="hostgroup_import_btn">Importer</span>
       </button>
+      {% if netbox_enabled %}
+      <span class="text-dim small mx-1">ou</span>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="hg-netbox-btn" title="Un hostgroup par préfixe IPAM actif (nom = description du préfixe ou site · préfixe)">
+        <i class="bi bi-diagram-3 me-1"></i>Importer depuis NetBox
+      </button>
+      {% endif %}
       <span id="hg-import-status" class="small"></span>
     </form>
   </div>
@@ -91,6 +97,20 @@
 (function () {
   var form   = document.getElementById('hg-import-form');
   var status = document.getElementById('hg-import-status');
+
+  /* Import des préfixes IPAM NetBox → hostgroups */
+  var nbBtn = document.getElementById('hg-netbox-btn');
+  if (nbBtn) nbBtn.addEventListener('click', function () {
+    nbBtn.disabled = true;
+    status.textContent = 'Lecture des préfixes NetBox…';
+    fetch('/api/hostgroups/import-netbox', { method: 'POST' })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) { status.textContent = res.d.error || 'Erreur'; status.className = 'small text-danger'; nbBtn.disabled = false; return; }
+        window.location.reload();
+      })
+      .catch(function () { status.textContent = 'Erreur réseau'; status.className = 'small text-danger'; nbBtn.disabled = false; });
+  });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();

@@ -221,6 +221,11 @@
       {% for svc in services %}
       <span class="svc-strip-item"><span class="dot-state {{ svc.status }}"></span>{{ svc.name }}{% if svc.latency is not none %} <span class="text-dim tnum">{{ svc.latency }} ms</span>{% endif %}</span>
       {% endfor %}
+      {% if probes_summary and probes_summary.total %}
+      <a href="{{ url_for('sla') }}#probes" class="svc-strip-item" title="Sondes actives Blackbox">
+        <span class="dot-state {{ 'crit' if probes_summary.down else 'ok' }}"></span>Sondes {{ probes_summary.up }}/{{ probes_summary.total }}
+      </a>
+      {% endif %}
       <a href="{{ url_for('status') }}" class="ms-auto text-muted" style="font-size:.75rem"><i class="bi bi-arrow-right me-1"></i><span data-i18n="dash_detail">Détail</span></a>
     </div>
   </div>

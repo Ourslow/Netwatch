@@ -147,6 +147,7 @@ services:
     container_name: netwatch-prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/blackbox-targets.yml:/etc/prometheus/blackbox-targets.yml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     command:
@@ -316,7 +317,222 @@ services:
     # Première utilisation : docker exec netwatch-ollama ollama pull mistral
     restart: unless-stopped
 
+  # ============================================================
+  # SONDES ACTIVES (Blackbox exporter — HTTP / ICMP / TCP / DNS)
+  # Comble l'angle mort passif : mesure disponibilité + latence DEPUIS la sonde.
+  # Cibles : prometheus/blackbox-targets.yml · modules : blackbox/blackbox.yml
+  # ============================================================
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: netwatch-blackbox
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    cap_add:
+      - NET_RAW            # ICMP
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:9115:9115"
+    restart: unless-stopped
+
+  # ============================================================
+  # EXPLORATION DES LOGS (Kibana — Discover sur zeek-* / suricata-* / snort-*)
+  # Grafana pour les dashboards, Kibana pour fouiller : recherche libre,
+  # pivot sur les champs, visualisation d'un document brut.
+  # ============================================================
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: netwatch-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_PUBLICBASEURL=http://localhost:5601
+      - TELEMETRY_ENABLED=false
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-netwatch-kibana-encryption-key-32chars!!}
+    ports:
+      - "127.0.0.1:5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================================
+  # VISIBILITÉ APPLICATIVE nDPI (ntopng — 300+ protocoles, temps réel)
+  # Complète / valide le dictionnaire applicatif SNI du portail.
+  # Capture sur l'hôte (network_mode host) → interface web sur :3001
+  # (3000 est pris par Grafana). L'image embarque son propre Redis.
+  # Pas de cap_drop ALL : l'entrypoint doit chown ses répertoires avant de
+  # passer à l'utilisateur ntopng.
+  # ============================================================
+
+  ntopng:
+    image: ntop/ntopng:latest      # seul tag publié sur Docker Hub (pas de 'stable')
+    container_name: netwatch-ntopng
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    command:
+      - "--interface=${IFACE:-eth0}"
+      - "--http-port=127.0.0.1:3001"
+      - "--disable-login=1"          # labo : pas d'auth (lié à localhost) — retirer en prod
+      - "--community"
+    volumes:
+      - ntopng-data:/var/lib/ntopng
+    restart: unless-stopped
+
+  # ============================================================
+  # FULL PACKET CAPTURE INDEXÉE (Arkime — ex-Moloch)
+  # Matérialise la notion de « point d'écoute » : sessions indexées dans l'ES
+  # existant, PCAP complet sur disque, extraction à la demande depuis le viewer
+  # (:8005). Capture sur l'hôte → network_mode host, ES via 127.0.0.1:9200.
+  # Premier lancement : `make arkime-init` (init de la base + admin), puis `make start`.
+  # Dimensionner le disque : ./arkime/raw (PCAP) — voir ARKIME_MAX_DISK dans .env.
+  # ============================================================
+
+  arkime:
+    image: ghcr.io/arkime/arkime/arkime:v6-latest
+    container_name: netwatch-arkime
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+    environment:
+      - ARKIME__elasticsearch=http://127.0.0.1:9200
+      - ARKIME__interface=${IFACE:-eth0}
+      - ARKIME__passwordSecret=${ARKIME_PASSWORD_SECRET:?ARKIME_PASSWORD_SECRET manquant dans .env}
+      - ARKIME__pcapDir=/opt/arkime/raw
+      - ARKIME__maxFileSizeG=2
+      - ARKIME__freeSpaceG=${ARKIME_FREE_SPACE_G:-10%}
+      - ARKIME__viewPort=8005
+      - ARKIME__viewHost=127.0.0.1
+      - ARKIME__plugins=
+    # L'image n'a pas d'entrypoint : docker.sh <mode> [options] génère config.ini
+    # depuis les ARKIME__* puis lance capture + viewer. --update-geo télécharge
+    # OUI / RIR / GeoIP au démarrage (sans quoi capture refuse de démarrer) —
+    # en labo isolé, copier les fichiers dans le volume arkime-etc. --add-admin
+    # est idempotent (admin/admin si absent — changer le mot de passe dans le viewer).
+    entrypoint: ["/opt/arkime/bin/docker.sh"]
+    command: ["capture-viewer", "--wait-for-db", "http://127.0.0.1:9200", "--update-geo", "--add-admin", "--forever"]
+    volumes:
+      - ./arkime/raw:/opt/arkime/raw
+      - arkime-etc:/opt/arkime/etc
+      - ./pcap:/pcap:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================================
+  # SOURCE DE VÉRITÉ INVENTAIRE / IPAM (NetBox)
+  # Enrichit le portail : IP → site, rôle, VLAN, propriétaire ; import des
+  # préfixes en hostgroups. API sur :8000, token dans .env (NETBOX_TOKEN).
+  # ============================================================
+
+  netbox-postgres:
+    image: postgres:16-alpine
+    container_name: netwatch-netbox-postgres
+    environment:
+      - POSTGRES_DB=netbox
+      - POSTGRES_USER=netbox
+      - POSTGRES_PASSWORD=${NETBOX_DB_PASSWORD:?NETBOX_DB_PASSWORD manquant dans .env}
+    volumes:
+      - netbox-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netbox -d netbox"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  netbox-redis:
+    image: redis:7-alpine
+    container_name: netwatch-netbox-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${NETBOX_REDIS_PASSWORD:?NETBOX_REDIS_PASSWORD manquant dans .env}"]
+    volumes:
+      - netbox-redis-data:/data
+    restart: unless-stopped
+
+  netbox-redis-cache:
+    image: redis:7-alpine
+    container_name: netwatch-netbox-redis-cache
+    command: ["redis-server", "--requirepass", "${NETBOX_REDIS_PASSWORD}"]
+    restart: unless-stopped
+
+  netbox:
+    image: netboxcommunity/netbox:v4.7-5.1.1
+    container_name: netwatch-netbox
+    environment: &netbox-env
+      - DB_HOST=netbox-postgres
+      - DB_NAME=netbox
+      - DB_USER=netbox
+      - DB_PASSWORD=${NETBOX_DB_PASSWORD}
+      - REDIS_HOST=netbox-redis
+      - REDIS_PASSWORD=${NETBOX_REDIS_PASSWORD}
+      - REDIS_DATABASE=0
+      - REDIS_CACHE_HOST=netbox-redis-cache
+      - REDIS_CACHE_PASSWORD=${NETBOX_REDIS_PASSWORD}
+      - REDIS_CACHE_DATABASE=1
+      - SECRET_KEY=${NETBOX_SECRET_KEY:?NETBOX_SECRET_KEY manquant dans .env (50 caractères min)}
+      - ALLOWED_HOSTS=*
+      - CORS_ORIGIN_ALLOW_ALL=True
+      - SKIP_SUPERUSER=false
+      - SUPERUSER_NAME=${NETBOX_SUPERUSER_NAME:-admin}
+      - SUPERUSER_EMAIL=${NETBOX_SUPERUSER_EMAIL:-admin@netwatch.local}
+      - SUPERUSER_PASSWORD=${NETBOX_SUPERUSER_PASSWORD:?NETBOX_SUPERUSER_PASSWORD manquant dans .env}
+      # Token API v2 (NetBox ≥ 4.6) = identifiant public (12 alnum) + secret (40 alnum).
+      # Le portail envoie « Authorization: Bearer nbt_<KEY>.<TOKEN> ».
+      - SUPERUSER_API_KEY=${NETBOX_TOKEN_KEY:?NETBOX_TOKEN_KEY manquant dans .env (12 caractères alphanumériques)}
+      - SUPERUSER_API_TOKEN=${NETBOX_TOKEN:?NETBOX_TOKEN manquant dans .env (40 caractères alphanumériques)}
+      - METRICS_ENABLED=true
+      - GRAPHQL_ENABLED=false
+      - RELEASE_CHECK_URL=
+    volumes:
+      - netbox-media:/opt/netbox/netbox/media
+      - netbox-reports:/opt/netbox/netbox/reports
+      - netbox-scripts:/opt/netbox/netbox/scripts
+    ports:
+      - "127.0.0.1:8000:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/login/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    depends_on:
+      netbox-postgres:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_started
+      netbox-redis-cache:
+        condition: service_started
+    restart: unless-stopped
+
+  netbox-worker:
+    image: netboxcommunity/netbox:v4.7-5.1.1
+    container_name: netwatch-netbox-worker
+    command: ["/opt/netbox/venv/bin/python", "/opt/netbox/netbox/manage.py", "rqworker"]
+    environment: *netbox-env
+    volumes:
+      - netbox-media:/opt/netbox/netbox/media
+      - netbox-reports:/opt/netbox/netbox/reports
+      - netbox-scripts:/opt/netbox/netbox/scripts
+    depends_on:
+      netbox:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
+  ntopng-data:
+  arkime-etc:
+  netbox-postgres-data:
+  netbox-redis-data:
+  netbox-media:
+  netbox-reports:
+  netbox-scripts:
   zeek-logs:
   snort-logs:
   suricata-logs:
