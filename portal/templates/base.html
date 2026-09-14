@@ -242,6 +242,14 @@
         </a>
         {% endif %}
         {% block topbar_actions %}{% endblock %}
+        {# Plage temporelle globale — cookie nw_range lu côté serveur par toutes
+           les routes/API (home, flux, KPIs, widgets de perf) #}
+        <div class="range-select" id="range-select" role="group" title="Plage temporelle">
+          <i class="bi bi-clock-history"></i>
+          {% for key, label in range_options %}
+          <button type="button" data-range="{{ key }}" class="{% if key == current_range %}active{% endif %}">{{ label }}</button>
+          {% endfor %}
+        </div>
         {# Filtre global par hostgroup — rendu côté serveur (context processor),
            plus de fetch /api/hostgroups à chaque page #}
         <select id="hostgroup-filter" class="form-select form-select-sm" style="width:auto;max-width:220px"
@@ -477,6 +485,20 @@
   }
   updateBadge();
   setInterval(updateBadge, 60000);
+})();
+
+// ── Plage temporelle globale : cookie + rechargement (toutes les routes la lisent) ──
+(function () {
+  var box = document.getElementById('range-select');
+  if (!box) return;
+  box.querySelectorAll('button[data-range]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.cookie = 'nw_range=' + b.dataset.range + ';path=/;max-age=31536000;SameSite=Lax';
+      var url = new URL(window.location.href);
+      url.searchParams.delete('range');
+      window.location.href = url.toString();
+    });
+  });
 })();
 
 // ── Filtre global par hostgroup (sélecteur topbar, options rendues côté serveur) ──

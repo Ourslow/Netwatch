@@ -480,6 +480,31 @@ body.nav-rail .nav-rail-btn .bi { transform: rotate(180deg); }
 
 .content-area { max-width: var(--content-max); }
 
+/* Sélecteur de plage temporelle (topbar) — segmented control */
+.range-select {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: var(--r-pill); padding: 2px 4px 2px 8px;
+}
+.range-select > .bi { color: var(--text-dim); font-size: .75rem; margin-right: .2rem; }
+.range-select button {
+  background: none; border: 0; color: var(--text-muted);
+  font-size: .72rem; font-weight: 600; padding: .2rem .55rem;
+  border-radius: var(--r-pill); cursor: pointer; line-height: 1.2;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.range-select button:hover { color: var(--text-strong); }
+.range-select button.active { background: var(--accent-soft); color: var(--accent-bright); }
+
+/* Tendance sous un KPI (vs période précédente) */
+.kpi-delta { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 600; }
+.kpi-delta.up   { color: var(--crit); }     /* hausse = à surveiller (alertes, trafic) */
+.kpi-delta.down { color: var(--ok); }
+.kpi-delta.flat { color: var(--text-dim); }
+.kpi-delta.good.up   { color: var(--ok); }  /* hausse souhaitable (services, score) */
+.kpi-delta.good.down { color: var(--crit); }
+.kpi-delta .kpi-delta-ref { color: var(--text-dim); font-weight: 500; }
+
 /* Puce « live » réutilisable */
 .live-pill {
   display: inline-flex;

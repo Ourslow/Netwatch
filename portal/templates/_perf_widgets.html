@@ -37,7 +37,7 @@
         <div class="kv"><span class="kv-label">RTT moyen / p95</span>
           <span class="kv-value">{{ tcp.avg_rtt_ms if tcp.avg_rtt_ms is not none else '—' }} / {{ tcp.p95_rtt_ms if tcp.p95_rtt_ms is not none else '—' }} ms</span></div>
         {% set zwp = tcp.zero_window_pct or 0 %}
-        <div class="kv"><span class="kv-label">Zero-windows (24h)</span>
+        <div class="kv"><span class="kv-label">Zero-windows ({{ range_label }})</span>
           <span class="kv-value {% if zwp > 3 %}text-danger{% elif zwp > 0 %}text-warning{% endif %}">{{ zwp }} % <span class="hint">({{ tcp.zero_windows_count }})</span></span></div>
         {% if tcp.top_retransmit_ips %}
         <div class="kpi-label mt-3 mb-1">Top retransmissions</div>

@@ -77,16 +77,18 @@
       "nav_app_map":       "Dépendances",
       "nav_thresholds":    "Seuils",
       "live_30s":          "live 30 s",
+      "vs_prev":           "vs période précédente",
+      "delta_new":         "nouveau",
       /* Home observabilité */
-      "dash_traffic":      "Trafic 24h",
+      "dash_traffic":      "Trafic",
       "dash_traffic_sub":  "volume observé",
-      "dash_alerts_24h":   "Alertes 24h",
+      "dash_alerts_24h":   "Alertes",
       "dash_critical_7d":  "critiques · 7 j",
       "dash_rtt":          "RTT moyen",
-      "dash_zw_sub":       "connexions TCP saturées",
+      "dash_zw_sub":       "des connexions TCP",
       "dash_services":     "Services",
       "dash_services_sub": "stack NetWatch · détail",
-      "dash_volume":       "Volume réseau · 24 h",
+      "dash_volume":       "Volume réseau",
       "dash_no_flows":     "Aucun flux sur 24 h — Zeek silencieux ou Elasticsearch vide",
       "dash_listening_points": "Points d'écoute PCAP",
       "dash_top_conversations": "Top conversations (octets)",
@@ -226,16 +228,18 @@
       "nav_app_map":       "Dependencies",
       "nav_thresholds":    "Thresholds",
       "live_30s":          "live 30 s",
+      "vs_prev":           "vs previous period",
+      "delta_new":         "new",
       /* Observability home */
-      "dash_traffic":      "Traffic 24h",
+      "dash_traffic":      "Traffic",
       "dash_traffic_sub":  "observed volume",
-      "dash_alerts_24h":   "Alerts 24h",
+      "dash_alerts_24h":   "Alerts",
       "dash_critical_7d":  "critical · 7 d",
       "dash_rtt":          "Avg RTT",
-      "dash_zw_sub":       "saturated TCP connections",
+      "dash_zw_sub":       "of TCP connections",
       "dash_services":     "Services",
       "dash_services_sub": "NetWatch stack · details",
-      "dash_volume":       "Network volume · 24 h",
+      "dash_volume":       "Network volume",
       "dash_no_flows":     "No flows in 24 h — Zeek silent or Elasticsearch empty",
       "dash_listening_points": "PCAP listening points",
       "dash_top_conversations": "Top conversations (bytes)",
@@ -478,6 +482,28 @@
     Chart.defaults.borderColor = NW.cssVar("--grid-line", "rgba(30,42,60,.7)");
   }
 
+  /* Tendance vs période précédente → HTML d'une .kpi-delta.
+     cur/prev : valeurs ; opts.good = true si une hausse est souhaitable. */
+  NW.deltaHtml = function (cur, prev, opts) {
+    opts = opts || {};
+    cur = Number(cur) || 0; prev = Number(prev) || 0;
+    var ref = '<span class="kpi-delta-ref">' + NW.t("vs_prev") + '</span>';
+    if (!prev && !cur) return '<span class="kpi-delta flat">— ' + ref + '</span>';
+    if (!prev) return '<span class="kpi-delta flat">' + NW.t("delta_new") + ' ' + ref + '</span>';
+    var pct = Math.round((cur - prev) / prev * 100);
+    if (Math.abs(pct) < 1) return '<span class="kpi-delta flat"><i class="bi bi-dash"></i>0 % ' + ref + '</span>';
+    var dir = pct > 0 ? 'up' : 'down';
+    var icon = pct > 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right';
+    return '<span class="kpi-delta ' + dir + (opts.good ? ' good' : '') + '"><i class="bi ' + icon + '"></i>'
+      + (pct > 0 ? '+' : '') + pct + ' % ' + ref + '</span>';
+  };
+  NW.applyDeltas = function (root) {
+    (root || document).querySelectorAll("[data-delta-cur]").forEach(function (el) {
+      el.innerHTML = NW.deltaHtml(el.getAttribute("data-delta-cur"), el.getAttribute("data-delta-prev"),
+                                  { good: el.hasAttribute("data-delta-good") });
+    });
+  };
+
   /* Octets → unité lisible (partagé par toutes les pages) */
   NW.fmtBytes = function (b) {
     b = Number(b) || 0;
@@ -636,6 +662,7 @@
     NW.applyLang();
     NW.applyTheme();
     NW.initNavSections();
+    NW.applyDeltas();
   });
 
   window.NW = NW;

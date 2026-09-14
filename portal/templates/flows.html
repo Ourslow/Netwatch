@@ -44,7 +44,7 @@
 
       <!-- Ligne timeline 24h -->
       <div class="col-12 col-lg-4">
-        <div class="chart-title">Volume 24h (bytes/heure)</div>
+        <div class="chart-title">Volume · {{ range_label }}</div>
         <div id="line-tl-wrap">
           <div class="chart-skel skeleton" aria-label="Chargement"></div>
         </div>
@@ -188,7 +188,7 @@
         <div class="kpi-zw flex-grow-1">
           <i class="bi bi-pause-circle" style="font-size:2rem;color:var(--warn);opacity:.75"></i>
           <div class="kpi-zw-val" id="zw-pct">—</div>
-          <div class="kpi-zw-label"><span id="zw-count">—</span> connexions TCP (24h)</div>
+          <div class="kpi-zw-label"><span id="zw-count">—</span> connexions TCP ({{ range_label }})</div>
           <div class="text-muted mt-1" style="font-size:.72rem">history contenant W ou w — congestion applicative côté récepteur</div>
         </div>
       </div>
@@ -350,7 +350,10 @@
         /* Line timeline */
         var tlLabels = (d.timeline || []).map(function (x) {
           if (!x.t) return '';
-          return new Date(x.t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          var dt = new Date(x.t);
+          return (d.hours || 24) > 24
+            ? dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit' })
+            : dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         });
         var tlBytes = (d.timeline || []).map(function (x) { return x.bytes; });
         var tlWrap = document.getElementById('line-tl-wrap');

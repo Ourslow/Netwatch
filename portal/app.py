@@ -507,6 +507,19 @@ app.jinja_env.filters["geo_flag"] = geo_flag
 
 _HG_NAV_CACHE = {"mtime": None, "groups": []}
 
+# Plage temporelle globale (sélecteur topbar) : clé → heures. Lue depuis
+# ?range= puis le cookie nw_range (posé par le sélecteur), défaut 24 h.
+RANGES = {"1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720}
+RANGE_LABELS = {"1h": "1 h", "6h": "6 h", "24h": "24 h", "7d": "7 j", "30d": "30 j"}
+
+
+def _range():
+    """(clé, heures) de la plage temporelle courante."""
+    key = request.args.get("range") or request.cookies.get("nw_range") or "24h"
+    if key not in RANGES:
+        key = "24h"
+    return key, RANGES[key]
+
 
 @app.context_processor
 def _inject_globals():
@@ -520,11 +533,16 @@ def _inject_globals():
     if mtime != _HG_NAV_CACHE["mtime"]:
         _HG_NAV_CACHE["groups"] = nw_hostgroups.list_groups() if mtime else []
         _HG_NAV_CACHE["mtime"]  = mtime
+    range_key, range_hours = _range()
     return {
         "nav_hostgroups":    _HG_NAV_CACHE["groups"],
         "current_hostgroup": request.args.get("hostgroup", ""),
         "proxmox_host":      config.PROXMOX_HOST,
         "proxmox_node":      config.PROXMOX_NODE,
+        "current_range":     range_key,
+        "range_hours":       range_hours,
+        "range_label":       RANGE_LABELS[range_key],
+        "range_options":     [(k, RANGE_LABELS[k]) for k in RANGES],
     }
 
 
@@ -593,10 +611,11 @@ def dashboard():
     """Home = vue observabilité réseau (esprit Allegro / Riverbed) : KPIs trafic,
     santé TCP, ART, top talkers, alertes récentes, points d'écoute, services.
     Proxmox/VMs/catalogue ont leurs propres pages (Projet & infra)."""
+    _, hours = _range()
     (recent_alerts, _), (alert_stats, _), perf, (services, global_status) = es_client.run_parallel(
         lambda: es_client.get_recent_alerts(size=8),
-        es_client.get_alert_stats,
-        lambda: _perf_dashboard(talkers_size=8),
+        lambda: es_client.get_alert_stats(hours=hours),
+        lambda: _perf_dashboard(talkers_size=8, hours=hours),
         _check_health,
     )
     pcap_points, pcap_top = _pcap_overview()
@@ -1095,8 +1114,8 @@ def alerts_export_csv():
 @app.route("/api/stats")
 @login_required
 def api_stats():
-    """Agrégats pour le polling live du dashboard."""
-    stats, err = es_client.get_alert_stats()
+    """Agrégats pour le polling live du dashboard (fenêtre = plage globale)."""
+    stats, err = es_client.get_alert_stats(hours=_range()[1])
     if err:
         return jsonify({"error": err}), 503
     return jsonify(stats)
@@ -1433,7 +1452,7 @@ def _pcap_conversations_for(ip=None, ranges=None):
     return out[:20]
 
 
-def _perf_dashboard(ip=None, ranges=None, talkers_size=10):
+def _perf_dashboard(ip=None, ranges=None, talkers_size=10, hours=24):
     """
     Widgets de dashboard réutilisables (device unique ou hostgroup) — même
     jeu de métriques aux deux échelles, esprit Allegro/Keysight : débit,
@@ -1441,9 +1460,9 @@ def _perf_dashboard(ip=None, ranges=None, talkers_size=10):
     """
     # 3 requêtes ES indépendantes → en parallèle (chacune est déjà cachée 60 s)
     (art, _), (tcp, _), (talkers, _) = es_client.run_parallel(
-        lambda: es_client.get_art_stats(ip=ip),
-        lambda: es_client.get_tcp_perf(ip=ip),
-        lambda: es_client.get_top_talkers(size=talkers_size, ip_ranges=ranges),
+        lambda: es_client.get_art_stats(ip=ip, hours=hours),
+        lambda: es_client.get_tcp_perf(ip=ip, hours=hours),
+        lambda: es_client.get_top_talkers(size=talkers_size, ip_ranges=ranges, hours=hours),
     )
 
     network_ms = tcp.get("avg_rtt_ms")
@@ -1462,9 +1481,10 @@ def _perf_dashboard(ip=None, ranges=None, talkers_size=10):
 @app.route("/ip/<ip>")
 @login_required
 def ip_detail(ip):
+    _, hours = _range()
     (alerts_list, conn_stats, error), dashboard = es_client.run_parallel(
         lambda: es_client.get_ip_events(ip),
-        lambda: _perf_dashboard(ip=ip),
+        lambda: _perf_dashboard(ip=ip, hours=hours),
     )
     return render_template("ip_detail.html", ip=ip,
                            alerts=alerts_list, conn=conn_stats, error=error,
@@ -1479,7 +1499,7 @@ def hostgroup_dashboard(name):
         flash(f"Hostgroup « {name} » introuvable.", "danger")
         return redirect(url_for("hostgroups_page"))
     ranges = nw_hostgroups.resolve_ranges(name, groups)
-    dashboard = _perf_dashboard(ranges=ranges, talkers_size=15)
+    dashboard = _perf_dashboard(ranges=ranges, talkers_size=15, hours=_range()[1])
     return render_template("hostgroup_dashboard.html", group=groups[name], dashboard=dashboard)
 
 
@@ -2039,9 +2059,9 @@ def _maybe_refresh():
 @app.route("/api/flows-stats")
 @login_required
 def api_flows_stats():
-    """Top talkers, top ports, timeline 24h (netflow-* ou zeek-* fallback)."""
+    """Top talkers, top ports, timeline sur la plage globale (netflow-* ou zeek-* fallback)."""
     _maybe_refresh()
-    data, error = es_client.get_flows_stats()
+    data, error = es_client.get_flows_stats(hours=_range()[1])
     if error and not data.get("source"):
         return jsonify({"error": error}), 503
     return jsonify(data)
@@ -2052,7 +2072,7 @@ def api_flows_stats():
 def api_art_stats():
     """ART p50/p95/p99 par service HTTP/DNS/TLS."""
     _maybe_refresh()
-    data, error = es_client.get_art_stats()
+    data, error = es_client.get_art_stats(hours=_range()[1])
     if error:
         return jsonify({"error": error}), 503
     return jsonify(data)
@@ -2063,7 +2083,7 @@ def api_art_stats():
 def api_tcp_perf():
     """Métriques santé TCP : RTT, retransmissions, zero-windows."""
     _maybe_refresh()
-    data, error = es_client.get_tcp_perf()
+    data, error = es_client.get_tcp_perf(hours=_range()[1])
     if error:
         return jsonify({"error": error}), 503
     return jsonify(data)

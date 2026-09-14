@@ -584,23 +584,39 @@ def get_ip_events(ip, size=200):
 
 
 _EMPTY_ALERT_STATS = {
-    "total": 0, "last_24h": 0, "critical": 0, "medium": 0, "low": 0, "mitre": [],
+    "total": 0, "last_24h": 0, "window": 0, "prev_window": 0, "hours": 24,
+    "critical": 0, "medium": 0, "low": 0, "mitre": [],
 }
 
 
+def _hist_interval(hours):
+    """Pas de date_histogram adapté à la plage (≈ 24-60 points)."""
+    if hours <= 6:
+        return "10m"
+    if hours <= 24:
+        return "1h"
+    if hours <= 168:
+        return "6h"
+    return "1d"
+
+
 @_ttl_cache(30)
-def get_alert_stats(days=7):
+def get_alert_stats(days=7, hours=24):
     """
     Statistiques pour le widget dashboard et le header /alerts.
-    days : fenêtre temporelle en jours (borne la requête, perf en prod).
+    days  : fenêtre temporelle en jours (borne la requête, perf en prod).
+    hours : fenêtre « courante » du sélecteur de plage global → `window`
+            (alertes sur la plage) et `prev_window` (plage précédente de même
+            durée, pour la tendance). La requête couvre max(days, 2×hours).
     Retourne (stats: dict, error: str|None).
     """
+    span_h = max(days * 24, 2 * hours)
     body = {
         "size": 0,
         "query": {
             "bool": {
                 "filter": [
-                    {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
+                    {"range": {"@timestamp": {"gte": f"now-{span_h}h"}}},
                 ],
                 "should": [
                     {"term":   {"event_type": "alert"}},
@@ -610,6 +626,8 @@ def get_alert_stats(days=7):
             }
         },
         "aggs": {
+            "window":      {"filter": {"range": {"@timestamp": {"gte": f"now-{hours}h"}}}},
+            "prev_window": {"filter": {"range": {"@timestamp": {"gte": f"now-{2*hours}h", "lt": f"now-{hours}h"}}}},
             "last_24h": {
                 "filter": {"range": {"@timestamp": {"gte": "now-24h"}}},
                 "aggs": {
@@ -650,12 +668,15 @@ def get_alert_stats(days=7):
                  for b in aggs.get("by_mitre", {}).get("buckets", [])]
 
         return {
-            "total":    total,
-            "last_24h": last_24h,
-            "critical": sev.get(1, 0),
-            "medium":   sev.get(2, 0),
-            "low":      sev.get(3, 0),
-            "mitre":    mitre[:5],
+            "total":       total,
+            "last_24h":    last_24h,
+            "window":      aggs.get("window", {}).get("doc_count", 0),
+            "prev_window": aggs.get("prev_window", {}).get("doc_count", 0),
+            "hours":       hours,
+            "critical":    sev.get(1, 0),
+            "medium":      sev.get(2, 0),
+            "low":         sev.get(3, 0),
+            "mitre":       mitre[:5],
         }, None
 
     except requests.exceptions.ConnectionError:
@@ -1023,23 +1044,45 @@ def _index_exists(pattern):
         return False
 
 
+def _prev_bytes(index, filters, hours, fields):
+    """Octets de la plage précédente [now-2h, now-h[ — pour la tendance du KPI
+    trafic. Best-effort : 0 en cas d'erreur."""
+    body = {
+        "size": 0,
+        "query": {"bool": {"filter": [
+            {"range": {"@timestamp": {"gte": f"now-{2*hours}h", "lt": f"now-{hours}h"}}},
+            *filters,
+        ]}},
+        "aggs": {f: {"sum": {"field": f}} for f in fields},
+    }
+    try:
+        r = _es(f"/{index}/_search", body)
+        r.raise_for_status()
+        aggs = r.json().get("aggregations", {})
+        return int(sum((aggs.get(f, {}).get("value") or 0) for f in fields))
+    except Exception:
+        return 0
+
+
 @_ttl_cache(60)
-def get_flows_stats():
+def get_flows_stats(hours=24):
     """
-    Top talkers (src/dst), top proto/ports, timeline 24h.
+    Top talkers (src/dst), top proto/ports, timeline sur `hours` heures
+    (+ prev_bytes : volume de la plage précédente, pour la tendance).
     Utilise netflow-* si disponible, sinon zeek-* conn.log.
     Retourne (data: dict, error: str|None).
     """
     _empty = {
         "top_src": [], "top_dst": [], "top_ports": [], "timeline": [],
-        "source": "unknown", "warning": "index introuvable",
+        "source": "unknown", "warning": "index introuvable", "hours": hours, "prev_bytes": 0,
     }
+    interval = _hist_interval(hours)
 
     # ── 1. Essayer netflow-* (GoFlow2) ──
     if _index_exists("netflow-*"):
         body = {
             "size": 0,
-            "query": {"range": {"@timestamp": {"gte": "now-24h"}}},
+            "query": {"range": {"@timestamp": {"gte": f"now-{hours}h"}}},
             "aggs": {
                 "top_src": {
                     "terms": {"field": "src_addr.keyword", "size": 10},
@@ -1071,9 +1114,9 @@ def get_flows_stats():
                 "timeline": {
                     "date_histogram": {
                         "field": "@timestamp",
-                        "fixed_interval": "1h",
+                        "fixed_interval": interval,
                         "min_doc_count": 0,
-                        "extended_bounds": {"min": "now-24h", "max": "now"},
+                        "extended_bounds": {"min": f"now-{hours}h", "max": "now"},
                     },
                     "aggs": {"bytes": {"sum": {"field": "in_bytes"}}},
                 },
@@ -1096,6 +1139,8 @@ def get_flows_stats():
 
             return {
                 "source": "netflow",
+                "hours": hours,
+                "prev_bytes": _prev_bytes("netflow-*", [], hours, ["in_bytes"]),
                 "top_src":  [_nf(b) for b in aggs.get("top_src",  {}).get("buckets", [])],
                 "top_dst":  [_nf(b) for b in aggs.get("top_dst",  {}).get("buckets", [])],
                 "top_ports": [
@@ -1121,7 +1166,7 @@ def get_flows_stats():
         "query": {
             "bool": {
                 "filter": [
-                    {"range": {"@timestamp": {"gte": "now-24h"}}},
+                    {"range": {"@timestamp": {"gte": f"now-{hours}h"}}},
                     _log_src("conn"),
                 ]
             }
@@ -1165,9 +1210,9 @@ def get_flows_stats():
             "timeline": {
                 "date_histogram": {
                     "field": "@timestamp",
-                    "fixed_interval": "1h",
+                    "fixed_interval": interval,
                     "min_doc_count": 0,
-                    "extended_bounds": {"min": "now-24h", "max": "now"},
+                    "extended_bounds": {"min": f"now-{hours}h", "max": "now"},
                 },
                 "aggs": {
                     "ob": {"sum": {"field": "orig_bytes"}},
@@ -1188,6 +1233,8 @@ def get_flows_stats():
 
         return {
             "source": "zeek",
+            "hours": hours,
+            "prev_bytes": _prev_bytes("zeek-*", [_log_src("conn")], hours, ["orig_bytes", "resp_bytes"]),
             "warning": "GoFlow2 non connecté — données issues de Zeek conn.log",
             "top_src": [
                 {"ip": b["key"], "bytes": _sb(b), "count": b["doc_count"]}
@@ -1264,13 +1311,14 @@ def _pct_entry(agg, conv):
 
 
 @_ttl_cache(60)
-def get_art_stats(ip=None):
+def get_art_stats(ip=None, hours=24):
     """
     Application Response Time p50/p95/p99 par service (http/dns/tls).
     Essaie art.log → fallback conn.log (HTTP/TLS) et dns.log (RTT DNS natif).
     Une seule requête ES : la sonde art.log et les 3 fallbacks sont des
     filter-aggs de la même recherche (4 aller-retours → 1).
-    ip : si fourni, restreint aux échanges impliquant ce device (orig ou resp).
+    ip    : si fourni, restreint aux échanges impliquant ce device (orig ou resp).
+    hours : plage temporelle (sélecteur global).
     Retourne (data: dict, error: str|None).
     """
     ip_filter = _ip_filter(ip)
@@ -1299,7 +1347,7 @@ def get_art_stats(ip=None):
 
     body = {
         "size": 0,
-        "query": {"bool": {"filter": [{"range": {"@timestamp": {"gte": "now-24h"}}}] + ip_filter}},
+        "query": {"bool": {"filter": [{"range": {"@timestamp": {"gte": f"now-{hours}h"}}}] + ip_filter}},
         "aggs": {
             # Sonde art.log : `global` = hors fenêtre 24h et hors filtre IP, comme
             # avant (on veut savoir si le log existe, pas s'il a bougé aujourd'hui).
@@ -1403,9 +1451,9 @@ def get_art_stats(ip=None):
 
 
 @_ttl_cache(60)
-def get_tcp_perf(ip=None):
+def get_tcp_perf(ip=None, hours=24):
     """
-    Métriques de santé TCP depuis zeek-* conn.log (24h).
+    Métriques de santé TCP depuis zeek-* conn.log (sur `hours` heures).
     RTT depuis conn.rtt (Zeek 6+), retransmissions et zero-windows via history.
     Une seule requête ES : RTT, volume par IP, retransmissions et zero-windows
     sont des filter-aggs de la même recherche (4 aller-retours → 1).
@@ -1422,7 +1470,7 @@ def get_tcp_perf(ip=None):
     }
 
     base = [
-        {"range": {"@timestamp": {"gte": "now-24h"}}},
+        {"range": {"@timestamp": {"gte": f"now-{hours}h"}}},
         _log_src("conn"),
         {"term": {"proto": "tcp"}},
     ] + _ip_filter(ip)
@@ -1508,9 +1556,9 @@ def get_tcp_perf(ip=None):
 
 
 @_ttl_cache(60)
-def get_top_talkers(size=10, ip_ranges=None):
+def get_top_talkers(size=10, ip_ranges=None, hours=24):
     """
-    Top devices par volume (octets, 24h) depuis conn.log.
+    Top devices par volume (octets, sur `hours` heures) depuis conn.log.
     ip_ranges (optionnel) : plages résolues d'un hostgroup (voir
     netwatch.hostgroups.resolve_ranges) pour restreindre le classement à ce
     groupe — filtré côté Python après une agrégation plus large, cohérent
@@ -1520,7 +1568,7 @@ def get_top_talkers(size=10, ip_ranges=None):
     body = {
         "size": 0,
         "query": {"bool": {"filter": [
-            {"range": {"@timestamp": {"gte": "now-24h"}}},
+            {"range": {"@timestamp": {"gte": f"now-{hours}h"}}},
             _log_src("conn"),
         ]}},
         "aggs": {
