@@ -1957,8 +1957,55 @@ thead .tool-highlight { border-top: 2px solid var(--accent); }
   .cmd-trigger-hint { display: none; }
 }
 
+/* Bouton ☰ (topbar, mobile uniquement) et fond de l'off-canvas */
+.nav-burger {
+  display: none; background: none; border: 1px solid var(--border); color: var(--text-muted);
+  border-radius: var(--r-sm); width: 34px; height: 34px; place-items: center; font-size: 1.1rem;
+  flex-shrink: 0; cursor: pointer;
+}
+.nav-burger:hover { color: var(--accent); border-color: var(--accent-line); }
+.nav-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); z-index: 1040; display: none; }
+
 @media (max-width: 768px) {
   .content-area { padding: 1rem !important; }
   .topbar { padding-left: 1rem !important; padding-right: 1rem !important; }
   #topo-panel, #node-panel { position: absolute; right: 0; top: 0; bottom: 0; z-index: 6; }
+
+  /* ── Sidebar off-canvas : masquée hors écran, glisse sur body.nav-open ── */
+  .nav-burger { display: grid; }
+  .sidebar {
+    position: fixed; left: 0; top: 0; height: 100vh; width: 264px; z-index: 1050;
+    transform: translateX(-100%); transition: transform var(--t-med) ease;
+    box-shadow: var(--shadow-pop);
+    padding-left: 1rem !important; padding-right: 1rem !important;
+  }
+  body.nav-open .sidebar { transform: none; }
+  body.nav-open .nav-backdrop { display: block; }
+  .main-content { width: 100%; }
+  /* En off-canvas la sidebar est toujours complète (libellés, sections),
+     même si le mode rail est mémorisé ou que la largeur ≤ 992 px l'a réduite */
+  body .sidebar-brand .brand-text, body.nav-rail .sidebar-brand .brand-text { display: block; }
+  body .sidebar .nav-link span, body.nav-rail .sidebar .nav-link span { display: inline; }
+  body .nav-section, body.nav-rail .nav-section { display: flex; }
+  body .sidebar-footer, body.nav-rail .sidebar-footer { display: flex; }
+  body .sidebar-footer-host, body.nav-rail .sidebar-footer-host { display: block; }
+  body .sidebar .nav-link, body.nav-rail .sidebar .nav-link { justify-content: flex-start; padding: .5rem .75rem; }
+  body .sidebar .nav-link .ms-auto, body.nav-rail .sidebar .nav-link .ms-auto { display: inline; }
+  body .sidebar-brand, body.nav-rail .sidebar-brand { justify-content: flex-start; }
+  .sidebar .nav.collapse:not(.show) { display: none !important; }   /* sections repliables à nouveau */
+  .nav-rail-btn { display: none; }
+
+  /* Bandeau de triage : état au-dessus, chips en dessous sur toute la largeur */
+  .triage { flex-direction: column; align-items: stretch; gap: .5rem; }
+  .triage-chip { white-space: normal; }
 }
+
+/* Aide raccourcis clavier (modal) */
+.kbd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .35rem 1.5rem; }
+.kbd-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .3rem 0; border-bottom: 1px solid var(--border); font-size: .84rem; }
+.kbd-row kbd, .cmd-item-hint kbd {
+  background: var(--bg-inset); border: 1px solid var(--border-strong); border-radius: 4px;
+  padding: .05rem .35rem; font-size: .68rem; color: var(--text-muted); font-family: var(--font-mono);
+  margin-left: .15rem;
+}
+.kbd-section { font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin: .8rem 0 .3rem; }

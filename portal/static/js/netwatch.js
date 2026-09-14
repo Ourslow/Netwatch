@@ -638,6 +638,66 @@
     });
   };
 
+  /* ---- Raccourcis clavier (façon GitHub / Linear) ----------------
+     g + lettre → page (liste fournie par base.html : NW.navShortcuts),
+     / ou Ctrl+K → palette, [ ] → plage précédente/suivante, t → thème,
+     \ → sidebar rail, ? → aide. Ignorés dans les champs de saisie. */
+  NW.initShortcuts = function () {
+    let pendingG = 0;
+    const ACTIONS = [
+      { key: "/",  label: "Ouvrir la palette de commandes", run: function () { if (NW.openPalette) NW.openPalette(); } },
+      { key: "[",  label: "Plage temporelle précédente",   run: function () { stepRange(-1); } },
+      { key: "]",  label: "Plage temporelle suivante",     run: function () { stepRange(1); } },
+      { key: "t",  label: "Basculer thème clair / sombre", run: function () { NW.switchTheme(); } },
+      { key: "\\", label: "Réduire / étendre le menu",     run: function () { const b = document.getElementById("nav-rail-toggle"); if (b) b.click(); } },
+      { key: "?",  label: "Afficher cette aide",           run: function () { NW.showShortcuts(); } },
+    ];
+    function stepRange(dir) {
+      const btns = Array.prototype.slice.call(document.querySelectorAll("#range-select button[data-range]"));
+      const i = btns.findIndex(function (b) { return b.classList.contains("active"); });
+      const next = btns[i + dir];
+      if (next) next.click();
+    }
+    function inField(el) {
+      if (!el) return false;
+      const tag = (el.tagName || "").toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable;
+    }
+    document.addEventListener("keydown", function (e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (inField(e.target)) return;
+      if (document.querySelector(".modal.show, .cmd-overlay.cmd-open")) return;
+      const k = e.key;
+      if (pendingG && Date.now() - pendingG < 1500) {
+        pendingG = 0;
+        const hit = (NW.navShortcuts || []).find(function (s) { return s.key === "g " + k.toLowerCase(); });
+        if (hit) { e.preventDefault(); window.location.href = hit.url; return; }
+      }
+      if (k === "g") { pendingG = Date.now(); return; }
+      const a = ACTIONS.find(function (x) { return x.key === k; });
+      if (a) { e.preventDefault(); a.run(); }
+    });
+    NW.shortcutActions = ACTIONS;
+  };
+
+  NW.showShortcuts = function () {
+    const modal = document.getElementById("kbd-help");
+    const body  = document.getElementById("kbd-help-body");
+    if (!modal || !body || typeof bootstrap === "undefined") return;
+    function row(label, keys) {
+      return '<div class="kbd-row"><span>' + label + '</span><span>' +
+        keys.split(" ").map(function (x) { return "<kbd>" + x + "</kbd>"; }).join("") + "</span></div>";
+    }
+    let html = '<div class="kbd-section">Navigation</div><div class="kbd-grid">';
+    (NW.navShortcuts || []).forEach(function (s) { html += row(s.label, s.key); });
+    html += '</div><div class="kbd-section">Actions</div><div class="kbd-grid">';
+    html += row("Palette de commandes", "Ctrl+K");
+    (NW.shortcutActions || []).forEach(function (a) { html += row(a.label, a.key); });
+    html += "</div>";
+    body.innerHTML = html;
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+  };
+
   /* Octets → unité lisible (partagé par toutes les pages) */
   NW.fmtBytes = function (b) {
     b = Number(b) || 0;
@@ -799,6 +859,7 @@
     NW.applyDeltas();
     NW.initTables();
     NW.autoSparks();
+    NW.initShortcuts();
   });
 
   window.NW = NW;

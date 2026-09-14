@@ -224,9 +224,12 @@
     </div>
   </nav>
 
+  <div class="nav-backdrop" id="nav-backdrop"></div>
+
   <!-- Contenu principal -->
   <main class="main-content flex-grow-1">
     <div class="topbar d-flex align-items-center justify-content-between px-4">
+      <button class="nav-burger me-2" id="nav-burger" title="Menu" aria-label="Ouvrir le menu"><i class="bi bi-list"></i></button>
       <h5 class="mb-0 page-title">{% block page_title %}{% endblock %}</h5>
       <div class="topbar-actions">
         {% if proxmox_node is defined and proxmox_node and proxmox_host %}
@@ -259,9 +262,12 @@
           <option value="{{ g.name }}" {% if g.name == current_hostgroup %}selected{% endif %}>{{ g.name }} ({{ g.host_count }})</option>
           {% endfor %}
         </select>
-        <button class="cmd-trigger" id="cmd-open-btn" title="Palette de commandes (Ctrl+K)">
+        <button class="cmd-trigger" id="cmd-open-btn" title="Palette de commandes (Ctrl+K ou /)">
           <i class="bi bi-search"></i>
           <span class="cmd-trigger-hint">Ctrl+K</span>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary d-none d-lg-inline-flex" onclick="NW.showShortcuts()" title="Raccourcis clavier (?)">
+          <i class="bi bi-keyboard"></i>
         </button>
         <button id="lang-toggle" onclick="NW.switchLang()"
                 class="btn btn-sm btn-outline-secondary"
@@ -307,6 +313,19 @@
   </div>
 </div>
 
+<!-- Aide raccourcis clavier (?) -->
+<div class="modal fade" id="kbd-help" tabindex="-1" aria-label="Raccourcis clavier">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-keyboard me-2"></i>Raccourcis clavier</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="kbd-help-body"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Menu contextuel clic droit — pivot IP / domaine / signature -->
 <div class="pivot-menu" id="pivot-menu">
   <div class="pivot-menu-header">
@@ -330,24 +349,24 @@
 <script>
 (function () {
   var NAV = [
-    { icon: 'bi-grid-1x2',               label: 'Dashboard',                 url: '/',                 hint: 'Vue observabilité' },
-    { icon: 'bi-grid-3x2-gap-fill',      label: 'Tableau personnalisé',      url: '/custom-dashboard', hint: 'Widgets réordonnables, glisser-déposer' },
-    { icon: 'bi-diagram-3',              label: 'Flux & performance',        url: '/flows',            hint: 'Top talkers · ART · TCP' },
-    { icon: 'bi-window-stack',           label: 'Applications',              url: '/applications',     hint: 'Dictionnaire applicatif SNI' },
-    { icon: 'bi-diagram-3-fill',         label: 'Dépendances applicatives',  url: '/app-map',          hint: 'Qui parle à qui — flux inter-services' },
-    { icon: 'bi-file-earmark-binary-fill', label: 'Analyse PCAP',            url: '/pcap-analysis',    hint: 'Conversations TCP · points d\'écoute' },
-    { icon: 'bi-diagram-2-fill',         label: 'Topologie',                 url: '/topology',         hint: 'Carte réseau L2/L3 · LLDP' },
-    { icon: 'bi-collection',             label: 'Hostgroups',                url: '/hostgroups',       hint: 'Groupes d\'hôtes · filtres' },
-    { icon: 'bi-patch-check',            label: 'SLA Compliance',            url: '/sla',              hint: 'HTTP · DNS · RTT · Business Hours' },
-    { icon: 'bi-bell',                   label: 'Alertes sur seuil',         url: '/thresholds',       hint: 'Notifications sur franchissement de métrique' },
-    { icon: 'bi-shield-exclamation',     label: 'Alertes IDS',               url: '/alerts',           hint: 'Snort · Suricata · temps réel' },
-    { icon: 'bi-layers',                 label: 'Incidents',                 url: '/incidents',        hint: 'Fenêtres 5 min · chaîne d\'attaque' },
-    { icon: 'bi-file-earmark-binary',    label: 'Analyse Zeek',              url: '/zeek',             hint: 'weird · files · x509' },
-    { icon: 'bi-bezier2',                label: 'Graphe IOC',                url: '/graph',            hint: 'IPs · règles · MITRE' },
-    { icon: 'bi-globe',                  label: 'Carte GeoIP',               url: '/geomap',           hint: 'Origine des attaques' },
-    { icon: 'bi-clipboard2-data',        label: 'Audit réseau',              url: '/audit',            hint: 'Posture & score' },
-    { icon: 'bi-speedometer2',           label: 'Dashboard Exec',            url: '/exec',             hint: 'RSSI · posture · KPIs' },
-    { icon: 'bi-file-earmark-pdf',       label: 'Rapports PDF',              url: '/reports',          hint: 'Historique · génération' },
+    { icon: 'bi-grid-1x2',               label: 'Dashboard',                 url: '/',                 hint: 'Vue observabilité', key: 'g d' },
+    { icon: 'bi-grid-3x2-gap-fill',      label: 'Tableau personnalisé',      url: '/custom-dashboard', hint: 'Widgets réordonnables, glisser-déposer', key: 'g c' },
+    { icon: 'bi-diagram-3',              label: 'Flux & performance',        url: '/flows',            hint: 'Top talkers · ART · TCP', key: 'g f' },
+    { icon: 'bi-window-stack',           label: 'Applications',              url: '/applications',     hint: 'Dictionnaire applicatif SNI', key: 'g o' },
+    { icon: 'bi-diagram-3-fill',         label: 'Dépendances applicatives',  url: '/app-map',          hint: 'Qui parle à qui — flux inter-services', key: 'g m' },
+    { icon: 'bi-file-earmark-binary-fill', label: 'Analyse PCAP',            url: '/pcap-analysis',    hint: 'Conversations TCP · points d\'écoute', key: 'g p' },
+    { icon: 'bi-diagram-2-fill',         label: 'Topologie',                 url: '/topology',         hint: 'Carte réseau L2/L3 · LLDP', key: 'g t' },
+    { icon: 'bi-collection',             label: 'Hostgroups',                url: '/hostgroups',       hint: 'Groupes d\'hôtes · filtres', key: 'g h' },
+    { icon: 'bi-patch-check',            label: 'SLA Compliance',            url: '/sla',              hint: 'HTTP · DNS · RTT · Business Hours', key: 'g s' },
+    { icon: 'bi-bell',                   label: 'Seuils d\'alerte',          url: '/thresholds',       hint: 'Notifications sur franchissement de métrique', key: 'g l' },
+    { icon: 'bi-shield-exclamation',     label: 'Alertes IDS',               url: '/alerts',           hint: 'Snort · Suricata · temps réel', key: 'g a' },
+    { icon: 'bi-layers',                 label: 'Incidents',                 url: '/incidents',        hint: 'Fenêtres 5 min · chaîne d\'attaque', key: 'g i' },
+    { icon: 'bi-file-earmark-binary',    label: 'Analyse Zeek',              url: '/zeek',             hint: 'weird · files · x509', key: 'g z' },
+    { icon: 'bi-bezier2',                label: 'Graphe IOC',                url: '/graph',            hint: 'IPs · règles · MITRE', key: 'g g' },
+    { icon: 'bi-globe',                  label: 'Carte GeoIP',               url: '/geomap',           hint: 'Origine des attaques', key: 'g w' },
+    { icon: 'bi-clipboard2-data',        label: 'Audit réseau',              url: '/audit',            hint: 'Posture & score', key: 'g u' },
+    { icon: 'bi-speedometer2',           label: 'Dashboard Exec',            url: '/exec',             hint: 'RSSI · posture · KPIs', key: 'g e' },
+    { icon: 'bi-file-earmark-pdf',       label: 'Rapports PDF',              url: '/reports',          hint: 'Historique · génération', key: 'g r' },
     { icon: 'bi-file-earmark-text',      label: 'Rapport exécutif',          url: '/report',           hint: 'HTML imprimable', blank: true },
     { icon: 'bi-activity',               label: 'Statut services',           url: '/status',           hint: 'Health check · LLMOps' },
     { icon: 'bi-hdd-stack',              label: 'Machines virtuelles',       url: '/vms',              hint: 'Proxmox VMs' },
@@ -375,10 +394,11 @@
   }
 
   function itemHtml(it, idx) {
+    var kbd = it.key ? it.key.split(' ').map(function (k) { return '<kbd>' + k + '</kbd>'; }).join('') : '';
     return '<div class="cmd-item' + (idx === 0 ? ' cmd-active' : '') + '" data-idx="' + idx + '">' +
       '<span class="cmd-item-icon"><i class="bi ' + it.icon + '"></i></span>' +
       '<span class="cmd-item-label">' + it.label + '</span>' +
-      '<span class="cmd-item-hint">' + (it.hint || '') + '</span>' +
+      '<span class="cmd-item-hint">' + (it.hint || '') + (kbd ? ' ' + kbd : '') + '</span>' +
       '</div>';
   }
 
@@ -443,6 +463,22 @@
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
   });
+  /* Exposé pour les raccourcis clavier (netwatch.js) */
+  NW.openPalette = open;
+  NW.navShortcuts = NAV.filter(function (n) { return n.key; }).map(function (n) { return { key: n.key, label: n.label, url: n.url }; });
+})();
+
+// ── Off-canvas mobile : ☰ ouvre la sidebar, fond / Échap / navigation la ferment ──
+(function () {
+  var burger = document.getElementById('nav-burger');
+  var backdrop = document.getElementById('nav-backdrop');
+  if (!burger) return;
+  function close() { document.body.classList.remove('nav-open'); }
+  burger.addEventListener('click', function () { document.body.classList.toggle('nav-open'); });
+  backdrop.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  document.querySelectorAll('.sidebar .nav-link').forEach(function (a) { a.addEventListener('click', close); });
+  window.addEventListener('resize', function () { if (window.innerWidth > 768) close(); });
 })();
 
 // ── Sidebar rail (icônes seules) — bouton + préférence mémorisée ──
