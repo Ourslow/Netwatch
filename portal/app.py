@@ -396,22 +396,50 @@ def load_catalog():
     return _CATALOG_CACHE
 
 
-_PX_FAIL = {"ts": 0.0}
-_PX_FAIL_TTL = 60   # s — un Proxmox injoignable n'est pas retenté avant 60 s
+# Proxmox injoignable (Shuttle éteint, portail lancé ailleurs…) : le timeout de
+# connexion (5 s) ne doit jamais être payé par une page. Après un échec, on
+# mémorise l'indisponibilité avec un TTL qui double (60 s → 10 min) et, à
+# l'expiration, on re-sonde dans un thread : la page rend tout de suite sans
+# Proxmox, la suivante l'aura si la sonde a réussi.
+_PX_FAIL = {"ts": 0.0, "ttl": 60, "probing": False, "ok": False}
+_PX_FAIL_TTL_MAX = 600
+_PX_LOCK = threading.Lock()
 
 
 def _px_mark_failed():
-    """Mémorise l'échec Proxmox : les pages qui l'interrogent (status, vms,
-    report) ne repaieront pas le timeout de connexion (~5 s) à chaque
-    chargement tant que l'hôte reste injoignable."""
-    _PX_FAIL["ts"] = _time_mod.monotonic()
+    """Mémorise l'échec Proxmox (TTL doublé à chaque échec consécutif, plafonné)."""
+    with _PX_LOCK:
+        if _PX_FAIL["ts"]:
+            _PX_FAIL["ttl"] = min(_PX_FAIL["ttl"] * 2, _PX_FAIL_TTL_MAX)
+        _PX_FAIL["ts"] = _time_mod.monotonic()
+        _PX_FAIL["ok"] = False
+
+
+def _px_probe():
+    """Sonde asynchrone : tente une connexion + un appel léger, hors requête HTTP."""
+    try:
+        px_client.get_node_status(px_client.get_client())
+        with _PX_LOCK:
+            _PX_FAIL.update({"ts": 0.0, "ttl": 60, "ok": True})
+    except Exception:
+        _px_mark_failed()
+    finally:
+        with _PX_LOCK:
+            _PX_FAIL["probing"] = False
 
 
 def get_proxmox():
-    """Retourne un client Proxmox, ou None si non configuré / non joignable."""
+    """Retourne un client Proxmox, ou None si non configuré / non joignable.
+    Ne bloque jamais sur un hôte injoignable (cf. _PX_FAIL)."""
     if not config.PROXMOX_HOST:
         return None
-    if _time_mod.monotonic() - _PX_FAIL["ts"] < _PX_FAIL_TTL:
+    with _PX_LOCK:
+        failed_recently = _time_mod.monotonic() - _PX_FAIL["ts"] < _PX_FAIL["ttl"]
+        known_ok = _PX_FAIL["ok"]
+        if not known_ok and not failed_recently and not _PX_FAIL["probing"]:
+            _PX_FAIL["probing"] = True
+            threading.Thread(target=_px_probe, name="px-probe", daemon=True).start()
+    if not known_ok:
         return None
     try:
         return px_client.get_client()
