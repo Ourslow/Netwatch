@@ -248,7 +248,10 @@ def get_zeek_flow_by_community_id(community_id):
     body = {
         "size": 1,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"community_id": community_id}},
+        # community_id est mappé "text" (mapping dynamique ES), pas "keyword" —
+        # un term query sur le champ nu ne matche jamais la valeur exacte
+        # (tokenisée par l'analyzer standard). D'où .keyword ici.
+        "query": {"term": {"community_id.keyword": community_id}},
         "_source": [
             "@timestamp", "ts", "id",
             "proto", "service", "duration",
@@ -295,7 +298,7 @@ def get_alerts_by_community_id(community_id):
         "sort": [{"@timestamp": {"order": "desc"}}],
         "query": {
             "bool": {
-                "must": [{"term": {"community_id": community_id}}],
+                "must": [{"term": {"community_id.keyword": community_id}}],
                 "should": [
                     {"term": {"event_type": "alert"}},
                     {"exists": {"field": "rule"}},
@@ -535,6 +538,11 @@ def get_ip_events(ip, size=200):
         "size": 0,
         "query": {
             "bool": {
+                # scope à conn.log — sans ce discriminant, l'agg mélange tous les
+                # types de logs Zeek mentionnant cette IP (dns, http, ssl, weird,
+                # files, notice, x509 ont aussi id.orig_h/id.resp_h), gonflant
+                # total_conns/total_bytes/top_ports au-delà des vraies connexions.
+                "filter": [_log_src("conn")],
                 "should": [
                     {"term": {"id.orig_h": ip}},
                     {"term": {"id.resp_h": ip}},
@@ -684,7 +692,7 @@ def get_tls_certs(size=50):
     body = {
         "size": size,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"log.file.path.keyword": "/zeek/logs/x509.log"}},
+        "query": _log_src("x509"),
         "_source": [
             "@timestamp", "certificate",
         ],
@@ -746,7 +754,7 @@ def get_suspicious_files(size=50):
         "sort": [{"@timestamp": {"order": "desc"}}],
         "query": {
             "bool": {
-                "must": [{"term": {"log.file.path.keyword": "/zeek/logs/files.log"}}],
+                "must": [_log_src("files")],
                 "should": [{"term": {"mime_type": m}} for m in _SUSPICIOUS_MIMES],
                 "minimum_should_match": 1,
             }
@@ -970,7 +978,7 @@ def get_weird_events(size=50):
     body = {
         "size": size,
         "sort": [{"@timestamp": {"order": "desc"}}],
-        "query": {"term": {"log.file.path.keyword": "/zeek/logs/weird.log"}},
+        "query": _log_src("weird"),
         "_source": ["@timestamp", "name", "addl", "id"],
     }
     try:
@@ -1114,7 +1122,7 @@ def get_flows_stats():
             "bool": {
                 "filter": [
                     {"range": {"@timestamp": {"gte": "now-24h"}}},
-                    {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    _log_src("conn"),
                 ]
             }
         },
@@ -1203,6 +1211,21 @@ def get_flows_stats():
         return {**_empty, "warning": "Elasticsearch non joignable"}, "Elasticsearch non joignable"
     except Exception as e:
         return _empty, str(e)[:120]
+
+
+def _log_src(name):
+    """Discriminant de type de log Zeek : log.file.path (posé par Filebeat en
+    prod) OU log_source (posé par simulate-traffic.py). Sans le second, toutes
+    les requêtes retournent silencieusement vide contre les données simulées."""
+    return {
+        "bool": {
+            "should": [
+                {"term": {"log.file.path.keyword": f"/zeek/logs/{name}.log"}},
+                {"term": {"log_source": name}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
 
 
 def _ip_filter(ip):
@@ -1299,14 +1322,14 @@ def get_art_stats(ip=None):
             },
             "dns": {
                 "filter": {"bool": {"filter": [
-                    {"term":   {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                    _log_src("dns"),
                     {"exists": {"field": "rtt"}},
                 ]}},
                 "aggs": _pct_aggs("rtt"),
             },
             "http": {
                 "filter": {"bool": {"filter": [
-                    {"term":   {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    _log_src("conn"),
                     {"exists": {"field": "duration"}},
                     {"term":   {"service": "http"}},
                 ]}},
@@ -1314,7 +1337,7 @@ def get_art_stats(ip=None):
             },
             "tls": {
                 "filter": {"bool": {"filter": [
-                    {"term":   {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    _log_src("conn"),
                     {"exists": {"field": "duration"}},
                     {"bool": {"should": [{"term": {"service": "ssl"}}, {"term": {"service": "tls"}}],
                               "minimum_should_match": 1}},
@@ -1394,16 +1417,19 @@ def get_tcp_perf(ip=None):
         "p95_rtt_ms": None,
         "top_retransmit_ips": [],
         "zero_windows_count": 0,
+        "zero_window_pct": 0.0,
+        "top_zero_window_ips": [],
     }
 
     base = [
         {"range": {"@timestamp": {"gte": "now-24h"}}},
-        {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+        _log_src("conn"),
         {"term": {"proto": "tcp"}},
     ] + _ip_filter(ip)
 
     body = {
         "size": 0,
+        "track_total_hits": True,   # total exact : dénominateur du ratio zero-window
         "query": {"bool": {"filter": base}},
         "aggs": {
             "rtt": {
@@ -1421,15 +1447,21 @@ def get_tcp_perf(ip=None):
                 "filter": {"regexp": {"history.keyword": ".*[Tt].*"}},
                 "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
             },
-            # history contient W ou w → zero-window
-            "zero_win": {"filter": {"regexp": {"history.keyword": ".*[Ww].*"}}},
+            # history contient W ou w → zero-window (ratio global + top IPs, à la
+            # manière du « TCP zero-window » Netscout/Riverbed)
+            "zero_win": {
+                "filter": {"regexp": {"history.keyword": ".*[Ww].*"}},
+                "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
+            },
         },
     }
 
     try:
         r = _es("/zeek-*/_search", body)
         r.raise_for_status()
-        aggs = r.json().get("aggregations", {})
+        data = r.json()
+        aggs = data.get("aggregations", {})
+        conn_total_real = int(data.get("hits", {}).get("total", {}).get("value", 0))
     except requests.exceptions.ConnectionError:
         return result, "Elasticsearch non joignable"
     except Exception as e:
@@ -1457,8 +1489,20 @@ def get_tcp_perf(ip=None):
     rows.sort(key=lambda x: x["retransmit_pct"], reverse=True)
     result["top_retransmit_ips"] = rows[:10]
 
-    # ── Zero-windows ──
-    result["zero_windows_count"] = int(aggs.get("zero_win", {}).get("doc_count", 0))
+    # ── Zero-windows : compteur, ratio global, top IPs ──
+    zw = aggs.get("zero_win", {})
+    zw_total = int(zw.get("doc_count", 0))
+    result["zero_windows_count"] = zw_total
+    if conn_total_real > 0:
+        result["zero_window_pct"] = round(zw_total / conn_total_real * 100, 2)
+    rows = []
+    for b in zw.get("per_ip", {}).get("buckets", []):
+        ip_, cnt = b["key"], b["doc_count"]
+        tot = total_per_ip.get(ip_, cnt)
+        rows.append({"ip": ip_, "count": cnt,
+                     "zero_window_pct": round(cnt / tot * 100, 2) if tot > 0 else 0.0})
+    rows.sort(key=lambda x: x["zero_window_pct"], reverse=True)
+    result["top_zero_window_ips"] = rows[:10]
 
     return result, None
 
@@ -1477,7 +1521,7 @@ def get_top_talkers(size=10, ip_ranges=None):
         "size": 0,
         "query": {"bool": {"filter": [
             {"range": {"@timestamp": {"gte": "now-24h"}}},
-            {"term": {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+            _log_src("conn"),
         ]}},
         "aggs": {
             "by_ip": {
@@ -1641,7 +1685,7 @@ def get_sla_stats(days=7):
             "name":      "HTTP ART",
             "target_ms": config.SLA_HTTP_TARGET_MS,
             "filters":   [
-                {"term":   {"log.file.path.keyword": "/zeek/logs/http.log"}},
+                _log_src("http"),
                 {"exists": {"field": "duration"}},
             ],
             "field":    "duration",
@@ -1652,7 +1696,7 @@ def get_sla_stats(days=7):
             "name":      "DNS RTT",
             "target_ms": config.SLA_DNS_TARGET_MS,
             "filters":   [
-                {"term":   {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                _log_src("dns"),
                 {"exists": {"field": "rtt"}},
             ],
             "field":    "rtt",
@@ -1663,7 +1707,7 @@ def get_sla_stats(days=7):
             "name":      "TCP RTT",
             "target_ms": config.SLA_RTT_TARGET_MS,
             "filters":   [
-                {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                _log_src("conn"),
                 {"term":  {"proto": "tcp"}},
                 {"range": {"rtt": {"gt": 0}}},
             ],

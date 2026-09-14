@@ -5,6 +5,12 @@ portal/data/
 reports/*.pdf
 reports/index.json
 
+# Caches régénérés par le portail — pas du code, se recrée automatiquement
+# (pcap-tcp-analysis.py écrase pcap-analysis.json à chaque run ; l'API
+# /api/ioc-graph régénère ioc-graph-output.json à chaque ouverture de /graph)
+scripts/security/pcap-analysis.json
+scripts/security/ioc-graph-output.json
+
 # Elasticsearch data
 elasticsearch/data/
 

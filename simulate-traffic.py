@@ -5,6 +5,7 @@ Injecte des logs simulés dans Elasticsearch pour alimenter tous les dashboards.
 Usage : python3 simulate-traffic.py [--hours 24] [--es http://localhost:9200] [--attack] [--intensity low|medium|high]
 """
 
+import hashlib
 import json
 import random
 import string
@@ -106,6 +107,11 @@ NORMAL_DOMAINS = [
     "slack.com", "zoom.us", "dropbox.com", "drive.google.com"
 ]
 
+# IP externe stable par domaine — simule une résolution DNS cohérente
+# (plusieurs domaines peuvent légitimement partager une IP, comme derrière
+# un même CDN). Voir gen_ssl_log() pour le pourquoi.
+DOMAIN_TO_IP = {d: EXTERNAL_IPS[i % len(EXTERNAL_IPS)] for i, d in enumerate(NORMAL_DOMAINS)}
+
 # Domaines suspects (haute entropie, type DGA)
 DGA_DOMAINS = [
     "xkjhqpwmzr.com", "vjkqplxnbt.net", "rnmxqjzpvl.org",
@@ -156,6 +162,27 @@ JA3_MALICIOUS = [
     "6734f37431670b3ab4292b8f60f29984",  # Trickbot
     "26caf660a5c9fc71f2f88ca1b0d3d2e3",  # CobaltStrike default
     "b386946a5a44d1ddcc843bc75336dfce",  # Metasploit
+]
+TLS_CIPHERS_STRONG = [
+    "TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+]
+# Suites bannies par le RGS ANSSI (annexe B1) : RC4, 3DES, NULL, export — gardées
+# ici pour que l'axe "Hygiène chiffrement" de /audit ait des occurrences réelles
+# à détecter en démo (~10% des sessions TLS simulées).
+TLS_CIPHERS_WEAK = [
+    "TLS_RSA_WITH_RC4_128_SHA", "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+    "TLS_RSA_WITH_NULL_SHA", "TLS_RSA_EXPORT_WITH_RC4_40_MD5",
+]
+# validation_status Zeek natif (ssl.log) — sous-ensemble "chaîne de confiance
+# invalide" volontairement distinct de "certificate has expired" (déjà couvert
+# par le notice SSL::Certificate_Expired existant, pour ne pas doublonner le
+# même constat via deux mécanismes).
+VALIDATION_STATUS_UNTRUSTED = [
+    "self signed certificate",
+    "unable to get local issuer certificate",
+    "unable to verify the first certificate",
 ]
 JA3S_VALUES = [
     "9d93b2d1c78f31563ea0bd51a6e78e93",
@@ -251,6 +278,21 @@ def random_ts(base_time, jitter_seconds=300):
     ts = base_time + timedelta(seconds=offset)
     return ts.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
+CONN_HISTORY_BASE = ["ShADadFf", "ShADadfF", "Dd", "ShAdDaFf", "S", "OTH", "ShAFf"]
+
+def _ip_health_profile(ip):
+    """Profil de santé déterministe par IP destination (même IP -> même
+    comportement sur toute la simulation), pour un jeu de données contrasté
+    (quelques IPs à problèmes persistants) plutôt qu'un taux d'incidents
+    uniforme sur tout le trafic — sinon toutes les applications ressortent
+    "critiques" au même niveau et le score de santé composite n'a plus de
+    contraste démonstratif."""
+    h = int(hashlib.md5(ip.encode()).hexdigest(), 16)
+    if (h % 100) < 20:  # ~20% des IPs ont des problèmes de perf persistants
+        return {"zw_p": 0.12, "retrans_p": 0.15, "rtt_range": (0.08, 0.4)}
+    return {"zw_p": 0.005, "retrans_p": 0.01, "rtt_range": (0.001, 0.06)}
+
+
 def gen_conn_log(ts):
     src = random.choice(INTERNAL_IPS)
     dst = random.choice(EXTERNAL_IPS + INTERNAL_IPS)
@@ -262,7 +304,7 @@ def gen_conn_log(ts):
     resp_bytes = random.randint(40, 500000)
     state = random.choice(CONN_STATES)
 
-    return {
+    doc = {
         "ts": ts,
         "@timestamp": ts,
         "uid": random_uid(),
@@ -283,6 +325,22 @@ def gen_conn_log(ts):
         "log_type": "zeek",
         "log_source": "conn"
     }
+
+    if proto == "tcp":
+        # history/rtt : champs Zeek natifs consommés par es_client.get_tcp_perf()
+        # (RTT, retransmissions "T"/"t", zero-windows "W"/"w"). Taux dépendant du
+        # profil de santé de l'IP destination (voir _ip_health_profile) plutôt
+        # qu'uniforme, pour un jeu de données contrasté.
+        profile = _ip_health_profile(dst)
+        history = random.choice(CONN_HISTORY_BASE)
+        if random.random() < profile["zw_p"]:
+            history += random.choice(["w", "W"])
+        if random.random() < profile["retrans_p"]:
+            history += random.choice(["t", "T"])
+        doc["history"] = history
+        doc["rtt"] = round(random.uniform(*profile["rtt_range"]), 6)
+
+    return doc
 
 def gen_dns_log(ts, suspicious=False):
     src = random.choice(INTERNAL_IPS)
@@ -360,11 +418,19 @@ def gen_http_log(ts):
 
 def gen_ssl_log(ts, malicious=False):
     src = random.choice(INTERNAL_IPS)
-    dst = random.choice(EXTERNAL_IPS)
     server = random.choice(NORMAL_DOMAINS)
+    # IP stable par domaine (comme une vraie résolution DNS) plutôt que
+    # totalement décorrélée du domaine — sans ça, le dictionnaire applicatif
+    # (IP -> app, résolu via le SNI le plus vu sur cette IP) reçoit un signal
+    # bruité : une même IP externe se retrouve associée à des domaines
+    # différents d'un événement à l'autre, ce qui dilue le score de santé
+    # par application au lieu de refléter des IPs "à problèmes" persistantes.
+    dst = DOMAIN_TO_IP.get(server, random.choice(EXTERNAL_IPS))
     version = random.choice(TLS_VERSIONS)
     ja3 = random.choice(JA3_MALICIOUS if malicious else JA3_NORMAL)
     ja3s = random.choice(JA3S_VALUES)
+    cipher = random.choice(TLS_CIPHERS_WEAK) if random.random() < 0.10 else random.choice(TLS_CIPHERS_STRONG)
+    validation_status = random.choice(VALIDATION_STATUS_UNTRUSTED) if random.random() < 0.08 else "ok"
 
     return {
         "ts": ts,
@@ -379,6 +445,8 @@ def gen_ssl_log(ts, malicious=False):
         "subject": f"CN={server}",
         "issuer": random.choice(TLS_ISSUERS),
         "established": True,
+        "cipher": cipher,
+        "validation_status": validation_status,
         "ja3": ja3,
         "ja3s": ja3s,
         "log_type": "zeek",
@@ -408,6 +476,39 @@ def gen_ssh_log(ts, malicious=False):
         "hassh_server": random.choice(HASSH_SERVER),
         "log_type": "zeek",
         "log_source": "ssh"
+    }
+
+# Catalogue logiciel simulé (software.log Zeek) — mélange de versions à jour
+# et volontairement obsolètes/non supportées, pour que l'inventaire actif sur
+# /audit ait des instances réelles à détecter (~15% des entrées).
+SOFTWARE_CURRENT = [
+    {"type": "HTTP::BROWSER", "name": "Chrome",  "version": "122.0.6261.128"},
+    {"type": "HTTP::BROWSER", "name": "Firefox", "version": "123.0"},
+    {"type": "HTTP::BROWSER", "name": "Safari",  "version": "17.3"},
+    {"type": "HTTP::BROWSER", "name": "Edge",    "version": "121.0.2277.128"},
+    {"type": "SSH::SERVER",   "name": "OpenSSH", "version": "9.6"},
+    {"type": "HTTP::SCRIPT",  "name": "curl",    "version": "8.5.0"},
+]
+SOFTWARE_OUTDATED = [
+    {"type": "HTTP::BROWSER", "name": "Chrome",  "version": "74.0.3729.169"},
+    {"type": "HTTP::BROWSER", "name": "Internet Explorer", "version": "8.0"},
+    {"type": "HTTP::BROWSER", "name": "Firefox", "version": "52.0"},
+    {"type": "SSH::SERVER",   "name": "OpenSSH", "version": "7.4"},
+    {"type": "HTTP::SCRIPT",  "name": "curl",    "version": "7.29.0"},
+]
+
+def gen_software_log(ts):
+    host = random.choice(INTERNAL_IPS)
+    entry = random.choice(SOFTWARE_OUTDATED) if random.random() < 0.15 else random.choice(SOFTWARE_CURRENT)
+    return {
+        "ts": ts,
+        "@timestamp": ts,
+        "host": host,
+        "software_type": entry["type"],
+        "name": entry["name"],
+        "unparsed_version": entry["version"],
+        "log_type": "zeek",
+        "log_source": "software",
     }
 
 def gen_intel_log(ts):
@@ -723,6 +824,11 @@ def main():
         for _ in range(max(1, int(events_count * 0.05))):
             ts = random_ts(current_time, 300)
             batch.append(gen_ssh_log(ts))
+
+        # --- Inventaire logiciel passif (software.log, 5% du trafic) ---
+        for _ in range(max(1, int(events_count * 0.05))):
+            ts = random_ts(current_time, 300)
+            batch.append(gen_software_log(ts))
 
         # --- IDS alertes baseline (trafic normal) ---
         ids_count = max(1, int(events_count * 0.03))

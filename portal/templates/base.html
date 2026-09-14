@@ -3,6 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    /* Applique le thème sauvegardé avant le rendu CSS — évite un flash du
+       mauvais thème (sombre par défaut si aucune préférence enregistrée). */
+    (function () {
+      try {
+        var t = localStorage.getItem("nw_theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-bs-theme", t);
+      } catch (e) {}
+    })();
+  </script>
   <title>{% block title %}NetWatch Portal{% endblock %}</title>
 
   {# Favicon — radar cyan inline (pas de fichier, pas de build) #}
@@ -18,11 +28,9 @@
 </head>
 <body>
 
-{# Section secondaire ouverte automatiquement si la page courante en fait partie #}
-{% set secondary_endpoints = ['status', 'vms', 'catalog', 'tool_detail', 'deploy', 'compare', 'compliance', 'agents_page'] %}
-
 <div class="d-flex">
-  <!-- Barre latérale -->
+  <!-- Barre latérale — sections repliables (NW.initNavSections : la section de
+       la page active reste ouverte, préférence en localStorage) -->
   <nav class="sidebar d-flex flex-column p-3">
     <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
       <span class="brand-mark"><i class="bi bi-radar"></i></span>
@@ -33,16 +41,35 @@
     </a>
 
     {# ── Observabilité (NPM) ── #}
-    <div class="nav-section" data-i18n="nav_observability">Observabilité</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-obs"
+         role="button" aria-expanded="true" aria-controls="nav-sec-obs">
+      <span data-i18n="nav_observability">Observabilité</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-obs">
       <li class="nav-item">
         <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
           <i class="bi bi-grid-1x2"></i> <span data-i18n="nav_dashboard">Dashboard</span>
         </a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('custom_dashboard_page') }}" class="nav-link {% if request.endpoint == 'custom_dashboard_page' %}active{% endif %}">
+          <i class="bi bi-grid-3x2-gap-fill"></i> <span data-i18n="nav_custom_dashboard">Tableau personnalisé</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('flows') }}" class="nav-link {% if request.endpoint == 'flows' %}active{% endif %}">
           <i class="bi bi-diagram-3"></i> <span data-i18n="nav_flows">Flux & performance</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('applications_page') }}" class="nav-link {% if request.endpoint == 'applications_page' %}active{% endif %}">
+          <i class="bi bi-window-stack"></i> <span data-i18n="nav_applications">Applications</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('app_map_page') }}" class="nav-link {% if request.endpoint == 'app_map_page' %}active{% endif %}">
+          <i class="bi bi-diagram-3-fill"></i> <span data-i18n="nav_app_map">Dépendances applicatives</span>
         </a>
       </li>
       <li class="nav-item">
@@ -65,11 +92,20 @@
           <i class="bi bi-patch-check"></i> <span data-i18n="nav_sla">SLA</span>
         </a>
       </li>
+      <li class="nav-item">
+        <a href="{{ url_for('thresholds_page') }}" class="nav-link {% if request.endpoint == 'thresholds_page' %}active{% endif %}">
+          <i class="bi bi-bell"></i> <span data-i18n="nav_thresholds">Alertes sur seuil</span>
+        </a>
+      </li>
     </ul>
 
     {# ── Sécurité (NDR) ── #}
-    <div class="nav-section" data-i18n="nav_security">Sécurité</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-sec"
+         role="button" aria-expanded="true" aria-controls="nav-sec-sec">
+      <span data-i18n="nav_security">Sécurité</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-sec">
       <li class="nav-item">
         <a href="{{ url_for('alerts') }}" class="nav-link {% if request.endpoint in ['alerts', 'alerts_export_csv'] %}active{% endif %}">
           <i class="bi bi-shield-exclamation"></i> <span data-i18n="nav_alerts">Alertes IDS</span>
@@ -104,8 +140,12 @@
     </ul>
 
     {# ── Rapports ── #}
-    <div class="nav-section" data-i18n="nav_report_sec">Rapports</div>
-    <ul class="nav nav-pills flex-column gap-1">
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-report"
+         role="button" aria-expanded="true" aria-controls="nav-sec-report">
+      <span data-i18n="nav_report_sec">Rapports</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse show" id="nav-sec-report">
       <li class="nav-item">
         <a href="{{ url_for('exec_page') }}" class="nav-link {% if request.endpoint == 'exec_page' %}active{% endif %}">
           <i class="bi bi-speedometer2"></i> <span data-i18n="nav_exec">Dashboard Exec</span>
@@ -119,50 +159,55 @@
       <li class="nav-item">
         <a href="{{ url_for('report') }}" class="nav-link" target="_blank">
           <i class="bi bi-file-earmark-text"></i> <span data-i18n="nav_report">Rapport exécutif</span>
-          <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.7rem;opacity:.5"></i>
+          <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.65rem;opacity:.5"></i>
         </a>
       </li>
     </ul>
 
-    {# ── Projet & infra (repliable) ── #}
-    <details class="nav-group" id="nav-secondary" {% if request.endpoint in secondary_endpoints %}open data-forced{% endif %}>
-      <summary class="nav-section">
-        <span data-i18n="nav_project">Projet & infra</span>
-        <i class="bi bi-chevron-down"></i>
-      </summary>
-      <ul class="nav nav-pills flex-column gap-1">
-        <li class="nav-item">
-          <a href="{{ url_for('status') }}" class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
-            <i class="bi bi-activity"></i> <span data-i18n="nav_status">Statut services</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="{{ url_for('vms') }}" class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
-            <i class="bi bi-hdd-stack"></i> <span data-i18n="nav_vms">Machines virtuelles</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="{{ url_for('catalog') }}" class="nav-link {% if request.endpoint in ['catalog','tool_detail','deploy'] %}active{% endif %}">
-            <i class="bi bi-grid-3x3-gap"></i> <span data-i18n="nav_catalog">Catalogue outils</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="{{ url_for('compare') }}" class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
-            <i class="bi bi-bar-chart-steps"></i> <span data-i18n="nav_compare">Comparaison</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="{{ url_for('compliance') }}" class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
-            <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="{{ url_for('agents_page') }}" class="nav-link {% if request.endpoint == 'agents_page' %}active{% endif %}">
-            <i class="bi bi-robot"></i> <span data-i18n="nav_agents">Agents IA</span>
-          </a>
-        </li>
-      </ul>
-    </details>
+    {# ── Projet & infra (replié par défaut) ── #}
+    <div class="nav-section" data-bs-toggle="collapse" data-bs-target="#nav-sec-infra" data-default="closed"
+         role="button" aria-expanded="false" aria-controls="nav-sec-infra">
+      <span data-i18n="nav_project">Projet & infra</span>
+      <i class="bi bi-chevron-down nav-section-caret"></i>
+    </div>
+    <ul class="nav nav-pills flex-column gap-1 collapse" id="nav-sec-infra">
+      <li class="nav-item">
+        <a href="{{ url_for('status') }}" class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
+          <i class="bi bi-activity"></i> <span data-i18n="nav_status">Statut services</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ grafana_url | browser_url }}" target="_blank" class="nav-link">
+          <i class="bi bi-bar-chart-fill"></i> <span>Grafana</span>
+          <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.65rem;opacity:.5"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('vms') }}" class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
+          <i class="bi bi-hdd-stack"></i> <span data-i18n="nav_vms">Machines virtuelles</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('catalog') }}" class="nav-link {% if request.endpoint in ['catalog','tool_detail','deploy'] %}active{% endif %}">
+          <i class="bi bi-grid-3x3-gap"></i> <span data-i18n="nav_catalog">Catalogue outils</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('compare') }}" class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
+          <i class="bi bi-bar-chart-steps"></i> <span data-i18n="nav_compare">Comparaison</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('compliance') }}" class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
+          <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('agents_page') }}" class="nav-link {% if request.endpoint == 'agents_page' %}active{% endif %}">
+          <i class="bi bi-robot"></i> <span data-i18n="nav_agents">Agents IA</span>
+        </a>
+      </li>
+    </ul>
 
     <div class="mt-auto sidebar-footer">
       <i class="bi bi-hdd-network me-1"></i>
@@ -179,6 +224,13 @@
         <span class="badge bg-dark d-none d-xl-inline-flex">
           <i class="bi bi-box me-1"></i>Proxmox {{ proxmox_node }}
         </span>
+        {% endif %}
+        {% if grafana_dashboard_uid %}
+        <a href="{{ (grafana_url.rstrip('/') + '/d/' + grafana_dashboard_uid) | browser_url }}"
+           target="_blank" class="btn btn-sm btn-outline-warning"
+           title="Ouvrir le dashboard Grafana correspondant à cette page">
+          <i class="bi bi-bar-chart-fill me-1"></i>Grafana
+        </a>
         {% endif %}
         {% block topbar_actions %}{% endblock %}
         {# Filtre global par hostgroup — rendu côté serveur (context processor),
@@ -201,6 +253,12 @@
           <span class="lang-active">FR</span>
           <span class="text-muted mx-1">|</span>
           <span class="lang-other" style="opacity:.45">EN</span>
+        </button>
+        <button id="theme-toggle" onclick="NW.switchTheme()"
+                class="btn btn-sm btn-outline-secondary"
+                title="Thème clair / sombre">
+          <i class="bi bi-sun-fill" id="theme-icon-light"></i>
+          <i class="bi bi-moon-stars-fill" id="theme-icon-dark" style="display:none"></i>
         </button>
         <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-secondary" title="Déconnexion">
           <i class="bi bi-box-arrow-right"></i>
@@ -232,6 +290,14 @@
   </div>
 </div>
 
+<!-- Menu contextuel clic droit — pivot IP / domaine / signature -->
+<div class="pivot-menu" id="pivot-menu">
+  <div class="pivot-menu-header">
+    <span id="pivot-menu-type"></span> · <code id="pivot-menu-value"></code>
+  </div>
+  <div class="pivot-menu-list" id="pivot-menu-list"></div>
+</div>
+
 <!-- Messages flash → convertis en toasts par netwatch.js -->
 <div id="flash-data" hidden>
   {% for category, message in get_flashed_messages(with_categories=true) %}
@@ -247,27 +313,31 @@
 <script>
 (function () {
   var NAV = [
-    { icon: 'bi-grid-1x2',               label: 'Dashboard',            url: '/',               hint: 'Vue observabilité' },
-    { icon: 'bi-diagram-3',              label: 'Flux & performance',   url: '/flows',          hint: 'Top talkers · ART · TCP' },
-    { icon: 'bi-file-earmark-binary-fill', label: 'Analyse PCAP',       url: '/pcap-analysis',  hint: 'Conversations · points d\'écoute' },
-    { icon: 'bi-diagram-2-fill',         label: 'Topologie',            url: '/topology',       hint: 'Carte réseau L2/L3 · LLDP' },
-    { icon: 'bi-collection',             label: 'Hostgroups',           url: '/hostgroups',     hint: 'Groupes d\'hôtes · filtres' },
-    { icon: 'bi-patch-check',            label: 'SLA Compliance',       url: '/sla',            hint: 'HTTP · DNS · RTT · Business Hours' },
-    { icon: 'bi-shield-exclamation',     label: 'Alertes IDS',          url: '/alerts',         hint: 'Snort · Suricata' },
-    { icon: 'bi-layers',                 label: 'Incidents',            url: '/incidents',      hint: 'Fenêtres 5 min' },
-    { icon: 'bi-file-earmark-binary',    label: 'Analyse Zeek',         url: '/zeek',           hint: 'weird · files · x509' },
-    { icon: 'bi-bezier2',                label: 'Graphe IOC',           url: '/graph',          hint: 'IPs · règles · MITRE' },
-    { icon: 'bi-globe',                  label: 'Carte GeoIP',          url: '/geomap',         hint: 'Origine des attaques' },
-    { icon: 'bi-clipboard2-data',        label: 'Audit réseau',         url: '/audit',          hint: 'Posture & score' },
-    { icon: 'bi-speedometer2',           label: 'Dashboard Exec',       url: '/exec',           hint: 'RSSI · posture · KPIs' },
-    { icon: 'bi-file-earmark-pdf',       label: 'Rapports PDF',         url: '/reports',        hint: 'Historique · génération' },
-    { icon: 'bi-file-earmark-text',      label: 'Rapport exécutif',     url: '/report',         hint: 'HTML imprimable', blank: true },
-    { icon: 'bi-activity',               label: 'Statut services',      url: '/status',         hint: 'Health check' },
-    { icon: 'bi-hdd-stack',              label: 'Machines virtuelles',  url: '/vms',            hint: 'Proxmox VMs' },
-    { icon: 'bi-grid-3x3-gap',           label: 'Catalogue outils',     url: '/catalog',        hint: 'Open-source & commercial' },
-    { icon: 'bi-bar-chart-steps',        label: 'Comparaison',          url: '/compare',        hint: 'OS vs Commercial' },
-    { icon: 'bi-clipboard2-check',       label: 'Conformité',           url: '/compliance',     hint: 'NIS2 · NIST · ISO' },
-    { icon: 'bi-robot',                  label: 'Agents IA',            url: '/agents',         hint: 'Statut des agents' },
+    { icon: 'bi-grid-1x2',               label: 'Dashboard',                 url: '/',                 hint: 'Vue observabilité' },
+    { icon: 'bi-grid-3x2-gap-fill',      label: 'Tableau personnalisé',      url: '/custom-dashboard', hint: 'Widgets réordonnables, glisser-déposer' },
+    { icon: 'bi-diagram-3',              label: 'Flux & performance',        url: '/flows',            hint: 'Top talkers · ART · TCP' },
+    { icon: 'bi-window-stack',           label: 'Applications',              url: '/applications',     hint: 'Dictionnaire applicatif SNI' },
+    { icon: 'bi-diagram-3-fill',         label: 'Dépendances applicatives',  url: '/app-map',          hint: 'Qui parle à qui — flux inter-services' },
+    { icon: 'bi-file-earmark-binary-fill', label: 'Analyse PCAP',            url: '/pcap-analysis',    hint: 'Conversations TCP · points d\'écoute' },
+    { icon: 'bi-diagram-2-fill',         label: 'Topologie',                 url: '/topology',         hint: 'Carte réseau L2/L3 · LLDP' },
+    { icon: 'bi-collection',             label: 'Hostgroups',                url: '/hostgroups',       hint: 'Groupes d\'hôtes · filtres' },
+    { icon: 'bi-patch-check',            label: 'SLA Compliance',            url: '/sla',              hint: 'HTTP · DNS · RTT · Business Hours' },
+    { icon: 'bi-bell',                   label: 'Alertes sur seuil',         url: '/thresholds',       hint: 'Notifications sur franchissement de métrique' },
+    { icon: 'bi-shield-exclamation',     label: 'Alertes IDS',               url: '/alerts',           hint: 'Snort · Suricata · temps réel' },
+    { icon: 'bi-layers',                 label: 'Incidents',                 url: '/incidents',        hint: 'Fenêtres 5 min · chaîne d\'attaque' },
+    { icon: 'bi-file-earmark-binary',    label: 'Analyse Zeek',              url: '/zeek',             hint: 'weird · files · x509' },
+    { icon: 'bi-bezier2',                label: 'Graphe IOC',                url: '/graph',            hint: 'IPs · règles · MITRE' },
+    { icon: 'bi-globe',                  label: 'Carte GeoIP',               url: '/geomap',           hint: 'Origine des attaques' },
+    { icon: 'bi-clipboard2-data',        label: 'Audit réseau',              url: '/audit',            hint: 'Posture & score' },
+    { icon: 'bi-speedometer2',           label: 'Dashboard Exec',            url: '/exec',             hint: 'RSSI · posture · KPIs' },
+    { icon: 'bi-file-earmark-pdf',       label: 'Rapports PDF',              url: '/reports',          hint: 'Historique · génération' },
+    { icon: 'bi-file-earmark-text',      label: 'Rapport exécutif',          url: '/report',           hint: 'HTML imprimable', blank: true },
+    { icon: 'bi-activity',               label: 'Statut services',           url: '/status',           hint: 'Health check · LLMOps' },
+    { icon: 'bi-hdd-stack',              label: 'Machines virtuelles',       url: '/vms',              hint: 'Proxmox VMs' },
+    { icon: 'bi-grid-3x3-gap',           label: 'Catalogue outils',          url: '/catalog',          hint: 'Open-source & commercial' },
+    { icon: 'bi-bar-chart-steps',        label: 'Comparaison',               url: '/compare',          hint: 'OS vs Commercial' },
+    { icon: 'bi-clipboard2-check',       label: 'Conformité',                url: '/compliance',       hint: 'NIS2 · NIST · ISO' },
+    { icon: 'bi-robot',                  label: 'Agents IA',                 url: '/agents',           hint: 'Statut des agents' },
   ];
   var IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
   var overlay = document.getElementById('cmd-overlay');
@@ -358,18 +428,6 @@
   });
 })();
 
-// ── Section secondaire de la nav : état replié mémorisé ──
-(function () {
-  var d = document.getElementById('nav-secondary');
-  if (!d) return;
-  try {
-    if (!d.hasAttribute('data-forced') && localStorage.getItem('nw_nav_secondary') === 'open') d.open = true;
-    d.addEventListener('toggle', function () {
-      localStorage.setItem('nw_nav_secondary', d.open ? 'open' : 'closed');
-    });
-  } catch (e) {}
-})();
-
 // ── Badge alertes critiques dans le nav (agg cachée 30 s côté serveur) ──
 (function () {
   var badge = document.getElementById('nav-alert-badge');
@@ -392,7 +450,7 @@
   setInterval(updateBadge, 60000);
 })();
 
-// ── Filtre global par hostgroup (sélecteur topbar) ──
+// ── Filtre global par hostgroup (sélecteur topbar, options rendues côté serveur) ──
 (function () {
   var sel = document.getElementById('hostgroup-filter');
   if (!sel) return;
@@ -402,6 +460,107 @@
     else url.searchParams.delete('hostgroup');
     window.location.href = url.toString();
   });
+})();
+
+// ── Menu contextuel clic droit — pivot IP / domaine / signature (à la Riverbed) ──
+(function () {
+  var IPV4_RE   = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+  var DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+
+  var menu   = document.getElementById('pivot-menu');
+  var typeEl = document.getElementById('pivot-menu-type');
+  var valEl  = document.getElementById('pivot-menu-value');
+  var listEl = document.getElementById('pivot-menu-list');
+  if (!menu) return;
+
+  var LABELS = { ip: 'IP', domain: 'Domaine', sig: 'Signature' };
+
+  function actionsFor(type, value) {
+    var enc = encodeURIComponent(value);
+    if (type === 'ip') {
+      return [
+        { icon: 'bi-search',      label: 'Voir le détail IP',      url: '/ip/' + enc },
+        { icon: 'bi-funnel',      label: 'Filtrer les alertes',    url: '/alerts?q=' + enc },
+        { icon: 'bi-clipboard',   label: 'Copier l\'IP',           copy: value },
+      ];
+    }
+    if (type === 'domain') {
+      return [
+        { icon: 'bi-window-stack', label: 'Voir dans Applications', url: '/applications?q=' + enc },
+        { icon: 'bi-clipboard',    label: 'Copier le domaine',      copy: value },
+      ];
+    }
+    if (type === 'sig') {
+      return [
+        { icon: 'bi-funnel',     label: 'Filtrer les alertes sur cette signature', url: '/alerts?q=' + enc },
+        { icon: 'bi-clipboard',  label: 'Copier la signature',    copy: value },
+      ];
+    }
+    return [];
+  }
+
+  function classify(el) {
+    if (!el) return null;
+    // Limite le clic droit « intelligent » au contenu de page — pas à la
+    // sidebar/topbar/modales de chrome.
+    if (!el.closest('.content-area')) return null;
+    var tagged = el.closest('[data-pivot]');
+    if (tagged) {
+      var type = tagged.getAttribute('data-pivot');
+      var value = (tagged.textContent || '').trim();
+      if (!value) return null;
+      return { type: type, value: value, el: tagged };
+    }
+    var host = el.closest('a, code, span, td, div');
+    if (!host) return null;
+    var text = (host.textContent || '').trim();
+    if (!text || text.length > 80 || text.indexOf(' ') !== -1) return null;
+    if (IPV4_RE.test(text)) return { type: 'ip', value: text, el: host };
+    if (DOMAIN_RE.test(text)) return { type: 'domain', value: text, el: host };
+    return null;
+  }
+
+  function close() { menu.classList.remove('pivot-open'); }
+
+  function open(x, y, hit) {
+    typeEl.textContent = LABELS[hit.type] || hit.type;
+    valEl.textContent  = hit.value;
+    var actions = actionsFor(hit.type, hit.value);
+    listEl.innerHTML = actions.map(function (a, i) {
+      return '<div class="pivot-item" data-idx="' + i + '"><i class="bi ' + a.icon + '"></i>' + a.label + '</div>';
+    }).join('');
+    listEl.querySelectorAll('.pivot-item').forEach(function (el, i) {
+      el.addEventListener('click', function () {
+        var a = actions[i];
+        close();
+        if (a.copy !== undefined) {
+          navigator.clipboard.writeText(a.copy).then(function () {
+            if (window.NW && NW.toast) NW.toast('Copié : ' + a.copy, 'success');
+          }).catch(function () {});
+        } else if (a.url) {
+          window.location.href = a.url;
+        }
+      });
+    });
+
+    // Position + reste dans le viewport
+    menu.classList.add('pivot-open');
+    var mw = menu.offsetWidth, mh = menu.offsetHeight;
+    var vx = Math.min(x, window.innerWidth  - mw - 8);
+    var vy = Math.min(y, window.innerHeight - mh - 8);
+    menu.style.left = Math.max(8, vx) + 'px';
+    menu.style.top  = Math.max(8, vy) + 'px';
+  }
+
+  document.addEventListener('contextmenu', function (e) {
+    var hit = classify(e.target);
+    if (!hit) { close(); return; }
+    e.preventDefault();
+    open(e.clientX, e.clientY, hit);
+  });
+  document.addEventListener('click', function (e) { if (!menu.contains(e.target)) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  window.addEventListener('scroll', close, true);
 })();
 </script>
 </body>

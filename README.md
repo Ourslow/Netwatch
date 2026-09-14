@@ -60,11 +60,58 @@
 
 ---
 
+### 📑 Sommaire
+
+<table>
+<tr>
+<td valign="top" width="33%">
+
+**Découvrir**
+- [Vue d'ensemble](#vue-densemble)
+- [Fonctionnalités](#fonctionnalités)
+- [Les 3 moteurs](#les-3-moteurs)
+- [Architecture](#architecture)
+
+</td>
+<td valign="top" width="33%">
+
+**Utiliser**
+- [Portail web](#portail-web)
+- [Quickstart](#quickstart)
+- [Détection](#détection)
+- [Dashboards Grafana](#dashboards-grafana)
+
+</td>
+<td valign="top" width="33%">
+
+**Approfondir**
+- [Stack technique](#stack-technique)
+- [Comparaison OS vs commercial](#comparaison-open-source-vs-commercial)
+- [Structure du projet](#structure-du-projet)
+- [Troubleshooting](#troubleshooting) · [Roadmap](#roadmap)
+
+</td>
+</tr>
+</table>
+
+---
+
 ## Vue d'ensemble
 
 **NetWatch** est un NDR *(Network Detection & Response)* open-source qui reproduit les fonctionnalités clés d'outils commerciaux comme **Netscout nGeniusONE**, **Corelight** ou **Riverbed** — déployable en moins de 30 minutes sur n'importe quelle VM.
 
 La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallèle, un portail web Flask, une IA locale on-prem, GoFlow2 pour la collecte NetFlow/IPFIX/sFlow, SNMP exporter pour la supervision des interfaces, une couverture de 4 référentiels de conformité, CrowdSec pour le blocage collaboratif et n8n pour l'automatisation des alertes.
+
+> 🎯 **Pourquoi NetWatch** — Netscout, Riverbed ou Corelight coûtent 10 000 à 100 000+ €/an et restent hors de portée des PME/TPE. NetWatch en reproduit les fonctionnalités clés (IDS multi-moteurs, NPM, Network Experience Monitoring à la Aternity, IA locale) avec des briques 100% open-source, **gratuites**, et **100% on-prem** — zéro donnée qui sort du réseau surveillé.
+
+<table>
+<tr>
+<td align="center" width="25%">🆓<br/><strong>0 €</strong><br/><sub>vs 10-100k€/an</sub></td>
+<td align="center" width="25%">🔐<br/><strong>100% on-prem</strong><br/><sub>IA locale incluse</sub></td>
+<td align="center" width="25%">⚡<br/><strong>14 services</strong><br/><sub>déployés en 30 min</sub></td>
+<td align="center" width="25%">📊<br/><strong>22 pages</strong><br/><sub>portail web unifié</sub></td>
+</tr>
+</table>
 
 > Projet réalisé par **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — [École 2600](https://www.ecole2600.com), promo 2024-2027 — SideQuest MVP (S2 2025-2026)
 
@@ -96,6 +143,11 @@ La v2 passe de 4 à **14 services** avec trois moteurs d'analyse IDS en parallè
 | 🎫 | **Ticketing automatique** | n8n → YAML ticket créé automatiquement sur alerte critique ES |
 | 📅 | **Rapport hebdomadaire** | n8n cron lundi 08h00 → agrège 7j d'alertes ES → Teams Adaptive Card |
 | ⚙️ | **Health check 14 services** | `make health` — rapport coloré ✓/⚠/✗, exit code CI, mode JSON |
+| 🗂️ | **Hostgroups** | Import CSV type NetScout, dashboards réutilisables par device/groupe (Allegro/Keysight-like) |
+| 🧩 | **Analyse PCAP conversations** | Conversations TCP par point d'écoute — octets, durée, handshake rating, retransmissions, QoS/VLAN |
+| 📄 | **Rapports planifiables** | Génération PDF à la demande + exports CSV, historique consultable sur `/reports` |
+| 🏷️ | **Dictionnaire applicatif SNI** | Classification du trafic TLS par application métier (SNI → M365, Salesforce, Slack...) — expérience applicative dérivée du réseau, sans agent poste client |
+| 🪟 | **Ratio zero-window TCP** | Indicateur de congestion applicative (`conn.log.history`), ratio global + top IPs par device/hostgroup |
 
 ---
 
@@ -219,29 +271,31 @@ Trafic réseau (SPAN / PCAP)
 
 ## Portail web
 
-Le portail Flask (`:5050`) centralise toutes les données en une interface unifiée, organisée en trois sections **Observabilité · Sécurité · Rapports** (+ une section repliée *Projet & infra*), avec un filtre global par hostgroup et une palette de commandes `Ctrl+K` :
+Le portail Flask (`:5050`) centralise toutes les données en une interface unifiée, organisée en trois sections **Observabilité · Sécurité · Rapports** (+ une section repliée *Projet & infra*), avec thème clair/sombre, filtre global par hostgroup, palette de commandes `Ctrl+K` et menu contextuel clic droit (pivot IP / domaine / signature) :
 
 | Page | Description |
 |------|-------------|
 | `/` | **Home observabilité** — KPIs trafic 24 h / RTT / ART / zero-windows / services, volume réseau, top talkers, temps de réponse Network-Server-App, alertes récentes, points d'écoute PCAP |
-| `/flows` | Flux réseau (GoFlow2/NetFlow, fallback Zeek), ART applicatif, santé TCP, top apps par catégorie |
+| `/custom-dashboard` | Tableau de bord personnalisable — widgets réordonnables par glisser-déposer, auto-refresh |
+| `/flows` | Flux réseau (GoFlow2/NetFlow, fallback Zeek), ART applicatif, santé TCP (RTT, retransmissions, ratio zero-window), top apps par catégorie |
+| `/applications` · `/app-map` | Dictionnaire applicatif SNI (Network Experience Monitoring), score de santé composite · carte des dépendances applicatives (à la Riverbed AppResponse) |
 | `/pcap-analysis` | Analyse tshark par conversation TCP (handshake, retransmissions, fenêtre, QoS/VLAN, timeline zoomable) + narration IA — notion de *point d'écoute* |
 | `/topology` | Carte réseau L2/L3 D3.js force-directed — routeurs, switchs, firewalls, hôtes |
 | `/hostgroups` | Import CSV type NetScout (plages, CIDR, groupes imbriqués) → filtre global + dashboard par groupe |
 | `/ip/<ip>` | Pivot device : mêmes widgets de performance qu'un hostgroup ou que la home (esprit Allegro) |
-| `/sla` | Compliance SLA — taux HTTP/DNS/RTT sur 7j, Business Hours vs Off-hours, gauges 270° |
-| `/alerts` | Alertes temps réel, sparklines, auto-refresh 30s, filtres moteur/sévérité |
-| `/incidents` · `/zeek` · `/geomap` | Fenêtres d'incidents 5 min · weird/files/x509 Zeek · carte GeoIP des menaces |
+| `/sla` · `/thresholds` | Compliance SLA HTTP/DNS/RTT, Business Hours vs Off-hours · alertes sur franchissement de seuil (métrique, portée, opérateur) |
+| `/alerts` | Alertes en temps réel (flux SSE), sparklines, filtres moteur/sévérité |
+| `/incidents` · `/zeek` · `/geomap` | Fenêtres d'incidents 5 min + chaîne d'attaque MITRE · weird/files/x509 Zeek · carte GeoIP des menaces |
 | `/graph` | Graphe IOC D3.js interactif — IPs, règles, TTPs, enrichissement AbuseIPDB |
-| `/audit` | Constats priorisés automatiquement, score de posture /100, recommandations |
+| `/audit` | Constats priorisés, score de posture /100, hygiène TLS/certificats, inventaire logiciel passif |
 | `/exec` | Dashboard RSSI / direction — KPIs exécutifs, score IOC composite, escalade n8n |
 | `/report` · `/reports` | Rapport exécutif HTML imprimable · génération PDF (wkhtmltopdf) à la demande + historique |
-| `/status` · `/compliance` · `/agents` | Santé des 14 services · matrices NIS2/NIST/ANSSI/ISO · monitoring des agents IA |
+| `/status` · `/compliance` · `/agents` | Santé des 14 services + LLMOps · matrices NIS2/NIST/ANSSI/ISO · monitoring des agents IA |
 | `✨ IA` | Explication des alertes et des conversations TCP via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
 > Interface disponible en **FR / EN** (switch côté client, localStorage).
-> Design system unique dans `portal/static/css/style.css` (thème « SOC Console », tokens → composants), assets vendorés dans `portal/static/vendor/` — **aucun CDN**, fonctionne en labo isolé.
-> Côté serveur : cache TTL sur les agrégations Elasticsearch, requêtes fusionnées (ART, TCP, SLA en une seule recherche), appels indépendants parallélisés.
+> Design system unique dans `portal/static/css/style.css` (thème « SOC Console » sombre + variante claire, tokens → composants), assets vendorés dans `portal/static/vendor/` — **aucun CDN**, fonctionne en labo isolé.
+> Côté serveur : cache TTL sur les agrégations Elasticsearch, requêtes fusionnées (ART, TCP, SLA en une seule recherche), appels indépendants parallélisés, cache négatif Proxmox.
 
 ---
 
@@ -296,7 +350,7 @@ sudo chmod 644 filebeat/filebeat.yml
 
 ```bash
 docker compose up -d
-docker compose ps   # 10 conteneurs attendus
+docker compose ps   # 14 conteneurs attendus
 ```
 
 > ⚠️ Le build de **Snort** prend 10-15 min la première fois (compilation depuis les sources).
@@ -343,14 +397,20 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 
 ## Détection
 
-### Scripts Zeek custom
+<details open>
+<summary><strong>🐍 Scripts Zeek custom</strong></summary>
+<br/>
 
 | Script | Seuil | Description |
 |--------|-------|-------------|
 | `port-scan-detect.zeek` | > 50 ports / 60s | Détection reconnaissance réseau |
 | `dns-entropy.zeek` | Entropie Shannon > 3.5 | Détection domaines DGA / C2 |
 
-### Règles Snort custom — MITRE ATT&CK
+</details>
+
+<details>
+<summary><strong>🛡️ Règles Snort custom — MITRE ATT&CK</strong></summary>
+<br/>
 
 | SID | Description | ATT&CK |
 |-----|-------------|--------|
@@ -365,7 +425,11 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | 1000013–16 | Accès serveur surveillé (HTTP/HTTPS/SSH/FTP) | T1190 · T1021 |
 | 1000017 | Scan de ports vers serveur surveillé | T1046 |
 
-### Détection comportementale — beacon-detect (RITA-lite)
+</details>
+
+<details open>
+<summary><strong>🎯 Détection comportementale — beacon-detect (RITA-lite)</strong></summary>
+<br/>
 
 | Détection | Logique | Indicateur |
 |-----------|---------|------------|
@@ -373,7 +437,11 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | **Longues connexions** | Connexion ouverte > 1h (reverse shell, tunnel, exfiltration lente) | `duration_h` |
 | **DNS Tunneling** | Sous-domaine > 40 chars OU > 100 requêtes vers même domaine | `subdomain_length` |
 
-### Conformité réglementaire
+</details>
+
+<details>
+<summary><strong>📋 Conformité réglementaire</strong></summary>
+<br/>
 
 | Référentiel | Couverture | Détail |
 |-------------|-----------|--------|
@@ -382,9 +450,15 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | **ANSSI** | 🟡 Partiel | Hygiène informatique + PA-022 supervision réseau |
 | **ISO 27001:2022** | ✅ Couvert | A.8.15 (logs) · A.8.16 (surveillance) · A.8.23 (filtrage) |
 
+</details>
+
 ---
 
 ## Dashboards Grafana
+
+<details open>
+<summary><strong>📊 11 dashboards auto-provisionnés</strong></summary>
+<br/>
 
 | Dashboard | Datasource | Contenu |
 |-----------|-----------|---------|
@@ -400,9 +474,15 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | JA3 / HASSH | Zeek | Fingerprints TLS (JA3/JA3S) et SSH (HASSH) |
 | Beacon Detector | Beacons | Beaconing C2, longues connexions, DNS tunneling |
 
+</details>
+
 ---
 
 ## Stack technique
+
+<details>
+<summary><strong>⚙️ 19 composants — voir le détail</strong></summary>
+<br/>
 
 | Composant | Outil | Version |
 |-----------|-------|---------|
@@ -427,6 +507,8 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | Orchestration | Docker Compose | v2 |
 | OS cible | Ubuntu | 22.04 LTS |
 
+</details>
+
 ---
 
 ## Comparaison open-source vs commercial
@@ -446,6 +528,8 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 | **Capacity planning** | **predict_linear Prometheus** | Netscout · PRTG · ManageEngine |
 | **Qualité VoIP** | **MOS E-model G.107 (Zeek)** | Netscout InfiniStreamNG · Empirix |
 | **Compliance SLA** | **Percentiles ES p95 → gauges** | Netscout nGeniusONE · Riverbed |
+| **Dictionnaire applicatif** | **Mapping SNI/domaine → app métier (Zeek ssl.log)** | Riverbed AppFlow (1300+ sign. DPI) · Netscout DPI |
+| **Ratio zero-window TCP** | **`conn.log.history` → ratio + top IPs** | Netscout nGeniusONE TCP/IP Triage · Riverbed |
 | Corrélation multi-sources | Dashboard multi-moteurs | nGeniusONE Service Triage |
 | Intégration ITSM | ServiceNow + JIRA (itsm-sync.py) | Intégrations natives |
 | Rapport conformité | PDF automatique (Flask) | SIEM intégré |
@@ -455,9 +539,13 @@ curl "http://localhost:9200/_cat/indices?v&s=index"
 
 ## Structure du projet
 
+<details>
+<summary><strong>🗂️ Voir l'arborescence complète</strong></summary>
+<br/>
+
 ```
 netwatch/
-├── docker-compose.yml              # Orchestration 12 services
+├── docker-compose.yml              # Orchestration 14 services
 ├── .env.example                    # Template de configuration
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
 ├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch
@@ -478,9 +566,11 @@ netwatch/
 ├── scripts/
 │   ├── security/
 │   │   ├── ioc-graph.py            # Graphe IOC NetworkX (IPs·règles·MITRE TTPs)
-│   │   └── ioc-graph-output.json   # Export graphe (nodes + edges)
+│   │   ├── ioc-graph-output.json   # Export graphe (nodes + edges)
+│   │   └── pcap-tcp-analysis.py    # Analyse conversations TCP (tshark) par point d'écoute
 │   └── automation/
 │       ├── create-ticket.py        # Création YAML ticket depuis alerte ES (CLI)
+│       ├── generate-report-pdf.py  # Génération rapport PDF planifiable + exports CSV
 │       ├── n8n-alertes-teams.json  # Workflow n8n alertes → Teams
 │       ├── n8n-auto-tickets.json   # Workflow n8n alertes critiques → tickets
 │       └── deploy-n8n-workflow.sh  # Import auto workflow via API n8n
@@ -522,16 +612,28 @@ netwatch/
 │   │   └── alerting/
 │   └── dashboards/                 # 11 fichiers JSON auto-provisionnés
 │
-└── netwatch/                       # Portail web Flask
+└── portal/                         # Portail web Flask
     ├── app.py
-    ├── llm_client.py               # IA locale Ollama/Mistral
-    └── templates/
-        ├── alerts.html
-        ├── audit.html
-        ├── compliance.html
-        ├── report.html
-        └── status.html
+    └── netwatch/
+        ├── es_client.py             # Requêtes Elasticsearch (alertes, TCP, flows...)
+        ├── llm_client.py            # IA locale Ollama/Mistral
+        ├── hostgroups.py            # Import CSV NetScout-like, dashboards par groupe
+        ├── experience/              # Network Experience Monitoring (à la Aternity, sans agent)
+        │   ├── app_dictionary.py    # Classification trafic TLS par SNI → app métier
+        │   └── app_catalog.json     # Table de correspondance domaine → application
+        └── templates/
+            ├── alerts.html
+            ├── audit.html
+            ├── compliance.html
+            ├── hostgroups.html
+            ├── applications.html
+            ├── pcap_analysis.html
+            ├── reports.html
+            ├── report.html
+            └── status.html
 ```
+
+</details>
 
 ---
 
@@ -611,10 +713,14 @@ python3 simulate-traffic.py --hours 6 --intensity medium --attack
 
 ## Commandes utiles
 
+<details>
+<summary><strong>💻 Aide-mémoire — voir toutes les commandes</strong></summary>
+<br/>
+
 ```bash
 # Stack
 docker compose up -d                                              # Démarrer
-docker compose ps                                                 # Vérifier les 10 conteneurs
+docker compose ps                                                 # Vérifier les 14 conteneurs
 docker compose logs -f beacon-detect                             # Logs d'un service
 docker compose build snort --no-cache && docker compose up -d snort  # Rebuild
 
@@ -628,6 +734,8 @@ curl "http://localhost:9200/_cat/indices?v&s=index"              # Index créés
 curl "http://localhost:9200/netwatch-beacons-*/_search?pretty&size=5"   # Détections beacon
 curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocages
 ```
+
+</details>
 
 ---
 
@@ -643,7 +751,9 @@ curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocag
 | **v2 Phase 5** | ✅ Juin 2026 | GoFlow2 NetFlow/IPFIX/sFlow · page /flows · ART applicatif · TCP health · npm-alerts |
 | **v2 Phase 6** | ✅ Juin 2026 | SNMP exporter IF-MIB · topologie D3.js /topology · app-classifier 425 ports · iface-saturation |
 | **v2 Phase 7** | ✅ Juin 2026 | Capacity planning predict_linear · VoIP MOS E-model G.107 · SLA compliance /sla · ITSM ServiceNow/JIRA |
-| **v3** | 📅 S2 2026 | Shuttle Proxmox physique + SPAN · Intel i350-T2 · Portail gestion VMs · Comparaison open-source vs commercial |
+| **v2 Phase 8** | ✅ Septembre 2026 | Hostgroups CSV + dashboards réutilisables · Analyse PCAP conversations TCP · Rapports PDF/CSV planifiables · Dictionnaire applicatif SNI · Ratio zero-window TCP · LLMOps (observabilité assistant Ollama) · Menu contextuel clic droit IP/domaine/signature |
+| **v3 — Infra physique** | ✅ Septembre 2026 | Déploiement validé sur Shuttle Proxmox physique + capture SPAN (Intel i350-T2) |
+| **v3 — Portail & comparatif** | 📅 S2 2026 | Portail de gestion des VMs (start/stop/déploiement depuis le portail) · Comparaison open-source vs commercial |
 
 ---
 

@@ -187,12 +187,28 @@
         <div class="chart-title">Zero-windows</div>
         <div class="kpi-zw flex-grow-1">
           <i class="bi bi-pause-circle" style="font-size:2rem;color:var(--warn);opacity:.75"></i>
-          <div class="kpi-zw-val" id="zw-count">—</div>
-          <div class="kpi-zw-label">connexions TCP (24h)</div>
-          <div class="text-muted mt-1" style="font-size:.72rem">history contenant W ou w</div>
+          <div class="kpi-zw-val" id="zw-pct">—</div>
+          <div class="kpi-zw-label"><span id="zw-count">—</span> connexions TCP (24h)</div>
+          <div class="text-muted mt-1" style="font-size:.72rem">history contenant W ou w — congestion applicative côté récepteur</div>
         </div>
       </div>
 
+    </div>
+
+    <div class="row g-3 mt-1" id="zw-top-row" style="display:none">
+      <div class="col-12 col-md-7 offset-md-5">
+        <div class="chart-title">Top IPs — zero-windows</div>
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr style="font-size:.75rem;color:var(--text-dim)">
+              <th>IP source</th>
+              <th>% zero-window</th>
+              <th class="text-end">Connexions</th>
+            </tr>
+          </thead>
+          <tbody id="zw-tbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -278,6 +294,7 @@
         var srcLabels = (d.top_src || []).map(function (x) { return x.ip; });
         var srcBytes  = (d.top_src || []).map(function (x) { return x.bytes; });
         var donutWrap = document.getElementById('donut-src-wrap');
+        Chart.getChart('donut-src') && Chart.getChart('donut-src').destroy();
         donutWrap.innerHTML = '<canvas id="donut-src" height="220"></canvas>';
         if (srcLabels.length) {
           new Chart(document.getElementById('donut-src'), {
@@ -306,6 +323,7 @@
         var portLabels = (d.top_ports || []).map(function (x) { return x.port; });
         var portBytes  = (d.top_ports || []).map(function (x) { return x.bytes; });
         var barWrap = document.getElementById('bar-ports-wrap');
+        Chart.getChart('bar-ports') && Chart.getChart('bar-ports').destroy();
         barWrap.innerHTML = '<canvas id="bar-ports" height="220"></canvas>';
         if (portLabels.length) {
           new Chart(document.getElementById('bar-ports'), {
@@ -346,6 +364,7 @@
         });
         var tlBytes = (d.timeline || []).map(function (x) { return x.bytes; });
         var tlWrap = document.getElementById('line-tl-wrap');
+        Chart.getChart('line-tl') && Chart.getChart('line-tl').destroy();
         tlWrap.innerHTML = '<canvas id="line-tl" height="220"></canvas>';
         new Chart(document.getElementById('line-tl'), {
           type: 'line',
@@ -445,6 +464,11 @@
         document.getElementById('gauge-rtt-p95').textContent =
           p95Ms !== null && p95Ms !== undefined ? p95Ms.toFixed(1) + ' ms' : '—';
 
+        /* Détruit toute instance existante avant d'en recréer une — ce canvas
+           n'est pas recréé via innerHTML comme les 5 autres, donc un appel
+           chevauchant (double-clic Refresh) planterait sinon sur
+           "Canvas is already in use by another chart". */
+        Chart.getChart('gauge-rtt') && Chart.getChart('gauge-rtt').destroy();
         new Chart(document.getElementById('gauge-rtt'), {
           type: 'doughnut',
           data: {
@@ -487,9 +511,27 @@
 
         /* ── Zero-windows ── */
         var zw = d.zero_windows_count || 0;
-        var zwEl = document.getElementById('zw-count');
-        zwEl.textContent = zw.toLocaleString('fr-FR');
-        zwEl.style.color = zw > 1000 ? 'var(--crit)' : zw > 100 ? 'var(--warn)' : 'var(--text-strong)';
+        var zwPct = d.zero_window_pct || 0;
+        document.getElementById('zw-count').textContent = zw.toLocaleString('fr-FR');
+        var zwPctEl = document.getElementById('zw-pct');
+        zwPctEl.textContent = zwPct.toFixed(1) + ' %';
+        zwPctEl.style.color = zwPct > 3 ? 'var(--crit)' : zwPct > 1 ? 'var(--warn)' : 'var(--text-strong)';
+
+        var zwIps = d.top_zero_window_ips || [];
+        var zwRow = document.getElementById('zw-top-row');
+        if (zwIps.length) {
+          zwRow.style.display = '';
+          document.getElementById('zw-tbody').innerHTML = zwIps.map(function (ip) {
+            return '<tr>'
+              + '<td><a href="/ip/' + ip.ip + '" class="ip-mono">' + ip.ip + '</a></td>'
+              + '<td>' + pctBadge(ip.zero_window_pct) + '</td>'
+              + '<td class="text-end text-muted" style="font-size:.8rem;font-family:var(--font-mono)">'
+              +   ip.count.toLocaleString('fr-FR') + '</td>'
+              + '</tr>';
+          }).join('');
+        } else {
+          zwRow.style.display = 'none';
+        }
       })
       .catch(function (err) {
         console.error('tcp-perf:', err);
@@ -497,6 +539,7 @@
           '<tr><td colspan="3" class="text-center text-danger py-2" style="font-size:.8rem">'
           + '<i class="bi bi-exclamation-triangle me-2"></i>Erreur chargement</td></tr>';
         document.getElementById('zw-count').textContent = '?';
+        document.getElementById('zw-pct').textContent = '?';
       });
   }
 
@@ -533,6 +576,7 @@
         /* ── Donut catégories ── */
         var cats  = (d.by_category || []).slice(0, 10);
         var catWrap = document.getElementById('donut-cat-wrap');
+        Chart.getChart('donut-cat') && Chart.getChart('donut-cat').destroy();
         catWrap.innerHTML = '<canvas id="donut-cat" height="260"></canvas>';
         if (cats.length) {
           new Chart(document.getElementById('donut-cat'), {
@@ -588,6 +632,7 @@
         /* ── Bar horizontal top 10 applications ── */
         var apps    = (d.top_apps || []).slice(0, 10);
         var appWrap = document.getElementById('bar-apps-wrap');
+        Chart.getChart('bar-apps') && Chart.getChart('bar-apps').destroy();
         appWrap.innerHTML = '<canvas id="bar-apps" height="260"></canvas>';
         if (apps.length) {
           var appLabels = apps.map(function (a) { return a.name; });
@@ -683,6 +728,7 @@
       '<tr><td colspan="3" class="text-center py-2 text-muted" style="font-size:.8rem">'
       + '<i class="bi bi-hourglass-split me-2"></i>Chargement…</td></tr>';
     document.getElementById('zw-count').textContent = '—';
+    document.getElementById('zw-pct').textContent = '—';
     document.getElementById('gauge-rtt-val').textContent = '—';
     document.getElementById('gauge-rtt-p95').textContent = '—';
     document.getElementById('flows-warning').classList.add('d-none');

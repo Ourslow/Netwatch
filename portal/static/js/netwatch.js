@@ -72,6 +72,10 @@
       "nav_agents":        "Agents IA",
       "nav_status":        "Statut services",
       "nav_hostgroups":    "Hostgroups",
+      "nav_custom_dashboard": "Tableau personnalisé",
+      "nav_applications":  "Applications",
+      "nav_app_map":       "Dépendances applicatives",
+      "nav_thresholds":    "Alertes sur seuil",
       "live_30s":          "live 30 s",
       /* Home observabilité */
       "dash_traffic":      "Trafic 24h",
@@ -217,6 +221,10 @@
       "nav_agents":        "AI Agents",
       "nav_status":        "Services Status",
       "nav_hostgroups":    "Hostgroups",
+      "nav_custom_dashboard": "Custom dashboard",
+      "nav_applications":  "Applications",
+      "nav_app_map":       "Application dependencies",
+      "nav_thresholds":    "Threshold alerts",
       "live_30s":          "live 30 s",
       /* Observability home */
       "dash_traffic":      "Traffic 24h",
@@ -351,11 +359,17 @@
       const raw = el.getAttribute("data-ts");
       if (raw) el.textContent = NW.fmtTs(raw);
     });
-    /* Compteur topbar rendu côté serveur */
+    /* Compteur topbar — si le flux temps réel (SSE) l'a déjà mis à jour
+       (dataset.count), retraduire cette valeur live plutôt que d'écraser
+       avec l'attribut statique du rendu serveur initial. */
     const countLabel = document.getElementById("alert-count-label");
     if (countLabel) {
-      const v = countLabel.getAttribute("data-count-" + NW.lang);
-      if (v) countLabel.textContent = v;
+      if (countLabel.dataset.count !== undefined) {
+        countLabel.textContent = NW.t("alerts_label", { n: parseInt(countLabel.dataset.count, 10) });
+      } else {
+        const v = countLabel.getAttribute("data-count-" + NW.lang);
+        if (v) countLabel.textContent = v;
+      }
     }
   };
 
@@ -363,6 +377,57 @@
     NW.lang = NW.lang === "fr" ? "en" : "fr";
     localStorage.setItem("nw_lang", NW.lang);
     NW.applyLang();
+  };
+
+  /* ---- Thème clair / sombre ---------------------------------- */
+  NW.theme = localStorage.getItem("nw_theme") || "dark";
+
+  NW.applyTheme = function () {
+    document.documentElement.setAttribute("data-bs-theme", NW.theme);
+    const iconLight = document.getElementById("theme-icon-light");
+    const iconDark  = document.getElementById("theme-icon-dark");
+    if (iconLight && iconDark) {
+      /* Icône affichée = action possible (soleil en mode sombre = « passer au clair ») */
+      iconLight.style.display = NW.theme === "dark" ? "" : "none";
+      iconDark.style.display  = NW.theme === "dark" ? "none" : "";
+    }
+  };
+
+  NW.switchTheme = function () {
+    NW.theme = NW.theme === "dark" ? "light" : "dark";
+    localStorage.setItem("nw_theme", NW.theme);
+    NW.applyTheme();
+  };
+
+  /* ---- Sections du menu latéral repliables -------------------- */
+  NW.initNavSections = function () {
+    document.querySelectorAll(".nav-section[data-bs-target]").forEach(function (trigger) {
+      const targetId = trigger.getAttribute("data-bs-target").slice(1);
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const containsActive = !!target.querySelector(".nav-link.active");
+      const storageKey = "nw_navsec_" + targetId;
+      let saved = null;
+      try { saved = localStorage.getItem(storageKey); } catch (e) {}
+      /* La section de la page active reste toujours ouverte ; sinon la
+         préférence sauvegardée ; sinon data-default="closed" (section
+         secondaire « Projet & infra ») ou ouvert. */
+      const expanded = containsActive
+        || (saved ? saved !== "closed" : trigger.getAttribute("data-default") !== "closed");
+
+      trigger.setAttribute("aria-expanded", expanded ? "true" : "false");
+      target.classList.toggle("show", expanded);
+
+      target.addEventListener("shown.bs.collapse", function () {
+        trigger.setAttribute("aria-expanded", "true");
+        try { localStorage.setItem(storageKey, "open"); } catch (e) {}
+      });
+      target.addEventListener("hidden.bs.collapse", function () {
+        trigger.setAttribute("aria-expanded", "false");
+        try { localStorage.setItem(storageKey, "closed"); } catch (e) {}
+      });
+    });
   };
   const prefersReduced = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -573,6 +638,8 @@
     NW.loadAlertSparklines();
     NW.flushFlashes();
     NW.applyLang();
+    NW.applyTheme();
+    NW.initNavSections();
   });
 
   window.NW = NW;

@@ -20,6 +20,22 @@ BEACON = "netwatch-beacons-*"
 
 OBSOLETE_TLS = ["TLSv10", "TLSv11", "SSLv3", "SSLv2", "TLSv1", "TLSv1.0", "TLSv1.1"]
 
+# Suites de chiffrement bannies par le RGS ANSSI (annexe B1 — mécanismes
+# cryptographiques) : RC4, 3DES, NULL, export. Motif large (wildcard) plutôt
+# qu'une liste exacte de chaînes, pour rester robuste aux variations de nommage
+# des suites TLS réellement observées (vs. le simulateur, qui utilise des noms
+# fixes de cette même famille).
+WEAK_CIPHER_PATTERNS = ["*RC4*", "*3DES*", "*_NULL_*", "*EXPORT*", "*DES_CBC*"]
+
+# validation_status Zeek natif (ssl.log) indiquant une chaîne de confiance
+# invalide — distinct de "certificate has expired", déjà couvert par le
+# notice SSL::Certificate_Expired (finding "Certificats expirés" ci-dessous).
+VALIDATION_STATUS_UNTRUSTED = [
+    "self signed certificate",
+    "unable to get local issuer certificate",
+    "unable to verify the first certificate",
+]
+
 # Ports de services à risque s'ils sont exposés
 RISKY_PORTS = {
     21: "FTP", 23: "Telnet", 135: "RPC", 139: "NetBIOS", 445: "SMB",
@@ -41,6 +57,23 @@ REMEDIATION = {
     "DNS à haute entropie":           "Secure DNS / proxy filtrant · SOC",
     "Scans de ports":                 "NGFW · supervision managée",
     "Alertes critiques":              "SOC managé (MDR) · réponse à incident",
+    "Logiciels obsolètes":            "Gestion de patchs (WSUS/RMM) · durcissement postes",
+    "Certificats auto-signés":        "PKI managée · gestion de certificats",
+    "Suites de chiffrement faibles":  "Durcissement TLS · WAF / reverse-proxy",
+}
+
+# Version de référence (major, minor) par logiciel, pour la détection passive
+# de versions obsolètes (software.log). Une entrée strictement antérieure à
+# ce seuil est considérée obsolète — liste volontairement restreinte à ce qui
+# apparaît dans le trafic observé, pas une base CVE exhaustive.
+SOFTWARE_CURRENT_VERSIONS = {
+    "Chrome": (115, 0),
+    "Firefox": (115, 0),
+    "Safari": (16, 0),
+    "Edge": (115, 0),
+    "OpenSSH": (8, 5),
+    "curl": (8, 0),
+    "Internet Explorer": (999, 0),  # IE est toujours obsolète/non supporté, quelle que soit la version
 }
 
 
@@ -78,6 +111,35 @@ def _top(index, field, query, size=5, fmt="{k}"):
     return [fmt.format(k=k, c=c) for k, c in rows]
 
 
+def _zeek_q(log_type, *extra_filters):
+    """Clause de filtre Zeek robuste aux deux discriminants de log possibles :
+    log.file.path (posé par Filebeat en prod) et log_source (posé par
+    simulate-traffic.py) — sans ce should dual, toute requête ne matche que
+    l'un des deux environnements. Même pattern que es_client.py."""
+    disc = {
+        "bool": {
+            "should": [
+                {"term": {"log.file.path.keyword": f"/zeek/logs/{log_type}.log"}},
+                {"term": {"log_source": log_type}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+    if not extra_filters:
+        return disc
+    return {"bool": {"filter": [disc, *extra_filters]}}
+
+
+def _parse_major_minor(version_str):
+    """'122.0.6261.128' -> (122, 0). None si non parsable (chaîne vide, texte
+    libre) — un logiciel non reconnu n'est ni signalé ni ignoré à tort."""
+    try:
+        parts = version_str.split(".")
+        return int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+
 def _grade(count, warn_at=1, crit_at=None):
     if count is None:
         return "info"
@@ -105,20 +167,28 @@ def _finding(title, count, severity, detail_if, reco, ref, examples=None):
 
 # ── Audit ───────────────────────────────────────────────────
 def run_audit():
-    ssl_q = {"term": {"log_source": "ssl"}}
+    ssl_q = _zeek_q("ssl")
 
     # ════ Axe 1 — Hygiène chiffrement ════ (Zeek brut)
     tls_n = _count(ZEEK, {"bool": {"filter": [ssl_q, {"terms": {"version.keyword": OBSOLETE_TLS}}]}})
     tls_ex = _top(ZEEK, "server_name.keyword",
                   {"bool": {"filter": [ssl_q, {"terms": {"version.keyword": OBSOLETE_TLS}}]}},
                   6, "{k} ({c})")
-    clr_q = {"bool": {"filter": [{"term": {"log_source": "http"}}, {"term": {"id.resp_p": 80}}, {"match": {"method": "POST"}}]}}
+    clr_q = _zeek_q("http", {"term": {"id.resp_p": 80}}, {"match": {"method": "POST"}})
     clr_n = _count(ZEEK, clr_q)
     clr_ex = _top(ZEEK, "host.keyword", clr_q, 6, "{k} ({c})")
-    cert_n = _count(ZEEK, {"bool": {"filter": [{"term": {"log_source": "notice"}}],
+    cert_n = _count(ZEEK, {"bool": {"filter": [_zeek_q("notice")],
                                     "should": [{"term": {"note.keyword": "SSL::Certificate_Expired"}},
                                                {"term": {"note.keyword": "SSL::Certificate_Not_Valid_Yet"}}],
                                     "minimum_should_match": 1}})
+    selfsigned_q = {"bool": {"filter": [ssl_q, {"terms": {"validation_status.keyword": VALIDATION_STATUS_UNTRUSTED}}]}}
+    selfsigned_n = _count(ZEEK, selfsigned_q)
+    selfsigned_ex = _top(ZEEK, "server_name.keyword", selfsigned_q, 6, "{k} ({c})")
+    weak_cipher_q = {"bool": {"filter": [ssl_q, {"bool": {
+        "should": [{"wildcard": {"cipher.keyword": p}} for p in WEAK_CIPHER_PATTERNS],
+        "minimum_should_match": 1}}]}}
+    weak_cipher_n = _count(ZEEK, weak_cipher_q)
+    weak_cipher_ex = _top(ZEEK, "cipher.keyword", weak_cipher_q, 6, "{k} ({c})")
     crypto = [
         _finding("Identifiants transmis en clair (HTTP)", clr_n,
                  _grade(clr_n, warn_at=1, crit_at=20),
@@ -135,22 +205,42 @@ def run_audit():
                  f"{cert_n} notice(s) de certificat expiré ou pas encore valide.",
                  "Surveiller et renouveler automatiquement les certificats (alerting J-30).",
                  "ISO A.8.24"),
+        _finding("Certificats auto-signés / chaîne de confiance invalide", selfsigned_n,
+                 _grade(selfsigned_n, warn_at=1, crit_at=15),
+                 f"{selfsigned_n} session(s) TLS avec un certificat auto-signé ou une chaîne "
+                 "de confiance invalide (émetteur non reconnu).",
+                 "Déployer une PKI managée (certificats émis par une autorité reconnue) sur "
+                 "les services concernés.",
+                 "RGS ANSSI annexe B1 · ISO A.8.24", selfsigned_ex),
+        _finding("Suites de chiffrement faibles", weak_cipher_n,
+                 _grade(weak_cipher_n, warn_at=1, crit_at=15),
+                 f"{weak_cipher_n} session(s) TLS négociée(s) avec une suite de chiffrement "
+                 "bannie par le RGS (RC4, 3DES, NULL, export...).",
+                 "Désactiver les suites faibles côté serveur ; n'autoriser que des suites "
+                 "AEAD modernes (AES-GCM, ChaCha20-Poly1305).",
+                 "RGS ANSSI annexe B1 · NIS2 21.2.h", weak_cipher_ex),
     ]
 
     # ════ Axe 2 — Exposition & surface ════
-    intel_n = _count(ZEEK, {"term": {"log_source": "intel"}})
-    intel_ex = _top(ZEEK, "seen.indicator.keyword", {"term": {"log_source": "intel"}}, 6, "{k} ({c})")
-    # Ports à risque exposés (Zeek conn)
-    conn_ports = _terms(ZEEK, "id.resp_p", {"term": {"log_source": "conn"}}, 25) or []
-    risky_found = [(RISKY_PORTS[p], c) for p, c in conn_ports if p in RISKY_PORTS]
-    risky_total = sum(c for _, c in risky_found)
-    risky_ex = [f"{name} ({c})" for name, c in sorted(risky_found, key=lambda x: -x[1])[:6]]
-    top_ports_ex = [f"port {p} ({c})" for p, c in conn_ports[:6]]
+    intel_n = _count(ZEEK, _zeek_q("intel"))
+    intel_ex = _top(ZEEK, "seen.indicator.keyword", _zeek_q("intel"), 6, "{k} ({c})")
+    # Ports à risque exposés (Zeek conn) — garder None distinct de [] pour ne pas
+    # afficher "conforme" quand la requête a en fait échoué (cf. finding audit review).
+    conn_ports = _terms(ZEEK, "id.resp_p", _zeek_q("conn"), 25)
+    if conn_ports is None:
+        risky_total = None
+        risky_found, risky_ex, top_ports_ex = [], [], []
+    else:
+        risky_found = [(RISKY_PORTS[p], c) for p, c in conn_ports if p in RISKY_PORTS]
+        risky_total = sum(c for _, c in risky_found)
+        risky_ex = [f"{name} ({c})" for name, c in sorted(risky_found, key=lambda x: -x[1])[:6]]
+        top_ports_ex = [f"port {p} ({c})" for p, c in conn_ports[:6]]
     # Origine géographique des menaces (GeoIP sur la source des alertes)
     geo = _terms(ALERTS, "source.geo.country_name.keyword",
                  {"bool": {"should": [{"term": {"event_type": "alert"}}, {"exists": {"field": "rule"}}],
-                           "minimum_should_match": 1}}, 8) or []
-    geo_ex = [f"{c_name} ({c})" for c_name, c in geo]
+                           "minimum_should_match": 1}}, 8)
+    geo_count = None if geo is None else len(geo)
+    geo_ex = [f"{c_name} ({c})" for c_name, c in geo] if geo else []
     surface = [
         _finding("Communications avec des IoC connus (threat intel)", intel_n,
                  _grade(intel_n, warn_at=1, crit_at=1),
@@ -162,7 +252,7 @@ def run_audit():
                  f"Trafic vers des services sensibles ({', '.join(n for n, _ in risky_found) or '—'}) — à exposer le moins possible.",
                  "Vérifier la légitimité de ces services, restreindre/segmenter (Telnet, SMB, RDP, bases de données).",
                  "NIS2 21.2.i · ISO A.8.20 · ANSSI cartographie", risky_ex),
-        _finding("Origine géographique des menaces (GeoIP)", (len(geo) if geo else 0), "info",
+        _finding("Origine géographique des menaces (GeoIP)", geo_count, "info",
                  "Pays d'origine des alertes IDS (nécessite l'enrichissement GeoIP).",
                  "Surveiller le trafic en provenance de zones inhabituelles pour l'organisation.",
                  "NIST DE.AE", geo_ex),
@@ -174,10 +264,10 @@ def run_audit():
 
     # ════ Axe 3 — Comportements suspects ════
     beacon_n = _count(BEACON, {"match_all": {}})
-    dns_q = {"bool": {"filter": [{"term": {"log_source": "notice"}}, {"term": {"note.keyword": "DNSEntropy::High_Entropy_DNS"}}]}}
+    dns_q = _zeek_q("notice", {"term": {"note.keyword": "DNSEntropy::High_Entropy_DNS"}})
     dns_n = _count(ZEEK, dns_q)
     dns_ex = _top(ZEEK, "msg.keyword", dns_q, 5, "{k}")
-    scan_q = {"bool": {"filter": [{"term": {"log_source": "notice"}}, {"term": {"note.keyword": "PortScan::Port_Scan_Detected"}}]}}
+    scan_q = _zeek_q("notice", {"term": {"note.keyword": "PortScan::Port_Scan_Detected"}})
     scan_n = _count(ZEEK, scan_q)
     scan_ex = _top(ZEEK, "src.keyword", scan_q, 6, "{k} ({c})")
     behavior = [
@@ -199,9 +289,10 @@ def run_audit():
     ]
 
     # ════ Axe 4 — Menaces IDS ════
-    crit_sur = _count("suricata-*", {"bool": {"filter": [{"term": {"event_type": "alert"}}, {"term": {"alert.severity": 1}}]}}) or 0
-    crit_sno = _count("snort-*",    {"bool": {"filter": [{"exists": {"field": "rule"}}, {"term": {"priority": 1}}]}}) or 0
-    crit_total = crit_sur + crit_sno
+    crit_sur = _count("suricata-*", {"bool": {"filter": [{"term": {"event_type": "alert"}}, {"term": {"alert.severity": 1}}]}})
+    crit_sno = _count("snort-*",    {"bool": {"filter": [{"exists": {"field": "rule"}}, {"term": {"priority": 1}}]}})
+    # None + None → indisponible (pas 0/"conforme") ; un seul des deux dispo suffit à compter.
+    crit_total = None if (crit_sur is None and crit_sno is None) else (crit_sur or 0) + (crit_sno or 0)
     crit_ex = _top("suricata-*", "alert.signature.keyword",
                    {"bool": {"filter": [{"term": {"event_type": "alert"}}, {"term": {"alert.severity": 1}}]}}, 5, "{k} ({c})")
     total_alerts = _count(ALERTS, {"bool": {"should": [{"term": {"event_type": "alert"}}, {"exists": {"field": "rule"}}], "minimum_should_match": 1}})
@@ -222,11 +313,49 @@ def run_audit():
                         "count": total_alerts, "detail": "Activité de détection sur la période.",
                         "reco": "—", "ref": "—", "examples": []})
 
+    # ════ Axe 5 — Inventaire logiciel ════ (software.log Zeek — inventaire
+    # passif via User-Agent HTTP, sans agent installé sur les postes)
+    sw_data = _search(ZEEK, {
+        "size": 300,
+        "query": _zeek_q("software"),
+        "_source": ["name", "unparsed_version", "host"],
+    })
+    if sw_data is None:
+        outdated_count = None
+        outdated_ex = []
+    else:
+        sw_hits = sw_data.get("hits", {}).get("hits", [])
+        outdated_seen = {}
+        for h in sw_hits:
+            src = h["_source"]
+            name = src.get("name")
+            version = src.get("unparsed_version", "")
+            ref = SOFTWARE_CURRENT_VERSIONS.get(name)
+            mm = _parse_major_minor(version)
+            if ref and mm and mm < ref:
+                key = f"{name} {version}"
+                outdated_seen[key] = outdated_seen.get(key, 0) + 1
+        outdated_count = sum(outdated_seen.values())
+        outdated_ex = [f"{k} ({c} vu(s))" for k, c in
+                        sorted(outdated_seen.items(), key=lambda x: -x[1])[:6]]
+
+    software = [
+        _finding("Logiciels obsolètes détectés (navigateurs, outils, SSH)", outdated_count,
+                 _grade(outdated_count, warn_at=1, crit_at=5),
+                 f"{outdated_count} instance(s) de logiciel obsolète ou non supporté détectée(s) "
+                 "sur le réseau, identifiées passivement (User-Agent HTTP, bannières) sans agent "
+                 "installé sur les postes.",
+                 "Planifier la mise à jour des postes/services concernés ; bannir les logiciels "
+                 "non supportés (ex. Internet Explorer).",
+                 "NIS2 21.2.e · ISO A.8.8 (gestion des vulnérabilités techniques)", outdated_ex),
+    ]
+
     axes = [
         {"id": "crypto",   "name": "Hygiène chiffrement",   "icon": "bi-lock",              "findings": crypto},
         {"id": "surface",  "name": "Exposition & surface",  "icon": "bi-diagram-3",          "findings": surface},
         {"id": "behavior", "name": "Comportements suspects","icon": "bi-graph-up-arrow",     "findings": behavior},
         {"id": "threats",  "name": "Menaces IDS",           "icon": "bi-shield-exclamation", "findings": threats},
+        {"id": "software", "name": "Inventaire logiciel",   "icon": "bi-boxes",              "findings": software},
     ]
 
     counts = {"critical": 0, "warning": 0, "info": 0, "ok": 0}

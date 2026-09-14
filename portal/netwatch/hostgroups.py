@@ -36,6 +36,10 @@ def _parse_host_token(token):
             start = end = ipaddress.ip_address(token)
         if start.version != end.version:
             return None
+        if int(start) > int(end):
+            # Plage inversée (ex. "10.0.0.50-10.0.0.10") : rejetée plutôt que
+            # silencieusement acceptée comme une plage qui ne matchera jamais.
+            return None
         return [int(start), int(end), start.version]
     except ValueError:
         return None
@@ -124,6 +128,12 @@ def make_matcher(group_name, groups=None):
     return lambda ip: ip_in_ranges(ip, ranges)
 
 
+def _host_count(ranges):
+    """Nombre réel d'adresses couvertes (pas le nombre de plages/CIDR parsés —
+    un /16 ne doit pas s'afficher comme "1 hôte" au même titre qu'une IP unique)."""
+    return sum(end - start + 1 for start, end, _version in ranges)
+
+
 def list_groups():
     groups = load()
     out = [
@@ -131,7 +141,7 @@ def list_groups():
             "name": name,
             "description": g.get("description", ""),
             "enabled": g.get("enabled", True),
-            "host_count": len(g.get("ranges", [])),
+            "host_count": _host_count(g.get("ranges", [])),
             "member_groups": g.get("member_groups", []),
             "tags": g.get("tags", ""),
         }
@@ -142,8 +152,14 @@ def list_groups():
 
 
 def filter_items_by_group(items, group_name, ip_keys):
-    """Ne garde que les dicts de `items` dont au moins un champ de ip_keys est dans le groupe."""
+    """Ne garde que les dicts de `items` dont au moins un champ de ip_keys est
+    dans le groupe. Un nom de groupe fourni mais introuvable (typo, groupe
+    supprimé) filtre vers une liste vide plutôt que de désactiver
+    silencieusement le filtre — seule l'absence de `group_name` désactive le
+    filtre."""
+    if not group_name:
+        return items
     matcher = make_matcher(group_name)
     if matcher is None:
-        return items
+        return []
     return [it for it in items if any(matcher(it.get(k)) for k in ip_keys)]

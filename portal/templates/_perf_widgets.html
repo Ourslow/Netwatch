@@ -36,8 +36,9 @@
       <div class="card-body">
         <div class="kv"><span class="kv-label">RTT moyen / p95</span>
           <span class="kv-value">{{ tcp.avg_rtt_ms if tcp.avg_rtt_ms is not none else '—' }} / {{ tcp.p95_rtt_ms if tcp.p95_rtt_ms is not none else '—' }} ms</span></div>
+        {% set zwp = tcp.zero_window_pct or 0 %}
         <div class="kv"><span class="kv-label">Zero-windows (24h)</span>
-          <span class="kv-value {% if tcp.zero_windows_count %}text-warning{% endif %}">{{ tcp.zero_windows_count }}</span></div>
+          <span class="kv-value {% if zwp > 3 %}text-danger{% elif zwp > 0 %}text-warning{% endif %}">{{ zwp }} % <span class="hint">({{ tcp.zero_windows_count }})</span></span></div>
         {% if tcp.top_retransmit_ips %}
         <div class="kpi-label mt-3 mb-1">Top retransmissions</div>
         {% for r in tcp.top_retransmit_ips[:5] %}
@@ -48,6 +49,15 @@
         {% endfor %}
         {% else %}
         <div class="hint mt-3"><i class="bi bi-check-circle text-success me-1"></i>Aucune retransmission détectée</div>
+        {% endif %}
+        {% if tcp.top_zero_window_ips %}
+        <div class="kpi-label mt-3 mb-1">Top zero-windows</div>
+        {% for r in tcp.top_zero_window_ips[:5] %}
+        <div class="kv py-1">
+          <a href="{{ url_for('ip_detail', ip=r.ip) }}" class="ip-mono">{{ r.ip }}</a>
+          <span class="metric-pill {% if r.zero_window_pct < 1 %}metric-ok{% elif r.zero_window_pct < 3 %}metric-warn{% else %}metric-crit{% endif %}">{{ r.zero_window_pct }} %</span>
+        </div>
+        {% endfor %}
         {% endif %}
       </div>
     </div>

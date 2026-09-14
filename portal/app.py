@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+import threading
 import time as _time_mod
 from datetime import datetime, timezone
 from functools import wraps
@@ -12,7 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 
-from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory
+from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 from flask_login import (LoginManager, UserMixin,
                          login_user, logout_user,
@@ -27,6 +28,10 @@ from netwatch import llm_client
 from netwatch import audit as nw_audit
 from netwatch import incidents as nw_incidents
 from netwatch import hostgroups as nw_hostgroups
+from netwatch.experience import app_dictionary as nw_app_dictionary
+from netwatch import llmops as nw_llmops
+from netwatch import thresholds as nw_thresholds
+from netwatch import dashboard_layout as nw_dashboard_layout
 
 # ============================================================
 # Données de comparaison (matrice feature × outil)
@@ -394,8 +399,8 @@ _PX_FAIL_TTL = 60   # s — un Proxmox injoignable n'est pas retenté avant 60 s
 
 
 def _px_mark_failed():
-    """Mémorise l'échec Proxmox : les pages qui l'interrogent (home, status,
-    vms, report) ne repaieront pas le timeout de connexion (~5 s) à chaque
+    """Mémorise l'échec Proxmox : les pages qui l'interrogent (status, vms,
+    report) ne repaieront pas le timeout de connexion (~5 s) à chaque
     chargement tant que l'hôte reste injoignable."""
     _PX_FAIL["ts"] = _time_mod.monotonic()
 
@@ -435,6 +440,15 @@ def proxmox_required(f):
             return redirect(url_for("dashboard"))
         return f(px, *args, **kwargs)
     return decorated
+
+
+def _safe_int(value, default=None):
+    """int() défensif pour les query params — une valeur non numérique ne doit
+    jamais faire planter la route (500) mais retomber sur `default`."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def fmt_bytes(b):
@@ -495,10 +509,10 @@ _HG_NAV_CACHE = {"mtime": None, "groups": []}
 
 
 @app.context_processor
-def _inject_hostgroups():
+def _inject_globals():
     """Hostgroups pour le sélecteur global de la topbar — injectés côté serveur
     (plus de fetch /api/hostgroups à chaque page), rechargés seulement quand le
-    fichier JSON change (mtime)."""
+    fichier JSON change (mtime). + proxmox_host/node pour la sidebar/topbar."""
     try:
         mtime = os.path.getmtime(nw_hostgroups.STORE_PATH)
     except OSError:
@@ -509,9 +523,31 @@ def _inject_hostgroups():
     return {
         "nav_hostgroups":    _HG_NAV_CACHE["groups"],
         "current_hostgroup": request.args.get("hostgroup", ""),
-        # Pied de sidebar / badge topbar — évite de les passer route par route
         "proxmox_host":      config.PROXMOX_HOST,
         "proxmox_node":      config.PROXMOX_NODE,
+    }
+
+
+# Dashboard Grafana correspondant à chaque page NetWatch — mis en avant via un
+# lien contextuel dans la topbar plutôt que de réimplémenter des dashboards
+# filtrables/éditables dans le portail : Grafana le fait déjà très bien.
+GRAFANA_DASHBOARDS = {
+    "dashboard":  "netwatch-overview",
+    "flows":      "netwatch-toptalkers",
+    "alerts":     "netwatch-security",
+    "zeek_logs":  "netwatch-overview",
+    "status":     "netwatch-vmhealth",
+    "topology":   "netwatch-snmp-ifaces",
+    "audit":      "netwatch-security",
+    "incidents":  "netwatch-beacons",
+}
+
+
+@app.context_processor
+def inject_grafana():
+    return {
+        "grafana_url": config.NETWATCH_GRAFANA_URL,
+        "grafana_dashboard_uid": GRAFANA_DASHBOARDS.get(request.endpoint),
     }
 
 # ============================================================
@@ -695,7 +731,7 @@ def deploy(px, tool_id):
             disk_gb = int(request.form.get("disk_gb", tool["disk_gb"]))
         except (ValueError, TypeError):
             flash("Valeur numérique invalide pour RAM, CPU ou disque.", "danger")
-            return redirect(url_for("deploy_tool", tool_id=tool_id))
+            return redirect(url_for("deploy", tool_id=tool_id))
 
         if not template_id:
             flash("Sélectionner un template Proxmox", "warning")
@@ -752,9 +788,12 @@ def _proxmox_snapshot(px, with_vms=False):
 @login_required
 def status():
     px = get_proxmox()
-    # Health checks HTTP et appel Proxmox : indépendants → en parallèle
-    (services, global_status), (node_status, _) = es_client.run_parallel(
-        _check_health, lambda: _proxmox_snapshot(px))
+    # Health checks HTTP, Proxmox et stats LLMOps : indépendants → en parallèle
+    (services, global_status), (node_status, _), (llmops_stats, _) = es_client.run_parallel(
+        _check_health,
+        lambda: _proxmox_snapshot(px),
+        lambda: nw_llmops.get_llmops_stats(days=7),
+    )
 
     return render_template(
         "status.html",
@@ -769,6 +808,7 @@ def status():
         config_grafana_url=config.NETWATCH_GRAFANA_URL,
         config_prometheus_url=config.NETWATCH_PROMETHEUS_URL,
         config_autoblock_url=config.NETWATCH_AUTOBLOCK_URL,
+        llmops=llmops_stats,
     )
 
 
@@ -858,16 +898,20 @@ def api_reports_generate():
     if not os.path.isfile(script):
         return jsonify({"error": "generate-report-pdf.py introuvable"}), 503
     try:
+        # username/password passés par variables d'environnement (déjà lues en
+        # fallback par generate-report-pdf.py) plutôt qu'en argument CLI — un
+        # argument de ligne de commande est visible de tout utilisateur local
+        # via `ps`/`/proc/<pid>/cmdline` pendant l'exécution du subprocess.
         result = subprocess.run(
             ["python3", script,
              "--portal-url", request.host_url.rstrip("/"),
-             "--username", config.PORTAL_USERNAME,
-             "--password", config.PORTAL_PASSWORD,
              "--output-dir", _REPORTS_DIR],
             cwd=netwatch_root,
             capture_output=True,
             timeout=90,
             check=False,
+            env={**os.environ, "PORTAL_USERNAME": config.PORTAL_USERNAME,
+                 "PORTAL_PASSWORD": config.PORTAL_PASSWORD},
         )
         if result.returncode != 0:
             app.logger.warning("generate-report-pdf.py exited %d: %s", result.returncode,
@@ -907,7 +951,7 @@ def alerts():
     alerts_list, error = es_client.get_recent_alerts(
         size=100,
         engine=engine   or None,
-        severity=int(severity) if severity else None,
+        severity=_safe_int(severity),
         search=search   or None,
     )
     if hostgroup:
@@ -936,7 +980,7 @@ def api_alerts():
     alerts_list, error = es_client.get_recent_alerts(
         size=50,
         engine=engine or None,
-        severity=int(severity) if severity else None,
+        severity=_safe_int(severity),
         search=search or None,
     )
     if error:
@@ -944,6 +988,63 @@ def api_alerts():
     if hostgroup:
         alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
     return jsonify(alerts_list)
+
+
+import time as _time_sse  # noqa: E402 — kept close to usage
+
+
+@app.route("/api/alerts/stream")
+@login_required
+def api_alerts_stream():
+    """
+    Flux temps réel des alertes IDS (Server-Sent Events) — remplace le
+    polling 30s de /api/alerts. Respecte les mêmes filtres engine/severity/
+    q/hostgroup que la page /alerts. `since` (ISO 8601, fourni par le
+    client au moment de l'ouverture du flux) évite de renvoyer en rafale
+    les alertes déjà affichées par le rendu initial de la page.
+    """
+    engine    = request.args.get("engine",   "")
+    severity  = request.args.get("severity", "")
+    search    = request.args.get("q",        "").strip()
+    hostgroup = request.args.get("hostgroup", "")
+    since     = request.args.get("since",    "")
+
+    def generate():
+        last_ts = since or None
+        # Envoi immédiat pour que le navigateur ouvre le flux sans attendre
+        # le premier cycle de poll (sinon EventSource paraît "figé" 3s).
+        yield "event: ping\ndata: {}\n\n"
+        while True:
+            try:
+                alerts_list, error = es_client.get_recent_alerts(
+                    size=20,
+                    engine=engine or None,
+                    severity=_safe_int(severity),
+                    search=search or None,
+                )
+                if error:
+                    yield f"event: stream-error\ndata: {json.dumps({'error': error})}\n\n"
+                else:
+                    if hostgroup:
+                        alerts_list = nw_hostgroups.filter_items_by_group(
+                            alerts_list, hostgroup, ["src_ip", "dest_ip"])
+                    new_alerts = [a for a in alerts_list if not last_ts or a["timestamp"] > last_ts]
+                    if new_alerts:
+                        last_ts = max(a["timestamp"] for a in alerts_list if a.get("timestamp"))
+                        for a in sorted(new_alerts, key=lambda x: x["timestamp"]):
+                            yield f"data: {json.dumps(a)}\n\n"
+                    else:
+                        yield "event: ping\ndata: {}\n\n"
+            except GeneratorExit:
+                raise
+            except Exception as e:
+                yield f"event: stream-error\ndata: {json.dumps({'error': str(e)[:120]})}\n\n"
+            _time_sse.sleep(3)
+
+    return Response(generate(), mimetype="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 
 @app.route("/alerts/export.csv")
@@ -958,7 +1059,7 @@ def alerts_export_csv():
     alerts_list, _ = es_client.get_recent_alerts(
         size=1000,
         engine=engine   or None,
-        severity=int(severity) if severity else None,
+        severity=_safe_int(severity),
         search=search   or None,
     )
     if hostgroup:
@@ -1055,6 +1156,134 @@ def hostgroups_export_csv():
 def api_hostgroups():
     """Liste des groupes importés — alimente le sélecteur global du portail."""
     return jsonify(nw_hostgroups.list_groups())
+
+
+# ============================================================
+# Applications — dictionnaire applicatif SNI (Network Experience Monitoring)
+# ============================================================
+
+@app.route("/applications")
+@login_required
+def applications_page():
+    days = request.args.get("days", default=1, type=int)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
+    scores, _ = nw_app_dictionary.get_app_health_scores(days=days, hostgroup=hostgroup or None)
+    return render_template("applications.html", apps=apps, unmatched=unmatched, error=err,
+                           days=days, hostgroup=hostgroup, scores=scores)
+
+
+@app.route("/api/applications")
+@login_required
+def api_applications():
+    days = request.args.get("days", default=1, type=int)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify({"apps": apps, "unmatched": unmatched})
+
+
+@app.route("/api/applications/health")
+@login_required
+def api_applications_health():
+    days = request.args.get("days", default=1, type=int)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    scores, err = nw_app_dictionary.get_app_health_scores(days=days, hostgroup=hostgroup or None)
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify({"scores": scores})
+
+
+@app.route("/thresholds")
+@login_required
+def thresholds_page():
+    rules = nw_thresholds.list_rules()
+    breaches, _ = nw_thresholds.evaluate()
+    breached_rule_ids = {b["rule"]["id"] for b in breaches}
+    events, err = nw_thresholds.get_recent_events()
+    return render_template("thresholds.html", rules=rules, events=events, error=err,
+                           metrics=nw_thresholds.METRICS, breaches=breaches,
+                           breached_rule_ids=breached_rule_ids,
+                           config_check_seconds=config.THRESHOLD_CHECK_SECONDS)
+
+
+@app.route("/api/thresholds", methods=["GET", "POST"])
+@login_required
+def api_thresholds():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or request.form
+        try:
+            rule = nw_thresholds.add_rule(
+                metric=data.get("metric", ""),
+                scope=(data.get("scope") or "global").strip(),
+                operator=data.get("operator", "<"),
+                value=data.get("value", 0),
+                severity=data.get("severity", "warning"),
+            )
+        except (ValueError, TypeError) as e:
+            return jsonify({"error": str(e)}), 400
+        return jsonify(rule)
+    return jsonify(nw_thresholds.list_rules())
+
+
+@app.route("/api/thresholds/<rule_id>", methods=["DELETE", "PATCH"])
+@login_required
+def api_thresholds_rule(rule_id):
+    if request.method == "DELETE":
+        nw_thresholds.delete_rule(rule_id)
+        return jsonify({"deleted": rule_id})
+    data = request.get_json(silent=True) or {}
+    nw_thresholds.toggle_rule(rule_id, data.get("enabled", True))
+    return jsonify({"id": rule_id, "enabled": bool(data.get("enabled", True))})
+
+
+@app.route("/api/thresholds/events")
+@login_required
+def api_thresholds_events():
+    events, err = nw_thresholds.get_recent_events()
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify(events)
+
+
+@app.route("/custom-dashboard")
+@login_required
+def custom_dashboard_page():
+    return render_template("custom_dashboard.html", layout=nw_dashboard_layout.load())
+
+
+@app.route("/api/dashboard-layout", methods=["GET", "POST"])
+@login_required
+def api_dashboard_layout():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        clean = nw_dashboard_layout.save(data.get("layout", []))
+        return jsonify({"layout": clean})
+    return jsonify({"layout": nw_dashboard_layout.load()})
+
+
+@app.route("/api/dashboard-layout/reset", methods=["POST"])
+@login_required
+def api_dashboard_layout_reset():
+    return jsonify({"layout": nw_dashboard_layout.reset()})
+
+
+@app.route("/app-map")
+@login_required
+def app_map_page():
+    return render_template("app_map.html")
+
+
+@app.route("/api/app-map")
+@login_required
+def api_app_map():
+    days = request.args.get("days", default=1, type=int)
+    hostgroup = request.args.get("hostgroup", "").strip()
+    graph, err = nw_app_dictionary.get_app_dependency_map(days=days, hostgroup=hostgroup or None)
+    if err:
+        return jsonify({"error": err}), 503
+    return jsonify(graph)
 
 
 @app.route("/api/hostgroups/import", methods=["POST"])
@@ -1247,7 +1476,7 @@ def ip_detail(ip):
 def hostgroup_dashboard(name):
     groups = nw_hostgroups.load()
     if name not in groups:
-        flash(f"Hostgroup « {name} » introuvable.", "error")
+        flash(f"Hostgroup « {name} » introuvable.", "danger")
         return redirect(url_for("hostgroups_page"))
     ranges = nw_hostgroups.resolve_ranges(name, groups)
     dashboard = _perf_dashboard(ranges=ranges, talkers_size=15)
@@ -1489,7 +1718,7 @@ def api_exec_stats():
 @login_required
 def sla():
     """Page SLA Compliance — gauges, timeline 7j, analyse Business Hours."""
-    days = int(request.args.get("days", 7))
+    days = _safe_int(request.args.get("days"), 7)
     days = max(1, min(days, 30))
     sla_data, es_error = es_client.get_sla_stats(days=days)
     no_data = all(s["buckets_total"] == 0 for s in sla_data.get("slas", []))
@@ -1506,7 +1735,7 @@ def sla():
 @login_required
 def api_sla_stats():
     """SLA compliance data (JSON) — consommé par le refresh auto."""
-    days = int(request.args.get("days", 7))
+    days = _safe_int(request.args.get("days"), 7)
     days = max(1, min(days, 30))
     data, error = es_client.get_sla_stats(days=days)
     if error:
@@ -2065,6 +2294,18 @@ def api_pcap_analysis():
     netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cache_file    = os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json")
     script        = os.path.join(netwatch_root, "scripts", "security", "pcap-tcp-analysis.py")
+    pcap_dir      = os.path.join(netwatch_root, "pcap")
+
+    pcap_path = None
+    if single_file:
+        # os.path.basename() élimine tout composant de répertoire (y compris un
+        # chemin absolu, que os.path.join sinon laisserait remplacer le préfixe
+        # netwatch_root/pcap en entier) — puis vérification de confinement en
+        # profondeur avec le chemin résolu, avant de le passer à tshark.
+        candidate = os.path.realpath(os.path.join(pcap_dir, os.path.basename(single_file)))
+        if os.path.commonpath([os.path.realpath(pcap_dir), candidate]) != os.path.realpath(pcap_dir):
+            return jsonify({"error": "Nom de fichier PCAP invalide"}), 400
+        pcap_path = candidate
 
     now = _time_pcap.monotonic()
 
@@ -2077,8 +2318,8 @@ def api_pcap_analysis():
         return jsonify({"error": "pcap-tcp-analysis.py introuvable"}), 503
 
     cmd = ["python3", script, "--output", cache_file]
-    if single_file:
-        cmd += ["--pcap", os.path.join(netwatch_root, "pcap", single_file)]
+    if pcap_path:
+        cmd += ["--pcap", pcap_path]
 
     try:
         result = subprocess.run(
@@ -2190,4 +2431,19 @@ if __name__ == "__main__":
             "⚠️  PORTAL_PASSWORD non défini — toute tentative de connexion sera refusée. "
             "Définissez la variable d'environnement PORTAL_PASSWORD pour activer l'accès."
         )
-    app.run(host="0.0.0.0", port=config.PORT, debug=config.FLASK_DEBUG)
+    # Vérification périodique des seuils (/thresholds) — thread daemon, pas de
+    # service Docker séparé. Guard WERKZEUG_RUN_MAIN : évite un double thread
+    # si jamais FLASK_DEBUG est activé (le reloader Werkzeug relance ce
+    # fichier dans un sous-process, "__main__" s'exécute alors deux fois).
+    if not config.FLASK_DEBUG or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        threading.Thread(
+            target=nw_thresholds.run_background_loop,
+            args=(config.THRESHOLD_CHECK_SECONDS,),
+            daemon=True,
+        ).start()
+
+    # threaded=True : indispensable depuis l'ajout du flux SSE
+    # (/api/alerts/stream) — une connexion longue durée bloquerait sinon
+    # tout le reste du portail sur le serveur de dev Werkzeug (mono-thread
+    # par défaut).
+    app.run(host="0.0.0.0", port=config.PORT, debug=config.FLASK_DEBUG, threaded=True)

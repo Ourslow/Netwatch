@@ -140,6 +140,53 @@
 }
 
 /* ============================================================
+   1bis. Thème clair — surcharge des tokens de surface/texte/accent.
+   Les sémantiques (sévérité, moteurs, MITRE) sont assombries : leurs
+   teintes sombres passent sous le seuil de contraste WCAG sur fond clair.
+   ============================================================ */
+[data-bs-theme="light"] {
+  --bg-base:    #eef1f6;
+  --bg-elev-1:  #ffffff;
+  --bg-elev-2:  #ffffff;
+  --bg-elev-3:  #f3f5f9;
+  --bg-inset:   #e9ecf2;
+
+  --border:        #dde2ea;
+  --border-strong: #c5cddb;
+
+  --text:        #24303f;
+  --text-strong: #0c1420;
+  --text-muted:  #5b6a7f;
+  --text-dim:    #8896a8;
+
+  --accent:        #0891b2;
+  --accent-bright: #0e7490;
+  --accent-deep:   #155e75;
+  --accent-soft:   rgba(8, 145, 178, .10);
+  --accent-line:   rgba(8, 145, 178, .32);
+  --accent-glow:   rgba(8, 145, 178, .18);
+
+  --shadow-card: 0 8px 24px -14px rgba(30, 41, 59, .28);
+  --grid-line:   rgba(30, 41, 59, .10);
+
+  --crit:      #d1293b;
+  --crit-soft: rgba(209, 41, 59, .10);
+  --crit-line: rgba(209, 41, 59, .30);
+  --med:       #b1650a;
+  --med-soft:  rgba(177, 101, 10, .10);
+  --med-line:  rgba(177, 101, 10, .30);
+  --low:       #5b6b80;
+  --ok:        #0f9d67;
+  --ok-soft:   rgba(15, 157, 103, .10);
+  --ok-line:   rgba(15, 157, 103, .30);
+
+  --snort:      #d1295a;
+  --suricata:   #0369a1;
+  --mitre:      #7c3aed;
+  --mitre-soft: rgba(124, 58, 237, .12);
+}
+
+/* ============================================================
    2. Base
    ============================================================ */
 
@@ -291,7 +338,9 @@ code {
   color: var(--text-dim);
 }
 
-/* Sections de navigation */
+/* Sections de navigation — repliables (Bootstrap collapse + NW.initNavSections :
+   la section de la page active reste ouverte, préférence en localStorage,
+   data-default="closed" pour une section repliée par défaut) */
 .nav-section {
   font-size: .64rem;
   text-transform: uppercase;
@@ -299,25 +348,19 @@ code {
   color: var(--text-dim);
   padding: 0 .8rem;
   margin: 1.1rem 0 .35rem;
-}
-
-/* Groupe repliable (section secondaire « Projet & infra ») */
-.nav-group > summary {
-  list-style: none;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  cursor: pointer;
   user-select: none;
   transition: color var(--t-fast);
 }
-.nav-group > summary::-webkit-details-marker { display: none; }
-.nav-group > summary:hover { color: var(--text-muted); }
-.nav-group > summary .bi-chevron-down {
-  font-size: .6rem;
-  transition: transform var(--t-med);
+.nav-section:hover { color: var(--text-muted); }
+.nav-section-caret {
+  font-size: .62rem;
+  transition: transform var(--t-fast);
 }
-.nav-group[open] > summary .bi-chevron-down { transform: rotate(180deg); }
+.nav-section[aria-expanded="false"] .nav-section-caret { transform: rotate(-90deg); }
 
 .sidebar .nav-link {
   color: var(--text-muted);
@@ -424,6 +467,12 @@ code {
   0%   { box-shadow: 0 0 0 0 rgba(46,230,166,.5); }
   70%  { box-shadow: 0 0 0 6px rgba(46,230,166,0); }
   100% { box-shadow: 0 0 0 0 rgba(46,230,166,0); }
+}
+/* Flux SSE coupé — EventSource se reconnecte seul, juste un indicateur visuel */
+.live-pill.stream-down .dot {
+  background: var(--warn);
+  animation: none;
+  box-shadow: none;
 }
 
 /* Point d'état coloré (services, légendes) */
@@ -825,6 +874,33 @@ code {
 }
 .mitre-tech { font-family: var(--font-mono); font-size: .9em; opacity: .85; }
 
+/* Chaîne d'attaque reconstituée (incidents) — étapes MITRE dans l'ordre
+   canonique, façon stepper, chaque étape = une tactique observée. */
+.killchain-strip { row-gap: .4rem; }
+.killchain-stage {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--mitre-soft);
+  color: var(--mitre);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-pill);
+  padding: .3rem .7rem;
+  font-size: .74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.killchain-count {
+  background: var(--mitre);
+  color: var(--bg-base);
+  border-radius: var(--r-pill);
+  font-size: .66rem;
+  font-weight: 700;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 .3rem;
+}
+.killchain-arrow { color: var(--text-dim); font-size: .7rem; }
+
 /* Pastille métrique (ART, RTT, % retrans) : valeur mono + seuil coloré */
 .metric-pill, .art-badge {
   display: inline-block;
@@ -1023,7 +1099,9 @@ thead .tool-highlight { border-top: 2px solid var(--accent); }
 .modal-header, .modal-footer { border-color: var(--border); }
 .modal-title { color: var(--text-strong); }
 .modal-title .bi { color: var(--accent); }
-.btn-close { filter: invert(1) grayscale(1) brightness(1.6); opacity: .5; }
+/* Croix de fermeture : inversée seulement en thème sombre */
+:root:not([data-bs-theme="light"]) .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+.btn-close { opacity: .5; }
 .btn-close:hover { opacity: 1; }
 
 /* Encadré « réponse IA » */
@@ -1053,7 +1131,8 @@ thead .tool-highlight { border-top: 2px solid var(--accent); }
   box-shadow: 0 8px 28px -10px rgba(0, 0, 0, .6);
 }
 .nw-toast .toast-body { font-size: .85rem; }
-.nw-toast .btn-close { filter: invert(1) grayscale(1) brightness(1.6); opacity: .5; }
+:root:not([data-bs-theme="light"]) .nw-toast .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+.nw-toast .btn-close { opacity: .5; }
 .nw-toast .btn-close:hover { opacity: 1; }
 .nw-toast-success { border-left-color: var(--ok); }
 .nw-toast-success .bi { color: var(--ok); }
@@ -1063,6 +1142,37 @@ thead .tool-highlight { border-top: 2px solid var(--accent); }
 .nw-toast-warning .bi { color: var(--med); }
 .nw-toast-info    { border-left-color: var(--accent); }
 .nw-toast-info .bi { color: var(--accent); }
+
+/* Menu contextuel clic droit — pivot IP / domaine / signature (à la Riverbed) */
+.pivot-menu {
+  position: fixed; z-index: 1095; min-width: 220px;
+  background: var(--bg-elev-2); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); overflow: hidden;
+  box-shadow: var(--shadow-pop);
+  opacity: 0; pointer-events: none; transform: scale(.97);
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+.pivot-menu.pivot-open { opacity: 1; pointer-events: auto; transform: scale(1); }
+.pivot-menu-header {
+  padding: .55rem .9rem; border-bottom: 1px solid var(--border);
+  font-size: .68rem; font-weight: 600; letter-spacing: .05em;
+  color: var(--text-dim); text-transform: uppercase;
+  display: flex; align-items: center; gap: .4rem;
+}
+.pivot-menu-header code {
+  color: var(--text-strong); font-size: .72rem; text-transform: none;
+  letter-spacing: normal; max-width: 160px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.pivot-menu-list { padding: .3rem 0; }
+.pivot-item {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .5rem .9rem; cursor: pointer; font-size: .85rem;
+  color: var(--text); transition: background var(--t-fast);
+}
+.pivot-item:hover { background: var(--accent-soft); color: var(--accent-bright); }
+.pivot-item i { width: 16px; text-align: center; color: var(--text-muted); font-size: .85rem; }
+.pivot-item:hover i { color: var(--accent); }
 
 /* Tooltip custom (cartes, graphes) */
 .nw-tip {
@@ -1626,9 +1736,9 @@ thead .tool-highlight { border-top: 2px solid var(--accent); }
   .sidebar-brand .brand-text,
   .sidebar .nav-link span,
   .nav-section,
-  .nav-group > summary,
   .sidebar-footer { display: none; }
-  .nav-group { display: contents; }
+  /* Mode icônes : les sections ne sont plus repliables (titres masqués) */
+  .sidebar .nav.collapse { display: flex !important; }
   .sidebar { padding-left: .5rem !important; padding-right: .5rem !important; }
   .sidebar .nav-link { justify-content: center; padding: .6rem 0; }
   .sidebar-brand { justify-content: center; }

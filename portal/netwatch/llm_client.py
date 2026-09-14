@@ -4,10 +4,18 @@ Client LLM local (Ollama) — assistant d'explication des alertes IDS.
 100% on-prem : aucune donnée d'alerte n'est envoyée à un service tiers,
 seule l'API REST locale d'Ollama (http://localhost:11434 par défaut) est
 contactée. Cohérent avec la philosophie souveraine de NetWatch.
+
+Chaque appel est aussi journalisé dans netwatch-llmops-* (latence,
+succès/échec) — volet LLMOps du pitch Network Experience Monitoring :
+voir netwatch.llmops pour l'agrégation/lecture de ces logs.
 """
 
+import time
 import requests
 import config
+
+from datetime import datetime, timezone
+from . import es_client
 
 _TIMEOUT = config.OLLAMA_TIMEOUT  # configurable via OLLAMA_TIMEOUT (inférence CPU lente)
 
@@ -29,6 +37,61 @@ def is_available() -> bool:
         return False
 
 
+def _log_call(kind, latency_ms, ok, error, prompt_chars):
+    """Journalise un appel Ollama dans netwatch-llmops-* — best-effort, ne doit
+    jamais faire échouer l'appel IA lui-même si Elasticsearch est indisponible."""
+    try:
+        now = datetime.now(timezone.utc)
+        doc = {
+            "@timestamp":    now.isoformat(),
+            "kind":          kind,
+            "model":         config.OLLAMA_MODEL,
+            "latency_ms":    latency_ms,
+            "ok":            ok,
+            # "error_message" et non "error" : ce dernier collide avec le champ
+            # ECS "error" (objet error.msg/error.code) hérité par tout index
+            # netwatch-* via le template Filebeat — casse l'indexation en 400.
+            "error_message": error,
+            "prompt_chars":  prompt_chars,
+        }
+        index = "netwatch-llmops-" + now.strftime("%Y.%m.%d")
+        es_client._es(f"/{index}/_doc", doc, method="post")
+    except Exception:
+        pass
+
+
+def _generate(prompt: str, system: str, kind: str) -> tuple[str | None, str | None]:
+    """POST /api/generate + mesure/journalise latence et succès dans netwatch-llmops-*."""
+    body = {
+        "model":  config.OLLAMA_MODEL,
+        "prompt": prompt,
+        "system": system,
+        "stream": False,
+        "options": {"temperature": 0.2},
+    }
+
+    t0 = time.monotonic()
+    result, error = None, None
+    try:
+        r = requests.post(
+            config.OLLAMA_URL.rstrip("/") + "/api/generate",
+            json=body,
+            timeout=_TIMEOUT,
+        )
+        r.raise_for_status()
+        result = r.json().get("response", "").strip()
+    except requests.exceptions.ConnectionError:
+        error = f"Ollama non joignable ({config.OLLAMA_URL}) — vérifier que le conteneur tourne"
+    except requests.exceptions.Timeout:
+        error = f"Ollama timeout (> {_TIMEOUT}s) — modèle trop lent ou surchargé"
+    except Exception as e:
+        error = str(e)[:150]
+
+    latency_ms = round((time.monotonic() - t0) * 1000, 1)
+    _log_call(kind, latency_ms, result is not None, error, len(prompt))
+    return result, error
+
+
 def explain_alert(alert: dict) -> tuple[str | None, str | None]:
     """
     Génère une explication en langage naturel pour une alerte normalisée
@@ -46,29 +109,7 @@ def explain_alert(alert: dict) -> tuple[str | None, str | None]:
         f"({alert.get('mitre_tech') or '—'})\n\n"
         "Explique cette alerte à un analyste."
     )
-
-    body = {
-        "model":  config.OLLAMA_MODEL,
-        "prompt": prompt,
-        "system": _SYSTEM_PROMPT,
-        "stream": False,
-        "options": {"temperature": 0.2},
-    }
-
-    try:
-        r = requests.post(
-            config.OLLAMA_URL.rstrip("/") + "/api/generate",
-            json=body,
-            timeout=_TIMEOUT,
-        )
-        r.raise_for_status()
-        return r.json().get("response", "").strip(), None
-    except requests.exceptions.ConnectionError:
-        return None, f"Ollama non joignable ({config.OLLAMA_URL}) — vérifier que le conteneur tourne"
-    except requests.exceptions.Timeout:
-        return None, f"Ollama timeout (> {_TIMEOUT}s) — modèle trop lent ou surchargé"
-    except Exception as e:
-        return None, str(e)[:150]
+    return _generate(prompt, _SYSTEM_PROMPT, "explain_alert")
 
 
 def summarize_alerts(alerts: list, period_label: str = "24 dernières heures") -> tuple[str | None, str | None]:
@@ -91,29 +132,7 @@ def summarize_alerts(alerts: list, period_label: str = "24 dernières heures") -
         "d'un décideur non-technique : tendances principales, types de menaces "
         "dominantes, niveau de risque global, et une recommandation."
     )
-
-    body = {
-        "model":  config.OLLAMA_MODEL,
-        "prompt": prompt,
-        "system": _SYSTEM_PROMPT,
-        "stream": False,
-        "options": {"temperature": 0.2},
-    }
-
-    try:
-        r = requests.post(
-            config.OLLAMA_URL.rstrip("/") + "/api/generate",
-            json=body,
-            timeout=_TIMEOUT,
-        )
-        r.raise_for_status()
-        return r.json().get("response", "").strip(), None
-    except requests.exceptions.ConnectionError:
-        return None, f"Ollama non joignable ({config.OLLAMA_URL})"
-    except requests.exceptions.Timeout:
-        return None, f"Ollama timeout (> {_TIMEOUT}s)"
-    except Exception as e:
-        return None, str(e)[:150]
+    return _generate(prompt, _SYSTEM_PROMPT, "summarize_alerts")
 
 
 _TCP_SYSTEM_PROMPT = (
@@ -165,26 +184,4 @@ def explain_tcp_conversation(conv: dict) -> tuple[str | None, str | None]:
         f"VLAN : {conv.get('vlan_id')}\n\n"
         "Analyse cette conversation TCP."
     )
-
-    body = {
-        "model":  config.OLLAMA_MODEL,
-        "prompt": prompt,
-        "system": _TCP_SYSTEM_PROMPT,
-        "stream": False,
-        "options": {"temperature": 0.2},
-    }
-
-    try:
-        r = requests.post(
-            config.OLLAMA_URL.rstrip("/") + "/api/generate",
-            json=body,
-            timeout=_TIMEOUT,
-        )
-        r.raise_for_status()
-        return r.json().get("response", "").strip(), None
-    except requests.exceptions.ConnectionError:
-        return None, f"Ollama non joignable ({config.OLLAMA_URL})"
-    except requests.exceptions.Timeout:
-        return None, f"Ollama timeout (> {_TIMEOUT}s)"
-    except Exception as e:
-        return None, str(e)[:150]
+    return _generate(prompt, _TCP_SYSTEM_PROMPT, "explain_tcp_conversation")
