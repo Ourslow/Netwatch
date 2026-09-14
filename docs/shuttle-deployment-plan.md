@@ -182,19 +182,19 @@ conteneur, `make llm-pull`, redémarrer le portail — aucune migration de donn�
 3. VM Sensors + VM Data (§3-4).
 4. Portail + validation (§5).
 
-**À faire dans le repo avant le transfert** (aucun ne bloque le labo actuel) :
+**Fait dans le repo le 14/09/2026** (édition Core / IA + répartition 2-VMs) :
 
-- Répartir les 10 services complémentaires dans `docker-compose.sensors.yml`
-  (`arkime`, `ntopng`) et `docker-compose.data.yml` (`blackbox`, `kibana`,
-  `netbox`, `netbox-postgres`, `netbox-redis`, `netbox-redis-cache`,
-  `netbox-worker`) avec les IPs croisées en variables (`ES_HOST`, `DATA_IP`).
-- `profiles: [ia]` sur `ollama` : l'édition Core (`docker compose up -d`) ne le
-  démarre pas, l'édition IA fait `docker compose --profile ia up -d`.
-- Portail : quand `OLLAMA_URL` est vide, retirer Ollama des checks `/status`
-  (aujourd'hui il compte comme service cœur) et masquer les boutons ✨ — à
-  vérifier page par page (`/alerts`, `/pcap-analysis`, `/report`, `/agents`).
-- `.env.example` : bloc « Édition » en tête (Core / IA) avec les deux lignes à
-  changer.
+- ✅ Les 10 services complémentaires sont répartis : `docker-compose.sensors.yml`
+  (`arkime`, `ntopng`, liés à 192.168.100.11) et `docker-compose.data.yml`
+  (`blackbox`, `kibana`, `netbox` + postgres/redis/worker, liés à 192.168.100.12,
+  jobs Prometheus dans `prometheus.data.yml`). Les IPs restent en dur comme pour
+  le reste des fichiers 2-VMs — à adapter au plan d'adressage du site.
+- ✅ `profiles: ["ia"]` sur `ollama` (les 3 compose) : `COMPOSE_PROFILES=ia` dans
+  `.env` ou `docker compose --profile ia up -d` ; sinon jamais lancé.
+- ✅ Portail : `OLLAMA_URL` vide → `AI_ENABLED=False` : boutons ✨, entrée
+  « Agents IA », résumé exécutif du rapport masqués ; Ollama absent de `/status` ;
+  `/api/explain`, `/api/summary`, `/api/pcap-analysis/explain` → 503 explicite.
+- ✅ `.env.example` : bloc « ÉDITION » en tête (`COMPOSE_PROFILES`, `OLLAMA_URL`).
 
 **Pourquoi cet ordre** : la capture réseau (SPAN) est la partie la plus proche
 du matériel physique et la moins réversible à distance si mal câblée/configurée

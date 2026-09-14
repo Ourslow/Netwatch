@@ -594,6 +594,8 @@ def _inject_globals():
             "netbox": config.NETWATCH_NETBOX_URL,
         },
         "netbox_enabled": nw_netbox.configured(),
+        # Édition IA : boutons ✨, entrée « Agents IA », résumé exécutif
+        "ai_enabled": config.AI_ENABLED,
     }
 
 
@@ -1700,10 +1702,15 @@ def hostgroup_dashboard(name):
     return render_template("hostgroup_dashboard.html", group=groups[name], dashboard=dashboard)
 
 
+_AI_DISABLED = {"error": "Assistant IA désactivé (édition Core) — renseigner OLLAMA_URL et COMPOSE_PROFILES=ia dans .env"}
+
+
 @app.route("/api/explain", methods=["POST"])
 @login_required
 def api_explain():
     """Explique une alerte IDS en langage naturel via l'assistant LLM local (Ollama)."""
+    if not config.AI_ENABLED:
+        return jsonify(_AI_DISABLED), 503
     alert = request.get_json(silent=True) or {}
     if not alert.get("signature"):
         return jsonify({"error": "Alerte invalide"}), 400
@@ -1718,6 +1725,8 @@ def api_explain():
 @login_required
 def api_summary():
     """Résumé exécutif IA des alertes récentes (utilisé sur /report)."""
+    if not config.AI_ENABLED:
+        return jsonify(_AI_DISABLED), 503
     alerts_list, es_error = es_client.get_recent_alerts(size=30)
     if es_error:
         return jsonify({"error": es_error}), 503
@@ -2620,6 +2629,8 @@ def pcap_analysis_export_csv():
 @login_required
 def api_pcap_analysis_explain():
     """Génère une analyse narrative IA d'une conversation TCP (via Ollama)."""
+    if not config.AI_ENABLED:
+        return jsonify(_AI_DISABLED), 503
     conv = request.get_json(silent=True) or {}
     if not conv:
         return jsonify({"error": "Conversation manquante"}), 400

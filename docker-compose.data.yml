@@ -9,7 +9,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+      - ES_JAVA_OPTS=${ES_HEAP:--Xms2g -Xmx2g}
     volumes:
       - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - es-data:/usr/share/elasticsearch/data
@@ -29,6 +29,7 @@ services:
     container_name: netwatch-prometheus
     volumes:
       - ./prometheus/prometheus.data.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/blackbox-targets.yml:/etc/prometheus/blackbox-targets.yml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     command:
@@ -106,13 +107,144 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Édition IA uniquement (COMPOSE_PROFILES=ia dans .env). Prévoir +4-5 Go de RAM
+  # sur la VM Data avec mistral — voir docs/shuttle-deployment-plan.md §3.
   ollama:
     image: ollama/ollama:latest
     container_name: netwatch-ollama
+    profiles: ["ia"]
+    environment:
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
     ports:
-      - "127.0.0.1:11434:11434"
+      # Lié à l'IP LAN Data : le portail (autre poste) l'atteint via OLLAMA_URL.
+      - "192.168.100.12:11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+  # ============================================================
+  # OBSERVABILITÉ COMPLÉMENTAIRE côté données (voir docker-compose.yml pour les
+  # commentaires détaillés). Arkime et ntopng sont sur la VM Sensors.
+  # ============================================================
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: netwatch-blackbox
+    cap_add:
+      - NET_RAW
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "192.168.100.12:9115:9115"
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: netwatch-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-netwatch-kibana-encryption-key-32chars}
+      - TELEMETRY_ENABLED=false
+    ports:
+      - "192.168.100.12:5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  netbox-postgres:
+    image: postgres:16-alpine
+    container_name: netwatch-netbox-postgres
+    environment:
+      - POSTGRES_USER=netbox
+      - POSTGRES_DB=netbox
+      - POSTGRES_PASSWORD=${NETBOX_DB_PASSWORD:?NETBOX_DB_PASSWORD manquant dans .env}
+    volumes:
+      - netbox-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netbox -d netbox"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  netbox-redis:
+    image: redis:7-alpine
+    container_name: netwatch-netbox-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${NETBOX_REDIS_PASSWORD:?NETBOX_REDIS_PASSWORD manquant dans .env}"]
+    volumes:
+      - netbox-redis-data:/data
+    restart: unless-stopped
+
+  netbox-redis-cache:
+    image: redis:7-alpine
+    container_name: netwatch-netbox-redis-cache
+    command: ["redis-server", "--requirepass", "${NETBOX_REDIS_PASSWORD}"]
+    restart: unless-stopped
+
+  netbox:
+    image: netboxcommunity/netbox:v4.7-5.1.1
+    container_name: netwatch-netbox
+    environment: &netbox-env
+      - DB_HOST=netbox-postgres
+      - DB_NAME=netbox
+      - DB_USER=netbox
+      - DB_PASSWORD=${NETBOX_DB_PASSWORD}
+      - REDIS_HOST=netbox-redis
+      - REDIS_PASSWORD=${NETBOX_REDIS_PASSWORD}
+      - REDIS_DATABASE=0
+      - REDIS_CACHE_HOST=netbox-redis-cache
+      - REDIS_CACHE_PASSWORD=${NETBOX_REDIS_PASSWORD}
+      - REDIS_CACHE_DATABASE=1
+      - SECRET_KEY=${NETBOX_SECRET_KEY:?NETBOX_SECRET_KEY manquant dans .env (50 caractères min)}
+      - ALLOWED_HOSTS=*
+      - CORS_ORIGIN_ALLOW_ALL=True
+      - SKIP_SUPERUSER=false
+      - SUPERUSER_NAME=${NETBOX_SUPERUSER_NAME:-admin}
+      - SUPERUSER_EMAIL=${NETBOX_SUPERUSER_EMAIL:-admin@netwatch.local}
+      - SUPERUSER_PASSWORD=${NETBOX_SUPERUSER_PASSWORD:?NETBOX_SUPERUSER_PASSWORD manquant dans .env}
+      - API_TOKEN_PEPPER_1=${NETBOX_API_TOKEN_PEPPER:?NETBOX_API_TOKEN_PEPPER manquant dans .env (50 caractères min)}
+      - SUPERUSER_API_KEY=${NETBOX_TOKEN_KEY:?NETBOX_TOKEN_KEY manquant dans .env (12 caractères alphanumériques)}
+      - SUPERUSER_API_TOKEN=${NETBOX_TOKEN:?NETBOX_TOKEN manquant dans .env (40 caractères alphanumériques)}
+      - METRICS_ENABLED=true
+      - GRAPHQL_ENABLED=false
+      - RELEASE_CHECK_URL=
+    volumes:
+      - netbox-media:/opt/netbox/netbox/media
+      - netbox-reports:/opt/netbox/netbox/reports
+      - netbox-scripts:/opt/netbox/netbox/scripts
+    ports:
+      - "192.168.100.12:8000:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/login/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+    depends_on:
+      netbox-postgres:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_started
+      netbox-redis-cache:
+        condition: service_started
+    restart: unless-stopped
+
+  netbox-worker:
+    image: netboxcommunity/netbox:v4.7-5.1.1
+    container_name: netwatch-netbox-worker
+    command: ["/opt/netbox/venv/bin/python", "/opt/netbox/netbox/manage.py", "rqworker"]
+    environment: *netbox-env
+    volumes:
+      - netbox-media:/opt/netbox/netbox/media
+      - netbox-reports:/opt/netbox/netbox/reports
+      - netbox-scripts:/opt/netbox/netbox/scripts
+    depends_on:
+      netbox:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
@@ -121,3 +253,8 @@ volumes:
   prometheus-data:
   ollama-data:
   n8n-data:
+  netbox-postgres-data:
+  netbox-redis-data:
+  netbox-media:
+  netbox-reports:
+  netbox-scripts:

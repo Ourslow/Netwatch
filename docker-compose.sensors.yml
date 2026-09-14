@@ -2,6 +2,8 @@
 # Moteurs d'analyse + capture réseau. Nécessite un .env avec IFACE réel
 # et les mêmes secrets AUTOBLOCK_* que la VM Data (voir docs/shuttle-deployment-plan.md).
 # Elasticsearch tourne sur la VM Data (192.168.100.12) — voir docker-compose.data.yml.
+# Premier lancement Arkime : docker compose -f docker-compose.sensors.yml run --rm arkime \
+#   db.pl --wait-for-db http://192.168.100.12:9200 -- http://192.168.100.12:9200 init
 
 services:
   zeek:
@@ -154,8 +156,62 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     restart: unless-stopped
 
+  # ============================================================
+  # OBSERVABILITÉ COMPLÉMENTAIRE côté capture (voir docker-compose.yml pour les
+  # commentaires détaillés). Elasticsearch est sur la VM Data.
+  # ============================================================
+
+  ntopng:
+    image: ntop/ntopng:latest
+    container_name: netwatch-ntopng
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    command:
+      - "--interface=${IFACE:-eth0}"
+      # Lié à l'IP LAN Sensors : le portail (autre poste) doit l'atteindre.
+      - "--http-port=192.168.100.11:3001"
+      - "--disable-login=1"
+      - "--community"
+    volumes:
+      - ntopng-data:/var/lib/ntopng
+    restart: unless-stopped
+
+  arkime:
+    image: ghcr.io/arkime/arkime/arkime:v6-latest
+    container_name: netwatch-arkime
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+    environment:
+      - ARKIME__elasticsearch=http://192.168.100.12:9200
+      - ARKIME__interface=${IFACE:-eth0}
+      - ARKIME__passwordSecret=${ARKIME_PASSWORD_SECRET:?ARKIME_PASSWORD_SECRET manquant dans .env}
+      - ARKIME__pcapDir=/opt/arkime/raw
+      - ARKIME__maxFileSizeG=2
+      - ARKIME__freeSpaceG=${ARKIME_FREE_SPACE_G:-10%}
+      - ARKIME__viewPort=8005
+      # Lié à l'IP LAN Sensors → exposé sur le LAN : login formulaire par défaut ici
+      - ARKIME__viewHost=192.168.100.11
+      - ARKIME__plugins=
+      - ARKIME__authMode=${ARKIME_AUTH_MODE:-form}
+      - ARKIME__authCookieSecure=false
+    entrypoint: ["/opt/arkime/bin/docker.sh"]
+    command: ["capture-viewer", "--wait-for-db", "http://192.168.100.12:9200", "--update-geo", "--add-admin", "--forever"]
+    volumes:
+      # Volume dédié PCAP recommandé (200 Go+) : monter le disque sur ./arkime/raw
+      - ./arkime/raw:/opt/arkime/raw
+      - arkime-etc:/opt/arkime/etc
+      - ./pcap:/pcap:ro
+    restart: unless-stopped
+
 volumes:
   zeek-logs:
   snort-logs:
   suricata-logs:
   crowdsec-db:
+  ntopng-data:
+  arkime-etc:

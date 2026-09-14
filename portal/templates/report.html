@@ -250,13 +250,15 @@
       </div>
     </div>
 
-    <!-- Résumé exécutif IA -->
+    <!-- Résumé exécutif IA — édition IA uniquement -->
+    {% if ai_enabled %}
     <div class="ai-summary" id="ai-summary-block">
       <div class="ai-head"><i class="bi bi-stars"></i>Résumé exécutif <span class="badge-ia">IA</span></div>
       <div class="ai-sub"><i class="bi bi-shield-lock me-1"></i>Synthèse générée par l'assistant IA local (Ollama) — aucune donnée envoyée à l'extérieur.</div>
       <button type="button" id="ai-summary-btn" class="btn-ia no-print"><i class="bi bi-stars"></i>Générer le résumé exécutif</button>
       <div id="ai-summary-content" class="ai-content" style="display:none"></div>
     </div>
+    {% endif %}
 
     <!-- ════ 1 — Statut des services ════ -->
     <div class="section">

@@ -218,11 +218,13 @@
           <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
         </a>
       </li>
+      {% if ai_enabled %}
       <li class="nav-item">
         <a href="{{ url_for('agents_page') }}" class="nav-link {% if request.endpoint == 'agents_page' %}active{% endif %}">
           <i class="bi bi-robot"></i> <span data-i18n="nav_agents">Agents IA</span>
         </a>
       </li>
+      {% endif %}
     </ul>
 
     <div class="mt-auto sidebar-footer">
@@ -384,7 +386,7 @@
     { icon: 'bi-grid-3x3-gap',           label: 'Catalogue outils',          url: '/catalog',          hint: 'Open-source & commercial' },
     { icon: 'bi-bar-chart-steps',        label: 'Comparaison',               url: '/compare',          hint: 'OS vs Commercial' },
     { icon: 'bi-clipboard2-check',       label: 'Conformité',                url: '/compliance',       hint: 'NIS2 · NIST · ISO' },
-    { icon: 'bi-robot',                  label: 'Agents IA',                 url: '/agents',           hint: 'Statut des agents' },
+    {% if ai_enabled %}{ icon: 'bi-robot',                  label: 'Agents IA',                 url: '/agents',           hint: 'Statut des agents' },{% endif %}
     { icon: 'bi-bar-chart-fill',         label: 'Grafana',                   url: '{{ grafana_url | browser_url }}', hint: 'Dashboards · alerting', blank: true },
     {% if tool_urls.kibana %}{ icon: 'bi-search',        label: 'Kibana',  url: '{{ tool_urls.kibana | browser_url }}/app/discover#/?_a=(dataSource:(dataViewId:%27netwatch-zeek%27,type:dataView))', hint: 'Explorer les logs Zeek / IDS', blank: true },{% endif %}
     {% if tool_urls.ntopng %}{ icon: 'bi-pie-chart',     label: 'ntopng',  url: '{{ tool_urls.ntopng | browser_url }}', hint: 'Visibilité applicative nDPI', blank: true },{% endif %}

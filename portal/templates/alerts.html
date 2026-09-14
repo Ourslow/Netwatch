@@ -219,12 +219,14 @@
             </td>
             <td class="text-center">
               <div class="d-flex gap-1 justify-content-center">
+                {% if ai_enabled %}
                 <button type="button" class="btn-ai-icon explain-btn"
                         aria-label="Expliquer cette alerte par l'IA"
                         title="Expliquer (IA locale)"
                         data-alert='{{ a | tojson | forceescape }}'>
                   <i class="bi bi-stars"></i>
                 </button>
+                {% endif %}
                 {% if a.engine == 'suricata' and a.community_id %}
                 <button type="button" class="btn-ai-icon correlate-btn"
                         title="Corréler avec Zeek (Community ID)"
@@ -390,11 +392,11 @@ function renderAlertRow(a) {
       <td>${mitreBadge(a)}</td>
       <td class="text-center">
         <div class="d-flex gap-1 justify-content-center">
-          <button type="button" class="btn-ai-icon explain-btn"
+          ${AI_ENABLED ? `<button type="button" class="btn-ai-icon explain-btn"
                   title="Expliquer (IA locale)"
                   data-alert='${JSON.stringify(a).replace(/'/g, "&#39;")}'>
             <i class="bi bi-stars"></i>
-          </button>
+          </button>` : ''}
           ${a.engine === 'suricata' && a.community_id ? `<button type="button" class="btn-ai-icon correlate-btn" title="Corréler avec Zeek (Community ID)" data-cid="${esc(a.community_id)}"><i class="bi bi-link-45deg"></i></button>` : ''}
         </div>
       </td>
@@ -470,6 +472,7 @@ function connectAlertStream() {
 connectAlertStream();
 
 /* ---- Assistant IA — explication d'alerte (délégation d'événement) ---- */
+const AI_ENABLED = {{ 'true' if ai_enabled else 'false' }};
 const explainModalEl = document.getElementById('explainModal');
 const explainModal    = new bootstrap.Modal(explainModalEl);
 const explainBody     = document.getElementById('explain-modal-body');

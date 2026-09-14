@@ -385,12 +385,16 @@ nano .env
 Variables essentielles :
 
 ```bash
+COMPOSE_PROFILES=ia                            # Édition : vide = Core (sans IA), ia = assistant Ollama
+OLLAMA_URL=http://localhost:11434              # Édition IA : vide = fonctions ✨ masquées dans le portail
 IFACE=ens18                                    # Interface de capture (ip a)
 SNORT_MONITORED_SERVER=192.168.1.10            # IP serveur à surveiller
 GRAFANA_ADMIN_PASSWORD=MonMotDePasse!          # Ne pas laisser "changeme"
 AUTOBLOCK_DRY_RUN=true                         # Laisser true pour commencer
 SLACK_WEBHOOK_URL=                             # Optionnel
 ```
+
+> **Deux éditions, un seul dépôt.** *Core* : `COMPOSE_PROFILES` et `OLLAMA_URL` vides — le conteneur Ollama n'est jamais lancé, le portail masque l'explication d'alertes, la narration PCAP, le résumé exécutif et l'entrée « Agents IA ». *IA* : `COMPOSE_PROFILES=ia` + `OLLAMA_URL` + `make llm-pull` une fois (prévoir 4-5 Go de RAM de plus avec Mistral). Passer de l'une à l'autre ne touche à aucune donnée.
 
 ### 4. Permissions Filebeat
 

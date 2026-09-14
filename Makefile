@@ -105,7 +105,7 @@ start:
 	@echo "Grafana      → http://localhost:3000"
 	@echo "Elasticsearch→ http://localhost:9200"
 	@echo "Prometheus   → http://localhost:9090"
-	@echo "Ollama       → http://localhost:11434 (lancer 'make llm-pull' si premier démarrage)"
+	@echo "Ollama       → http://localhost:11434 (édition IA : COMPOSE_PROFILES=ia dans .env, puis 'make llm-pull')"
 
 stop:
 	docker compose down

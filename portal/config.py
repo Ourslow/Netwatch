@@ -66,8 +66,11 @@ NETBOX_TOKEN_KEY      = os.getenv("NETBOX_TOKEN_KEY", "")
 NETBOX_TOKEN          = os.getenv("NETBOX_TOKEN", "")
 
 # Assistant IA local (Ollama) — explication des alertes, résumé exécutif
-# 100% on-prem, aucune donnée envoyée hors du SI
+# 100% on-prem, aucune donnée envoyée hors du SI.
+# Édition : OLLAMA_URL vide dans .env = édition Core (fonctions ✨ masquées,
+# Ollama absent de /status) ; absent du .env = défaut localhost (édition IA).
 OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")
+AI_ENABLED   = bool(OLLAMA_URL)
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 # Timeout (s) des appels de génération Ollama. L'inférence CPU (sans GPU) est lente :
 # 120 s laisse le temps au modèle de se charger + générer. Réduire si GPU dispo.

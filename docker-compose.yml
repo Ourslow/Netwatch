@@ -310,6 +310,12 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: netwatch-ollama
+    # Édition IA uniquement : démarré si COMPOSE_PROFILES=ia dans .env
+    # (ou `docker compose --profile ia up -d`). Édition Core : jamais lancé.
+    profiles: ["ia"]
+    environment:
+      # Décharge le modèle après inactivité (RAM libérée entre deux explications)
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
     ports:
       - "127.0.0.1:11434:11434"
     volumes:
