@@ -8,14 +8,14 @@
       <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>Top talkers</div>
       <div class="card-body p-0">
         {% if dashboard.talkers %}
-        <table class="table table-sm table-hover mb-0">
-          <thead><tr><th>IP</th><th class="text-end">Octets</th><th class="text-end">Connexions</th></tr></thead>
+        <table class="table table-sm table-hover table-fixed mb-0" data-nw-table>
+          <thead><tr><th style="width:48%">IP</th><th class="text-end" data-desc>Octets</th><th class="text-end" data-desc>Connexions</th></tr></thead>
           <tbody>
             {% for t in dashboard.talkers %}
             <tr>
               <td><a href="{{ url_for('ip_detail', ip=t.ip) }}" class="ip-mono">{{ t.ip }}</a></td>
-              <td class="text-end small tnum">{{ t.bytes | fmt_bytes }}</td>
-              <td class="text-end small tnum">{{ t.conns }}</td>
+              <td class="text-end small tnum" data-sort="{{ t.bytes }}">{{ t.bytes | fmt_bytes }}</td>
+              <td class="text-end small tnum" data-sort="{{ t.conns }}">{{ t.conns }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -36,13 +36,13 @@
       </div>
       <div class="card-body p-0">
         {% if dashboard.pcap_conversations %}
-        <table class="table table-sm table-hover mb-0">
-          <thead><tr><th>Conversation</th><th class="text-end">Octets</th><th>Handshake</th></tr></thead>
+        <table class="table table-sm table-hover table-fixed mb-0" data-nw-table>
+          <thead><tr><th style="width:56%">Conversation</th><th class="text-end" data-desc>Octets</th><th>Handshake</th></tr></thead>
           <tbody>
             {% for c in dashboard.pcap_conversations[:8] %}
             <tr>
               <td class="ip-mono">{{ c.client_ip }} <span class="text-dim">↔</span> {{ c.server_ip }}</td>
-              <td class="text-end small tnum">{{ c.total_bytes | fmt_bytes }}</td>
+              <td class="text-end small tnum" data-sort="{{ c.total_bytes }}">{{ c.total_bytes | fmt_bytes }}</td>
               <td>
                 {% set r = c.handshake_rating.server %}
                 {% if r.label %}

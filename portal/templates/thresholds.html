@@ -66,7 +66,7 @@
   <div class="card-body p-0">
     {% if rules %}
     <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0 align-middle">
+      <table class="table table-sm table-hover mb-0 align-middle" data-nw-table>
         <thead>
           <tr>
             <th>Statut</th>
@@ -74,7 +74,7 @@
             <th>Portée</th>
             <th>Condition</th>
             <th>Sévérité</th>
-            <th></th>
+            <th data-nosort></th>
           </tr>
         </thead>
         <tbody>
@@ -119,8 +119,8 @@
   <div class="card-body p-0">
     {% if events %}
     <div class="table-responsive">
-      <table class="table table-sm mb-0">
-        <thead><tr><th>Horodatage</th><th>Événement</th><th>Application</th><th>Métrique</th><th class="text-end">Valeur</th></tr></thead>
+      <table class="table table-sm table-hover mb-0" data-nw-table data-page-size="20">
+        <thead><tr><th data-desc>Horodatage</th><th>Événement</th><th>Application</th><th>Métrique</th><th class="text-end" data-desc>Valeur</th></tr></thead>
         <tbody>
           {% for e in events %}
           <tr>

@@ -35,7 +35,7 @@
   <div class="card-body p-0">
     {% if groups %}
     <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0 align-middle">
+      <table class="table table-sm table-hover mb-0 align-middle" data-nw-table>
         <thead>
           <tr>
             <th data-i18n="hostgroup_col_name">Nom</th>
@@ -43,7 +43,7 @@
             <th data-i18n="hostgroup_col_hosts">Plages</th>
             <th data-i18n="hostgroup_col_members">Sous-groupes</th>
             <th data-i18n="hostgroup_col_tags">Tags</th>
-            <th></th>
+            <th data-nosort></th>
           </tr>
         </thead>
         <tbody>
@@ -54,7 +54,7 @@
               {% if not g.enabled %}<span class="badge bg-secondary ms-1">disabled</span>{% endif %}
             </td>
             <td class="text-muted small">{{ g.description or '—' }}</td>
-            <td><span class="badge bg-dark">{{ g.host_count }}</span></td>
+            <td data-sort="{{ g.host_count }}"><span class="badge bg-dark">{{ g.host_count }}</span></td>
             <td class="text-muted small">
               {% if g.member_groups %}{{ g.member_groups | join(', ') }}{% else %}—{% endif %}
             </td>

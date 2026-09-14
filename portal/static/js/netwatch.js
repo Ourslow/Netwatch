@@ -504,6 +504,97 @@
     });
   };
 
+  /* ---- Tableaux interactifs : tri, filtre, pagination --------------
+     <table data-nw-table data-page-size="20" data-filter="#input" data-count="#el">
+     Tri : clic sur <th> (sauf th[data-nosort]) ; valeur = td[data-sort] sinon
+     texte, numérique si les deux se parsent. Aucune dépendance. */
+  NW.enhanceTable = function (table) {
+    if (!table || table._nwEnhanced) return;
+    table._nwEnhanced = true;
+    const thead = table.tHead, tbody = table.tBodies[0];
+    if (!thead || !tbody) return;
+    const pageSize = parseInt(table.getAttribute("data-page-size"), 10) || 0;
+    const filterEl = table.getAttribute("data-filter") ? document.querySelector(table.getAttribute("data-filter")) : null;
+    const countEl  = table.getAttribute("data-count")  ? document.querySelector(table.getAttribute("data-count"))  : null;
+    let rows = Array.prototype.slice.call(tbody.rows);
+    let sortCol = -1, sortDir = 1, page = 0, query = "";
+    table.classList.add("nw-sortable");
+
+    function cellVal(tr, i) {
+      const td = tr.cells[i];
+      if (!td) return "";
+      const ds = td.getAttribute("data-sort");
+      return ds !== null ? ds : td.textContent.trim();
+    }
+    function cmp(a, b) {
+      const va = cellVal(a, sortCol), vb = cellVal(b, sortCol);
+      const na = parseFloat(String(va).replace(/[\s,%]/g, "")), nb = parseFloat(String(vb).replace(/[\s,%]/g, ""));
+      const numeric = !isNaN(na) && !isNaN(nb) && /^[\s\d.,%+-]+$/.test(String(va)) && /^[\s\d.,%+-]+$/.test(String(vb));
+      const r = numeric ? na - nb : String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: "base" });
+      return r * sortDir;
+    }
+    function visibleRows() {
+      let out = rows;
+      if (query) {
+        const q = query.toLowerCase();
+        out = out.filter(function (tr) { return tr.textContent.toLowerCase().indexOf(q) !== -1; });
+      }
+      if (sortCol >= 0) out = out.slice().sort(cmp);
+      return out;
+    }
+    function render() {
+      const vis = visibleRows();
+      const pages = pageSize ? Math.max(1, Math.ceil(vis.length / pageSize)) : 1;
+      if (page >= pages) page = pages - 1;
+      const slice = pageSize ? vis.slice(page * pageSize, (page + 1) * pageSize) : vis;
+      if (pageSize || filterEl) {
+        rows.forEach(function (tr) { tr.style.display = "none"; });
+        slice.forEach(function (tr) { tr.style.display = ""; tbody.appendChild(tr); });
+      } else {
+        /* Tri seul : on réordonne sans toucher à l'affichage (un filtre
+           maison — ex. page Applications — peut masquer des lignes) */
+        slice.forEach(function (tr) { tbody.appendChild(tr); });
+      }
+      if (countEl) countEl.textContent = vis.length + " / " + rows.length;
+      renderPager(vis.length, pages);
+      Array.prototype.forEach.call(thead.rows[0].cells, function (th, i) {
+        th.classList.toggle("sort-asc",  i === sortCol && sortDir === 1);
+        th.classList.toggle("sort-desc", i === sortCol && sortDir === -1);
+      });
+    }
+    let pager = null;
+    function renderPager(total, pages) {
+      if (!pageSize || total <= pageSize) { if (pager) pager.style.display = "none"; return; }
+      if (!pager) {
+        pager = document.createElement("div");
+        pager.className = "nw-pager";
+        table.parentNode.insertBefore(pager, table.nextSibling);
+      }
+      pager.style.display = "";
+      pager.innerHTML =
+        '<button type="button" class="nw-pager-btn" data-go="prev"' + (page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left"></i></button>' +
+        '<span class="nw-pager-info">' + (page * pageSize + 1) + "–" + Math.min((page + 1) * pageSize, total) + " / " + total + "</span>" +
+        '<button type="button" class="nw-pager-btn" data-go="next"' + (page >= pages - 1 ? " disabled" : "") + '><i class="bi bi-chevron-right"></i></button>';
+      pager.querySelector('[data-go="prev"]').addEventListener("click", function () { page--; render(); });
+      pager.querySelector('[data-go="next"]').addEventListener("click", function () { page++; render(); });
+    }
+    Array.prototype.forEach.call(thead.rows[0].cells, function (th, i) {
+      if (th.hasAttribute("data-nosort") || !th.textContent.trim()) return;
+      th.classList.add("sortable");
+      th.addEventListener("click", function () {
+        if (sortCol === i) sortDir = -sortDir; else { sortCol = i; sortDir = th.hasAttribute("data-desc") ? -1 : 1; }
+        page = 0; render();
+      });
+    });
+    if (filterEl) filterEl.addEventListener("input", function () { query = filterEl.value.trim(); page = 0; render(); });
+    /* Nouvelles lignes ajoutées dynamiquement (SSE, refresh) : resynchroniser */
+    table.nwRefresh = function () { rows = Array.prototype.slice.call(tbody.rows); render(); };
+    render();
+  };
+  NW.initTables = function (root) {
+    (root || document).querySelectorAll("table[data-nw-table]").forEach(NW.enhanceTable);
+  };
+
   /* Octets → unité lisible (partagé par toutes les pages) */
   NW.fmtBytes = function (b) {
     b = Number(b) || 0;
@@ -663,6 +754,7 @@
     NW.applyTheme();
     NW.initNavSections();
     NW.applyDeltas();
+    NW.initTables();
   });
 
   window.NW = NW;

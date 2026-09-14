@@ -1070,6 +1070,10 @@ body.nav-rail .nav-rail-btn .bi { transform: rotate(180deg); }
 }
 .table-sm thead th { padding: .45rem .8rem; }
 .table-sm tbody td { padding: .45rem .8rem; }
+/* Tables compactes (widgets) : largeur fixe pour que l'ellipse des IP longues
+   s'applique réellement (en layout auto, la colonne garde la largeur du texte) */
+.table-fixed { table-layout: fixed; width: 100%; }
+.table-fixed td, .table-fixed th { overflow: hidden; text-overflow: ellipsis; }
 /* Colonnes numériques : jamais de retour à la ligne ; IP longues (IPv6) tronquées avec … */
 .table .tnum { white-space: nowrap; }
 .table .ip-mono {
@@ -1081,6 +1085,32 @@ body.nav-rail .nav-rail-btn .bi { transform: rotate(180deg); }
   --bs-table-hover-color: var(--text-strong);
 }
 .biz-table td, .biz-table th { padding: .55rem .75rem; vertical-align: middle; }
+
+/* Tableaux interactifs (NW.enhanceTable) : en-têtes triables + pagination */
+.nw-sortable thead th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 1.4rem; }
+.nw-sortable thead th.sortable::after {
+  content: "\F282"; font-family: "bootstrap-icons"; font-size: .6rem;
+  position: absolute; right: .6rem; top: 50%; transform: translateY(-50%);
+  opacity: .25; transition: opacity var(--t-fast), transform var(--t-fast);
+}
+.nw-sortable thead th.sortable:hover::after { opacity: .7; }
+.nw-sortable thead th.sort-asc  { color: var(--accent); }
+.nw-sortable thead th.sort-desc { color: var(--accent); }
+.nw-sortable thead th.sort-asc::after  { opacity: 1; transform: translateY(-50%) rotate(180deg); }
+.nw-sortable thead th.sort-desc::after { opacity: 1; }
+.nw-pager {
+  display: flex; align-items: center; justify-content: flex-end; gap: .5rem;
+  padding: .45rem .9rem; border-top: 1px solid var(--border);
+  font-size: .74rem; color: var(--text-muted);
+}
+.nw-pager-btn {
+  background: var(--bg-inset); border: 1px solid var(--border); color: var(--text-muted);
+  width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center;
+  cursor: pointer; font-size: .7rem;
+}
+.nw-pager-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent-line); }
+.nw-pager-btn:disabled { opacity: .35; cursor: default; }
+.nw-pager-info { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 /* Accent sévérité en bord de ligne */
 .alert-row-critical td:first-child,

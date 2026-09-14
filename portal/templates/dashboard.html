@@ -60,9 +60,9 @@
   </div>
 </div>
 
-<!-- ── Volume 24h + Top talkers ── -->
+<!-- ── Volume + Top talkers (empilés sous 1200 px : le tableau a besoin de largeur) ── -->
 <div class="row g-3 mb-4">
-  <div class="col-lg-8">
+  <div class="col-xl-8">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-graph-up me-2"></i><span data-i18n="dash_volume">Volume réseau</span> · {{ range_label }} <span id="flows-source-badge" class="ms-2"></span></span>
@@ -75,7 +75,7 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-4">
+  <div class="col-xl-4">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-bar-chart-line me-2"></i>Top talkers</span>
@@ -83,14 +83,14 @@
       </div>
       <div class="card-body p-0">
         {% if dashboard.talkers %}
-        <table class="table table-sm table-hover mb-0">
-          <thead><tr><th>IP</th><th class="text-end">Octets</th><th class="text-end">Conn.</th></tr></thead>
+        <table class="table table-sm table-hover table-fixed mb-0" data-nw-table>
+          <thead><tr><th style="width:50%">IP</th><th class="text-end" data-desc>Octets</th><th class="text-end" data-desc style="width:24%">Conn.</th></tr></thead>
           <tbody>
             {% for t in dashboard.talkers %}
             <tr>
               <td><a href="{{ url_for('ip_detail', ip=t.ip) }}" class="ip-mono">{{ t.ip }}</a></td>
-              <td class="text-end small tnum">{{ t.bytes | fmt_bytes }}</td>
-              <td class="text-end small tnum">{{ t.conns }}</td>
+              <td class="text-end small tnum" data-sort="{{ t.bytes }}">{{ t.bytes | fmt_bytes }}</td>
+              <td class="text-end small tnum" data-sort="{{ t.conns }}">{{ t.conns }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -108,7 +108,7 @@
 
 <!-- ── Dernières alertes + points d'écoute PCAP ── -->
 <div class="row g-3 mb-4">
-  <div class="col-lg-7">
+  <div class="col-xl-7">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-shield-exclamation me-2 text-danger"></i><span data-i18n="dash_last_alerts">Dernières alertes IDS</span></span>
@@ -156,7 +156,7 @@
     </div>
   </div>
 
-  <div class="col-lg-5">
+  <div class="col-xl-5">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-broadcast-pin me-2"></i><span data-i18n="dash_listening_points">Points d'écoute PCAP</span></span>

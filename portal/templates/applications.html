@@ -30,15 +30,15 @@
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0 align-middle">
+      <table class="table table-sm table-hover mb-0 align-middle" data-nw-table>
         <thead>
           <tr>
             <th>Application</th>
-            <th class="text-end">Score</th>
-            <th></th>
-            <th class="text-end">Zero-window</th>
-            <th class="text-end">Retrans.</th>
-            <th class="text-end">RTT moy.</th>
+            <th class="text-end" data-desc>Score</th>
+            <th data-nosort></th>
+            <th class="text-end" data-desc>Zero-window</th>
+            <th class="text-end" data-desc>Retrans.</th>
+            <th class="text-end" data-desc>RTT moy.</th>
           </tr>
         </thead>
         <tbody>
@@ -89,14 +89,14 @@
   <div class="card-body p-0">
     {% if apps %}
     <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0 align-middle" id="app-table">
+      <table class="table table-sm table-hover mb-0 align-middle" id="app-table" data-nw-table>
         <thead>
           <tr>
             <th>Application</th>
             <th>Catégorie</th>
-            <th class="text-end">Sessions TLS</th>
-            <th></th>
-            <th>Top devices</th>
+            <th class="text-end" data-desc>Sessions TLS</th>
+            <th data-nosort></th>
+            <th data-nosort>Top devices</th>
           </tr>
         </thead>
         <tbody>
@@ -106,7 +106,7 @@
               data-ips="{{ a.top_ips[:3] | map(attribute='ip') | join(' ') }}">
             <td>{{ a.name }}</td>
             <td class="text-muted small">{{ a.category }}</td>
-            <td class="text-end"><span class="badge bg-dark">{{ a.sessions }}</span></td>
+            <td class="text-end" data-sort="{{ a.sessions }}"><span class="badge bg-dark">{{ a.sessions }}</span></td>
             <td style="width:22%">
               <div class="progress" style="height:6px">
                 <div class="progress-bar" role="progressbar"

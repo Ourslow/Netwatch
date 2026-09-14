@@ -294,13 +294,18 @@
               datasets: [{ data: srcBytes, backgroundColor: COLORS, borderWidth: 1, borderColor: TH.bg }]
             },
             options: Object.assign({}, CHART_BASE, {
+              /* Drill-down : clic sur un segment → pivot IP */
+              onClick: function (ev, els) {
+                if (els.length) window.location.href = '/ip/' + encodeURIComponent(srcLabels[els[0].index]);
+              },
+              onHover: function (ev, els) { ev.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
               plugins: Object.assign({}, CHART_BASE.plugins, {
                 legend: {
                   display: true, position: 'right',
                   labels: { font: { size: 10 }, color: TH.text, boxWidth: 10, padding: 8 }
                 },
                 tooltip: Object.assign({}, CHART_BASE.plugins.tooltip, {
-                  callbacks: { label: function (ctx) { return ' ' + fmtBytes(ctx.parsed); } }
+                  callbacks: { label: function (ctx) { return ' ' + fmtBytes(ctx.parsed) + ' · cliquer pour le détail IP'; } }
                 })
               })
             })
