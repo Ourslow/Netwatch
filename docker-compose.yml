@@ -127,7 +127,8 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+      # Heap JVM — 2 Go par défaut (Shuttle) ; sur un poste/VM ≤ 8 Go, ES_HEAP=-Xms1g -Xmx1g dans .env
+      - ES_JAVA_OPTS=${ES_HEAP:--Xms2g -Xmx2g}
     volumes:
       - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - es-data:/usr/share/elasticsearch/data

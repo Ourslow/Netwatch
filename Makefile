@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init observability observability-stop
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop
 
 # ============================================================
 # Services d'observabilité complémentaires
@@ -22,6 +22,18 @@ observability-stop:
 arkime-init:
 	@echo "=== Arkime : initialisation de la base (index ES arkime_*) ==="
 	docker compose run --rm arkime db.pl --wait-for-db http://127.0.0.1:9200 -- http://127.0.0.1:9200 init
+
+# Repartir de zéro (démo, changement d'ARKIME_PASSWORD_SECRET…) : db.pl détecte une
+# installation existante via les templates ES, qui survivent à la suppression des index —
+# on purge donc index ET templates avant de ré-initialiser sans prompt.
+arkime-reset:
+	@echo "=== Arkime : purge des index + templates arkime_* puis ré-initialisation ==="
+	docker compose stop arkime
+	@for i in $$(curl -s "$(ES)/_cat/indices/arkime*?h=index"); do echo "  index $$i : $$(curl -s -o /dev/null -w '%{http_code}' -XDELETE "$(ES)/$$i")"; done
+	@echo "  templates legacy : $$(curl -s -o /dev/null -w '%{http_code}' -XDELETE "$(ES)/_template/arkime*")"
+	@for t in $$(curl -s "$(ES)/_index_template" | python3 -c "import sys,json;[print(t['name']) for t in json.load(sys.stdin)['index_templates'] if t['name'].startswith('arkime')]"); do echo "  template $$t : $$(curl -s -o /dev/null -w '%{http_code}' -XDELETE "$(ES)/_index_template/$$t")"; done
+	docker compose run --rm arkime db.pl --wait-for-db http://127.0.0.1:9200 -- http://127.0.0.1:9200 init
+	docker compose up -d arkime
 
 ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434

@@ -1,7 +1,14 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+# Deux fichiers .env, sans doublon de configuration :
+#   portal/.env  — propre au portail (FLASK_SECRET_KEY, PORTAL_*, PROXMOX_*)
+#   ../.env      — celui du stack docker-compose (IFACE, NETBOX_*, ARKIME_*, NETWATCH_*_URL…)
+# load_dotenv n'écrase jamais une variable déjà définie : portal/.env a priorité,
+# puis le .env racine complète (c'est là que vivent les secrets partagés avec le stack).
 load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 PROXMOX_HOST     = os.getenv("PROXMOX_HOST", "")
 ESXI_HOST        = os.getenv("ESXI_HOST",   "")
