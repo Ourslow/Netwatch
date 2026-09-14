@@ -13,10 +13,15 @@
   labels: { module: http_2xx, name: "Elasticsearch", group: netwatch }
 
 # ── Réseau surveillé — À ADAPTER : passerelle, DNS interne, serveurs critiques ──
-- targets: ["192.168.1.1"]
-  labels: { module: icmp, name: "Passerelle LAN", group: reseau }
-- targets: ["192.168.1.1"]
-  labels: { module: dns_a, name: "Résolveur DNS interne", group: reseau }
+# Exemples génériques (valides partout) ; remplacer par les vraies adresses du site :
+#- targets: ["192.168.1.1"]
+#  labels: { module: icmp, name: "Passerelle LAN", group: reseau }
+#- targets: ["192.168.1.1"]
+#  labels: { module: dns_a, name: "Résolveur DNS interne", group: reseau }
+- targets: ["host.docker.internal"]
+  labels: { module: icmp, name: "Hôte NetWatch (ICMP)", group: reseau }
+- targets: ["1.1.1.1"]
+  labels: { module: dns_a, name: "Résolution DNS (1.1.1.1)", group: reseau }
 - targets: ["1.1.1.1"]
   labels: { module: icmp, name: "Internet (1.1.1.1)", group: internet }
 - targets: ["https://www.google.com"]

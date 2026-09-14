@@ -944,12 +944,13 @@ def _proxmox_snapshot(px, with_vms=False):
 @login_required
 def status():
     px = get_proxmox()
+    hours = _range()[1]   # lit request/cookie : à résoudre ICI, pas dans un thread (pas de contexte Flask)
     # Health checks HTTP, Proxmox, stats LLMOps, sondes actives : indépendants → en parallèle
     (services, global_status), (node_status, _), (llmops_stats, _), (probes, probes_err) = es_client.run_parallel(
         _check_health,
         lambda: _proxmox_snapshot(px),
         lambda: nw_llmops.get_llmops_stats(days=7),
-        lambda: _safe(lambda: nw_probes.get_probes(hours=_range()[1]), ([], None)),
+        lambda: _safe(lambda: nw_probes.get_probes(hours=hours), ([], None)),
     )
 
     return render_template(
