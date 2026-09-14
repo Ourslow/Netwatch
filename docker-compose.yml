@@ -412,6 +412,8 @@ services:
       - ARKIME__viewHost=127.0.0.1
       # Page de connexion Arkime (au lieu du popup Digest du navigateur) — compte initial admin/admin
       - ARKIME__authMode=form
+      # Viewer servi en http sur localhost : sans ceci le cookie de session est marqué Secure et le login échoue
+      - ARKIME__authCookieSecure=false
       - ARKIME__plugins=
     # L'image n'a pas d'entrypoint : docker.sh <mode> [options] génère config.ini
     # depuis les ARKIME__* puis lance capture + viewer. --update-geo télécharge
