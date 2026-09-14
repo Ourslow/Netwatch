@@ -605,18 +605,107 @@ def logout():
 # Routes
 # ============================================================
 
+def _safe(fn, default):
+    """Appelle fn() ; retourne `default` en cas d'exception (widgets best-effort)."""
+    try:
+        return fn()
+    except Exception:
+        return default
+
+
+def _triage(alert_stats, perf, services, sla, breaches):
+    """
+    Bandeau de triage de la home : liste des points qui demandent attention,
+    triés par gravité, chacun avec un lien vers la page de diagnostic.
+    Seuils = ceux déjà utilisés par les widgets (RTT 150 ms, ART 500 ms,
+    zero-window / retransmissions 1 % et 3 %).
+    """
+    items = []
+
+    def add(level, icon, text, href):
+        items.append({"level": level, "icon": icon, "text": text, "href": href})
+
+    # Services
+    down     = [s["name"] for s in services if s["status"] == "down"]
+    degraded = [s["name"] for s in services if s["status"] == "degraded"]
+    if down:
+        add("crit", "bi-x-octagon", f"{', '.join(down)} : indisponible", url_for("status"))
+    if degraded:
+        add("warn", "bi-exclamation-triangle", f"{', '.join(degraded)} : dégradé", url_for("status"))
+
+    # Alertes IDS
+    stats = alert_stats or {}
+    crit = stats.get("critical", 0)
+    if crit:
+        add("crit", "bi-shield-exclamation",
+            f"{crit} alerte{'s' if crit > 1 else ''} critique{'s' if crit > 1 else ''} (7 j)",
+            url_for("alerts", severity=1))
+    w, p = stats.get("window", 0), stats.get("prev_window", 0)
+    if p >= 5 and w >= 2 * p:
+        add("warn", "bi-graph-up-arrow", f"Alertes ×{w // p} vs période précédente ({w})", url_for("alerts"))
+
+    # Santé TCP
+    tcp = perf.get("tcp", {})
+    zw = tcp.get("zero_window_pct") or 0
+    if zw > 3:
+        add("crit", "bi-pause-circle", f"Zero-window sur {zw} % des connexions TCP", url_for("flows"))
+    elif zw > 1:
+        add("warn", "bi-pause-circle", f"Zero-window sur {zw} % des connexions TCP", url_for("flows"))
+    for r in tcp.get("top_retransmit_ips", [])[:3]:
+        if r.get("retransmit_pct", 0) > 3:
+            add("warn", "bi-arrow-repeat", f"Retransmissions {r['retransmit_pct']} % · {r['ip']}",
+                url_for("ip_detail", ip=r["ip"]))
+    rtt = tcp.get("avg_rtt_ms")
+    if rtt is not None and rtt > 150:
+        add("warn", "bi-heart-pulse", f"RTT moyen élevé : {rtt} ms", url_for("flows"))
+
+    # ART
+    p50 = perf.get("art", {}).get("http", {}).get("p50")
+    if p50 is not None and p50 > 500:
+        add("warn", "bi-hourglass-split", f"ART HTTP p50 {p50} ms", url_for("flows"))
+
+    # SLA (ignoré sans données : 0 % sur 0 bucket n'est pas une non-conformité)
+    for s in (sla or {}).get("slas", []):
+        if not s.get("buckets_total"):
+            continue
+        if s.get("status") == "crit":
+            add("crit", "bi-patch-exclamation", f"SLA {s['name']} non conforme ({s['compliance_pct']} %)", url_for("sla"))
+        elif s.get("status") == "warn":
+            add("warn", "bi-patch-exclamation", f"SLA {s['name']} limite ({s['compliance_pct']} %)", url_for("sla"))
+
+    # Seuils utilisateur franchis
+    for b in breaches or []:
+        rule = b.get("rule", {})
+        m = nw_thresholds.METRICS.get(rule.get("metric"), {})
+        add("crit" if rule.get("severity") == "critical" else "warn", "bi-bell",
+            f"Seuil {m.get('label', rule.get('metric'))} {rule.get('operator')} {rule.get('value')}{m.get('unit', '')}"
+            f" · {b.get('app')} ({b.get('current')})",
+            url_for("thresholds_page"))
+
+    order = {"crit": 0, "warn": 1}
+    items.sort(key=lambda i: order[i["level"]])
+    level = "crit" if any(i["level"] == "crit" for i in items) else ("warn" if items else "ok")
+    # clé « points » (pas « items » : Jinja résoudrait dict.items)
+    return {"level": level, "points": items[:8]}
+
+
 @app.route("/")
 @login_required
 def dashboard():
-    """Home = vue observabilité réseau (esprit Allegro / Riverbed) : KPIs trafic,
-    santé TCP, ART, top talkers, alertes récentes, points d'écoute, services.
-    Proxmox/VMs/catalogue ont leurs propres pages (Projet & infra)."""
+    """Home = écran de triage + vue observabilité réseau (esprit Allegro /
+    Riverbed) : état global, KPIs trafic, santé TCP, ART, top talkers, alertes
+    récentes, points d'écoute, services. Proxmox/VMs/catalogue ont leurs
+    propres pages (Projet & infra)."""
     _, hours = _range()
-    (recent_alerts, _), (alert_stats, _), perf, (services, global_status) = es_client.run_parallel(
+    sla_days = max(1, min(30, hours // 24 or 1))
+    ((recent_alerts, _), (alert_stats, _), perf, (services, global_status),
+     (sla, _), (breaches, _)) = es_client.run_parallel(
         lambda: es_client.get_recent_alerts(size=8),
         lambda: es_client.get_alert_stats(hours=hours),
         lambda: _perf_dashboard(talkers_size=8, hours=hours),
         _check_health,
+        lambda: _safe(lambda: es_client.get_sla_stats(days=sla_days), ({}, None)),
+        lambda: _safe(nw_thresholds.evaluate, ([], None)),
     )
     pcap_points, pcap_top = _pcap_overview()
     return render_template(
@@ -628,6 +717,7 @@ def dashboard():
         global_status=global_status,
         pcap_points=pcap_points,
         pcap_top=pcap_top,
+        triage=_triage(alert_stats, perf, services, sla, breaches),
     )
 
 

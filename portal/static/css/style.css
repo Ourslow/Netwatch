@@ -496,6 +496,32 @@ body.nav-rail .nav-rail-btn .bi { transform: rotate(180deg); }
 .range-select button:hover { color: var(--text-strong); }
 .range-select button.active { background: var(--accent-soft); color: var(--accent-bright); }
 
+/* Bandeau de triage (home) : état global + points d'attention cliquables */
+.triage {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: var(--bg-elev-2); border: 1px solid var(--border);
+  border-left: 4px solid var(--ok); border-radius: var(--r-lg);
+  padding: .75rem 1.1rem; margin-bottom: 1rem;
+}
+.triage-warn { border-left-color: var(--med); }
+.triage-crit { border-left-color: var(--crit); background: linear-gradient(90deg, var(--crit-soft), var(--bg-elev-2) 40%); }
+.triage-status { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.triage-status .dot-state { width: 10px; height: 10px; box-shadow: 0 0 10px currentColor; }
+.triage-status b { font-size: .95rem; color: var(--text-strong); }
+.triage-items { display: flex; flex-wrap: wrap; gap: .4rem; flex: 1; min-width: 0; }
+.triage-chip {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .76rem; font-weight: 600; padding: .28rem .65rem;
+  border-radius: var(--r-pill); border: 1px solid var(--border);
+  background: var(--bg-inset); color: var(--text);
+  text-decoration: none; transition: border-color var(--t-fast), transform var(--t-fast);
+}
+.triage-chip:hover { transform: translateY(-1px); color: var(--text-strong); }
+.triage-chip.warn { border-color: var(--med-line); color: var(--med); background: var(--med-soft); }
+.triage-chip.crit { border-color: var(--crit-line); color: var(--crit); background: var(--crit-soft); }
+.triage-chip .bi-arrow-right-short { opacity: .5; }
+.triage-ok-msg { font-size: .8rem; color: var(--text-muted); }
+
 /* Tendance sous un KPI (vs période précédente) */
 .kpi-delta { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 600; }
 .kpi-delta.up   { color: var(--crit); }     /* hausse = à surveiller (alertes, trafic) */

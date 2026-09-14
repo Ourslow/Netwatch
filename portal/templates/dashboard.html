@@ -9,6 +9,23 @@
 {% block content %}
 {% set up_count = services | selectattr('status', 'eq', 'up') | list | length %}
 
+<!-- ── Triage : état global + ce qui demande attention ── -->
+<div class="triage triage-{{ triage.level }}">
+  <div class="triage-status">
+    <span class="dot-state {{ triage.level }}"></span>
+    <b>{% if triage.level == 'crit' %}Réseau : critique{% elif triage.level == 'warn' %}Réseau : attention{% else %}Réseau : OK{% endif %}</b>
+    <span class="hint">{{ triage.points | length }} point{{ 's' if triage.points | length != 1 }} · {{ range_label }}</span>
+  </div>
+  <div class="triage-items">
+    {% for it in triage.points %}
+    <a class="triage-chip {{ it.level }}" href="{{ it.href }}"><i class="bi {{ it.icon }}"></i>{{ it.text }}<i class="bi bi-arrow-right-short"></i></a>
+    {% endfor %}
+    {% if not triage.points %}
+    <span class="triage-ok-msg"><i class="bi bi-check2-circle text-success me-1"></i>Aucune anomalie détectée sur la plage — services opérationnels, pas d'alerte critique, TCP sain.</span>
+    {% endif %}
+  </div>
+</div>
+
 <!-- ── KPI strip ── -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-4 col-xl-2">
