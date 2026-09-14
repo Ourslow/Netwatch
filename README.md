@@ -776,6 +776,51 @@ python3 simulate-traffic.py --hours 6 --intensity medium --attack
 ```
 </details>
 
+<details>
+<summary><strong>Elasticsearch ou Arkime tué (exit 137) / la machine gèle</strong></summary>
+
+Manque de RAM : la stack complète (24 services) demande ≈ 8 Go sans IA, 12 Go avec Mistral chargé. Sur une VM ≤ 8 Go :
+
+```bash
+# .env
+ES_HEAP=-Xms1g -Xmx1g          # heap Elasticsearch réduit (défaut 2 Go)
+COMPOSE_PROFILES=              # édition Core : pas d'Ollama
+docker compose up -d elasticsearch
+```
+
+Sous WSL2, le plafond par défaut est 50 % de la RAM du PC : créer `%USERPROFILE%\.wslconfig` avec `[wsl2]` / `memory=12GB`, puis `wsl --shutdown`.
+</details>
+
+<details>
+<summary><strong>/status : Elasticsearch « dégradé » (status=yellow) sur un nœud unique</strong></summary>
+
+Des index ont été créés avec 1 réplica impossible à allouer. `make setup-es` pose les templates à 0 réplica ; pour les index déjà existants :
+
+```bash
+curl -XPUT localhost:9200/_all/_settings -H 'Content-Type: application/json' -d '{"index":{"number_of_replicas":0}}'
+```
+</details>
+
+<details>
+<summary><strong>Arkime : « Type INIT to continue » ou « Couldn't stat oui file »</strong></summary>
+
+- `db.pl init` détecte une installation existante via les *templates* ES, qui survivent à la suppression des index → `make arkime-reset` (purge index + templates puis init sans prompt). ES 8 refuse `DELETE arkime_*` : la cible supprime index par index.
+- `oui.txt` / GeoIP absents : le service démarre avec `--update-geo` (téléchargement au boot). En labo isolé, copier `oui.txt` et `ipv4-address-space.csv` dans le volume `arkime-etc`.
+- Login impossible en http : `ARKIME_AUTH_MODE=anonymous` (labo, viewer lié à 127.0.0.1) ; en `form`, le cookie est `Secure` par défaut → `authCookieSecure=false` est déjà posé dans le compose.
+</details>
+
+<details>
+<summary><strong>NetBox : « Invalid v1 token » / « Invalid v2 token »</strong></summary>
+
+NetBox ≥ 4.6 utilise des tokens API v2 : il faut **les deux** variables `NETBOX_TOKEN_KEY` (12 caractères) et `NETBOX_TOKEN` (40) **et** `NETBOX_API_TOKEN_PEPPER` (≥ 50) — sans pepper, tout token v2 est refusé. Le portail envoie `Authorization: Bearer nbt_<KEY>.<TOKEN>`. Ces variables sont lues au **premier** démarrage (création du superuser) : si elles ont changé, `docker compose down` + suppression des volumes `netbox-*` puis relance. Le portail lit le `.env` racine en plus de `portal/.env`.
+</details>
+
+<details>
+<summary><strong>Les boutons ✨ / « Agents IA » ont disparu du portail</strong></summary>
+
+Édition Core active : `OLLAMA_URL` vide dans `.env`. Pour l'édition IA : `COMPOSE_PROFILES=ia`, `OLLAMA_URL=http://localhost:11434`, `make start`, `make llm-pull`, redémarrer le portail.
+</details>
+
 ---
 
 ## Commandes utiles

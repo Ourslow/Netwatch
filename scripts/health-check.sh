@@ -276,10 +276,25 @@ check_prometheus() {
 }
 
 check_ollama() {
+  # Édition Core (OLLAMA_URL vide ou profil ia absent dans .env) : l'assistant
+  # IA est désactivé volontairement, ce n'est pas une anomalie.
+  local env_file="$(dirname "$0")/../.env"
+  if [ -f "$env_file" ]; then
+    local env_url env_profiles
+    env_url=$(grep -E '^OLLAMA_URL=' "$env_file" | tail -1 | cut -d= -f2-)
+    env_profiles=$(grep -E '^COMPOSE_PROFILES=' "$env_file" | tail -1 | cut -d= -f2-)
+    local core=false
+    if grep -qE '^OLLAMA_URL=' "$env_file" && [ -z "$env_url" ]; then core=true; fi
+    if grep -qE '^COMPOSE_PROFILES=' "$env_file" && [[ "$env_profiles" != *ia* ]]; then core=true; fi
+    if $core; then
+      report_service "Ollama" "ok" "désactivé (édition Core)"
+      return
+    fi
+  fi
   local body
   body=$(http_body "${OLLAMA_URL}/api/version")
   if [ -z "$body" ]; then
-    report_service "Ollama" "warn" "inaccessible (GPU/LLM optionnel)"
+    report_service "Ollama" "warn" "inaccessible (édition IA : COMPOSE_PROFILES=ia + make llm-pull)"
     return
   fi
   local ver

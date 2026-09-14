@@ -34,4 +34,5 @@ Un fil conducteur pour présenter NetWatch à un client ou un jury : **une quest
 - Home en *attention* après un redémarrage d'Elasticsearch : c'est la disponibilité de la sonde ES sur 24 h (< 99 %), ça se résorbe seul.
 - Machine ≤ 8 Go : mettre `ES_HEAP=-Xms1g -Xmx1g` dans `.env` avant `make start`, sinon Arkime peut être tué (OOM).
 - Arkime est **sans login en labo** (`ARKIME_AUTH_MODE=anonymous`, viewer lié à `127.0.0.1`) — en prod, `form` derrière le reverse-proxy HTTPS.
+- Les étapes 6 (bouton ✨) et 9 (résumé exécutif) supposent l'**édition IA** (`COMPOSE_PROFILES=ia` + `OLLAMA_URL` dans `.env`, `make llm-pull` fait) ; en édition Core, ces boutons n'existent pas — présenter à la place la corrélation Community ID et le rapport sans résumé.
 - Identifiants de démo : portail `admin`/`netwatch`, NetBox `admin`/`<NETBOX_SUPERUSER_PASSWORD>`, Grafana `admin`/`<GRAFANA_ADMIN_PASSWORD>`. Kibana, ntopng, Blackbox : pas d'auth (localhost).
