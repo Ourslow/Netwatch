@@ -1978,6 +1978,9 @@ def api_sla_stats():
 @login_required
 def agents_page():
     """Monitoring des agents IA — lit les status.yml depuis agents-deck."""
+    if not config.AI_ENABLED:   # édition Core : page sans objet (entrée de menu déjà masquée)
+        flash("Assistant IA désactivé (édition Core) — renseigner OLLAMA_URL et COMPOSE_PROFILES=ia dans .env.", "info")
+        return redirect(url_for("dashboard"))
     _base = os.path.join(os.path.dirname(__file__), "..", "agents-deck")
     state_file = os.path.join(_base, "team-lead", "state.yml")
 
