@@ -108,6 +108,8 @@ def _parse_alive(r):
     """Toute réponse < 500 = vivant ; 401/403 = vivant derrière une auth."""
     if r.status_code in (401, 403):
         return "up", "auth requise"
+    if "login" in (r.url or "").lower():   # redirigé vers un formulaire de connexion (Arkime authMode=form, NetBox)
+        return "up", "page de connexion"
     return "up", f"HTTP {r.status_code}"
 
 
