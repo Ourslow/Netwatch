@@ -1228,8 +1228,9 @@ def api_correlate(community_id):
 @app.route("/api/alerts/series")
 @login_required
 def api_alerts_series():
-    """Série horaire des alertes (24h) pour les sparklines."""
-    series, error = es_client.get_alert_timeseries(hours=24)
+    """Série temporelle des alertes sur la plage globale (sparklines)."""
+    _, hours = _range()
+    series, error = es_client.get_alert_timeseries(hours=hours, interval=es_client.hist_interval(hours))
     if error:
         return jsonify({"error": error}), 503
     return jsonify(series)

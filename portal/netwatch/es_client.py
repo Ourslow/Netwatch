@@ -600,6 +600,20 @@ def _hist_interval(hours):
     return "1d"
 
 
+hist_interval = _hist_interval   # nom public pour app.py
+
+
+def _timeline_agg(hours):
+    """date_histogram couvrant toute la plage (buckets vides inclus) — base des
+    sparklines des KPIs."""
+    return {"date_histogram": {
+        "field": "@timestamp",
+        "fixed_interval": _hist_interval(hours),
+        "min_doc_count": 0,
+        "extended_bounds": {"min": f"now-{hours}h", "max": "now"},
+    }}
+
+
 @_ttl_cache(30)
 def get_alert_stats(days=7, hours=24):
     """
@@ -1381,7 +1395,12 @@ def get_art_stats(ip=None, hours=24):
                     {"exists": {"field": "duration"}},
                     {"term":   {"service": "http"}},
                 ]}},
-                "aggs": _pct_aggs("duration"),
+                "aggs": {
+                    **_pct_aggs("duration"),
+                    # sparkline KPI ART : p50 par bucket
+                    "tl": {**_timeline_agg(hours),
+                           "aggs": {"p50": {"percentiles": {"field": "duration", "percents": [50]}}}},
+                },
             },
             "tls": {
                 "filter": {"bool": {"filter": [
@@ -1446,6 +1465,10 @@ def get_art_stats(ip=None, hours=24):
         entry = _pct_entry(aggs.get(svc, {}), _ms)
         if entry:
             result[svc] = entry
+    result["http"]["timeline"] = [
+        _ms(b.get("p50", {}).get("values", {}).get("50.0"))
+        for b in aggs.get("http", {}).get("tl", {}).get("buckets", [])
+    ]
 
     return result, None
 
@@ -1486,6 +1509,8 @@ def get_tcp_perf(ip=None, hours=24):
                     "avg": {"avg": {"field": "rtt"}},
                     "pct": {"percentiles": {"field": "rtt", "percents": [95]}},
                     "cnt": {"value_count": {"field": "rtt"}},
+                    # sparkline KPI : RTT moyen par bucket
+                    "tl":  {**_timeline_agg(hours), "aggs": {"avg": {"avg": {"field": "rtt"}}}},
                 },
             },
             # Volume total par IP source (dénominateur du % retransmissions)
@@ -1499,7 +1524,10 @@ def get_tcp_perf(ip=None, hours=24):
             # manière du « TCP zero-window » Netscout/Riverbed)
             "zero_win": {
                 "filter": {"regexp": {"history.keyword": ".*[Ww].*"}},
-                "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
+                "aggs": {
+                    "per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}},
+                    "tl":     _timeline_agg(hours),   # sparkline KPI
+                },
             },
         },
     }
@@ -1551,6 +1579,14 @@ def get_tcp_perf(ip=None, hours=24):
                      "zero_window_pct": round(cnt / tot * 100, 2) if tot > 0 else 0.0})
     rows.sort(key=lambda x: x["zero_window_pct"], reverse=True)
     result["top_zero_window_ips"] = rows[:10]
+
+    # ── Séries pour les sparklines des KPIs ──
+    result["rtt_timeline"] = [
+        (round(float(b["avg"]["value"]) * 1000, 2)
+         if b.get("avg", {}).get("value") is not None and not math.isnan(float(b["avg"]["value"])) else None)
+        for b in rtt.get("tl", {}).get("buckets", [])
+    ]
+    result["zero_window_timeline"] = [b.get("doc_count", 0) for b in zw.get("tl", {}).get("buckets", [])]
 
     return result, None
 

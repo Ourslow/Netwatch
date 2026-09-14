@@ -595,6 +595,49 @@
     (root || document).querySelectorAll("table[data-nw-table]").forEach(NW.enhanceTable);
   };
 
+  /* ---- Sparkline SVG inline (KPIs) -----------------------------
+     NW.sparkSvg(el, points, {color}) : courbe + aire, sans Chart.js.
+     Les null (pas de donnée) coupent la ligne. [data-spark] auto-rendu. */
+  NW.sparkSvg = function (el, points, opts) {
+    opts = opts || {};
+    if (!el) return;
+    const pts = (points || []).map(function (v) { return v === null || v === undefined ? null : Number(v); });
+    const valid = pts.filter(function (v) { return v !== null && !isNaN(v); });
+    if (valid.length < 2) { el.innerHTML = ""; el.classList.add("is-empty"); return; }
+    el.classList.remove("is-empty");
+    const W = 100, H = 30, PAD = 2;
+    const min = Math.min.apply(null, valid), max = Math.max.apply(null, valid);
+    const span = max - min || 1;
+    const n = pts.length;
+    const x = function (i) { return n > 1 ? (i / (n - 1)) * W : W; };
+    const y = function (v) { return H - PAD - ((v - min) / span) * (H - 2 * PAD); };
+    let line = "", area = "", open = false, firstX = null, lastX = null;
+    pts.forEach(function (v, i) {
+      if (v === null || isNaN(v)) { if (open) { area += " L" + lastX + " " + H + " Z"; open = false; } return; }
+      const px = x(i).toFixed(1), py = y(v).toFixed(1);
+      if (!open) { line += " M" + px + " " + py; area += " M" + px + " " + H + " L" + px + " " + py; open = true; firstX = px; }
+      else { line += " L" + px + " " + py; area += " L" + px + " " + py; }
+      lastX = px;
+    });
+    if (open) area += " L" + lastX + " " + H + " Z";
+    const color = opts.color || "var(--accent)";
+    const last = valid[valid.length - 1];
+    const lastIdx = pts.lastIndexOf(last);
+    el.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path class="spark-area" d="' + area.trim() + '" style="fill:' + color + '"/>' +
+      '<path class="spark-line" d="' + line.trim() + '" style="stroke:' + color + '"/>' +
+      '</svg>' +
+      '<span class="spark-dot" style="left:' + x(lastIdx) + '%;top:' + (y(last) / H * 100) + '%;background:' + color + '"></span>';
+  };
+  NW.autoSparks = function (root) {
+    (root || document).querySelectorAll("[data-spark]").forEach(function (el) {
+      let pts = [];
+      try { pts = JSON.parse(el.getAttribute("data-spark") || "[]"); } catch (e) {}
+      NW.sparkSvg(el, pts, { color: el.getAttribute("data-spark-color") || undefined });
+    });
+  };
+
   /* Octets → unité lisible (partagé par toutes les pages) */
   NW.fmtBytes = function (b) {
     b = Number(b) || 0;
@@ -755,6 +798,7 @@
     NW.initNavSections();
     NW.applyDeltas();
     NW.initTables();
+    NW.autoSparks();
   });
 
   window.NW = NW;

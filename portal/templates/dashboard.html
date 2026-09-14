@@ -32,6 +32,7 @@
     <div class="kpi">
       <div class="kpi-head"><span class="kpi-label"><span data-i18n="dash_traffic">Trafic</span> · {{ range_label }}</span><i class="bi bi-arrow-down-up text-info"></i></div>
       <div class="kpi-value" id="kpi-traffic">—</div>
+      <div class="kpi-spark" id="spark-traffic"></div>
       <div class="kpi-sub" id="kpi-traffic-sub" data-i18n="dash_traffic_sub">volume observé</div>
       <div id="kpi-traffic-delta"></div>
     </div>
@@ -40,6 +41,7 @@
     <div class="kpi {% if alert_stats and alert_stats.critical %}is-crit{% endif %}">
       <div class="kpi-head"><span class="kpi-label"><span data-i18n="dash_alerts_24h">Alertes</span> · {{ range_label }}</span><i class="bi bi-shield-exclamation text-danger"></i></div>
       <div class="kpi-value" id="dash-24h" data-countup="{{ alert_stats.window if alert_stats else 0 }}">{{ alert_stats.window if alert_stats else 0 }}</div>
+      <div class="kpi-spark" id="spark-alerts"></div>
       <div class="kpi-sub"><span id="dash-crit">{{ alert_stats.critical if alert_stats else 0 }}</span> <span data-i18n="dash_critical_7d">critiques · 7 j</span></div>
       <div id="dash-alert-delta" data-delta-cur="{{ alert_stats.window if alert_stats else 0 }}" data-delta-prev="{{ alert_stats.prev_window if alert_stats else 0 }}"></div>
     </div>
@@ -49,6 +51,7 @@
     <div class="kpi {% if rtt is not none %}{% if rtt < 50 %}is-ok{% elif rtt < 150 %}is-warn{% else %}is-crit{% endif %}{% endif %}">
       <div class="kpi-head"><span class="kpi-label" data-i18n="dash_rtt">RTT moyen</span><i class="bi bi-heart-pulse text-success"></i></div>
       <div class="kpi-value">{{ rtt if rtt is not none else '—' }}<small> ms</small></div>
+      <div class="kpi-spark" data-spark='{{ dashboard.tcp.rtt_timeline | default([]) | tojson }}' data-spark-color="var(--ok)"></div>
       <div class="kpi-sub">p95 {{ dashboard.tcp.p95_rtt_ms if dashboard.tcp.p95_rtt_ms is not none else '—' }} ms</div>
     </div>
   </div>
@@ -57,6 +60,7 @@
     <div class="kpi {% if art is not none %}{% if art < 200 %}is-ok{% elif art < 500 %}is-warn{% else %}is-crit{% endif %}{% endif %}">
       <div class="kpi-head"><span class="kpi-label">ART p50</span><i class="bi bi-hourglass-split text-info"></i></div>
       <div class="kpi-value">{{ art if art is not none else '—' }}<small> ms</small></div>
+      <div class="kpi-spark" data-spark='{{ dashboard.art.http.timeline | default([]) | tojson }}' data-spark-color="var(--accent)"></div>
       <div class="kpi-sub">HTTP / TLS · Application Response Time</div>
     </div>
   </div>
@@ -65,6 +69,7 @@
     <div class="kpi {% if zw > 1000 %}is-crit{% elif zw > 100 %}is-warn{% endif %}">
       <div class="kpi-head"><span class="kpi-label">Zero-windows</span><i class="bi bi-pause-circle text-warning"></i></div>
       <div class="kpi-value" data-countup="{{ zw }}">{{ zw }}</div>
+      <div class="kpi-spark" data-spark='{{ dashboard.tcp.zero_window_timeline | default([]) | tojson }}' data-spark-color="var(--med)"></div>
       <div class="kpi-sub">{{ dashboard.tcp.zero_window_pct or 0 }} % <span data-i18n="dash_zw_sub">des connexions TCP</span></div>
     </div>
   </div>
@@ -239,6 +244,7 @@
       var total = tl.reduce(function (s, x) { return s + (x.bytes || 0); }, 0);
       kpi.textContent = NW.fmtBytes(total);
       document.getElementById('kpi-traffic-delta').innerHTML = NW.deltaHtml(total, d.prev_bytes);
+      NW.sparkSvg(document.getElementById('spark-traffic'), tl.map(function (x) { return x.bytes; }));
       if (d.source === 'netflow') {
         badge.innerHTML = '<span class="src-badge ok">GoFlow2</span>';
         sub.textContent = 'NetFlow / IPFIX';
@@ -284,6 +290,15 @@
       wrap.innerHTML = '<div class="chart-loading text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Flux indisponibles</div>';
       kpi.textContent = '—';
     });
+
+  /* ── Sparkline alertes (série sur la plage globale) ── */
+  fetch('/api/alerts/series')
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (s) {
+      if (!Array.isArray(s)) return;
+      NW.sparkSvg(document.getElementById('spark-alerts'), s.map(function (b) { return b.total; }), { color: 'var(--crit)' });
+    })
+    .catch(function () {});
 
   /* ── Polling KPIs alertes (agg cachée 30 s côté serveur) ── */
   var crit = document.getElementById('dash-crit'), critB = document.getElementById('dash-crit-badge');
