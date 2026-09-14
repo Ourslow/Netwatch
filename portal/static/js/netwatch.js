@@ -24,12 +24,12 @@
       "col_source":        "Source",
       "col_destination":   "Destination",
       /* Stats */
-      "stat_total":        "Total alertes",
+      "stat_total":        "Alertes",
       "stat_24h":          "Dernières 24h",
       "stat_critical":     "Critiques (sev 1)",
       "stat_medium":       "Moyennes (sev 2)",
       /* Spark */
-      "spark_label":       "Activité des alertes · 24 h",
+      "spark_label":       "Activité des alertes",
       "spark_volume":      "Volume",
       "spark_critical":    "Critiques",
       /* Filtres */
@@ -182,11 +182,11 @@
       "col_signature":     "Signature",
       "col_source":        "Source",
       "col_destination":   "Destination",
-      "stat_total":        "Total alerts",
+      "stat_total":        "Alerts",
       "stat_24h":          "Last 24h",
       "stat_critical":     "Critical (sev 1)",
       "stat_medium":       "Medium (sev 2)",
-      "spark_label":       "Alert activity · 24h",
+      "spark_label":       "Alert activity",
       "spark_volume":      "Volume",
       "spark_critical":    "Critical",
       "filter_all":        "All",

@@ -3,11 +3,10 @@
 {% block page_title %}Dictionnaire applicatif{% endblock %}
 
 {% block topbar_actions %}
-<div class="btn-group btn-group-sm" role="group">
-  <a href="{{ url_for('applications_page', days=1, hostgroup=hostgroup or none) }}" class="btn btn-outline-secondary {% if days == 1 %}active{% endif %}">24h</a>
-  <a href="{{ url_for('applications_page', days=7, hostgroup=hostgroup or none) }}" class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7j</a>
-  <a href="{{ url_for('applications_page', days=30, hostgroup=hostgroup or none) }}" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30j</a>
-</div>
+{# Fenêtre = plage globale (sélecteur topbar), en jours entiers : min 24 h #}
+<span class="badge bg-dark" title="Fenêtre d'analyse (plage globale, min 24 h)">
+  <i class="bi bi-calendar3 me-1"></i>{{ days }} j{% if range_hours < 24 %} <span class="text-dim">· min 24 h</span>{% endif %}
+</span>
 {% endblock %}
 
 {% block content %}

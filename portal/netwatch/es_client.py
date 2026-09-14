@@ -156,14 +156,16 @@ def _normalize(hit):
 # Requêtes                                                             #
 # ------------------------------------------------------------------ #
 
-def get_recent_alerts(size=100, engine=None, severity=None, search=None, days=7):
+def get_recent_alerts(size=100, engine=None, severity=None, search=None, days=7, hours=None):
     """
     Retourne (alerts: list, error: str|None).
     engine   : "suricata" | "snort" | None
     severity : 1 | 2 | 3 | None
     search   : str libre (signature, IP) | None
     days     : fenêtre temporelle en jours (borne la requête, perf en prod)
+    hours    : si fourni, fenêtre en heures (plage globale) — prime sur days
     """
+    since = f"now-{hours}h" if hours else f"now-{days}d"
     if engine == "suricata":
         index = "suricata-*"
     elif engine == "snort":
@@ -185,7 +187,7 @@ def get_recent_alerts(size=100, engine=None, severity=None, search=None, days=7)
                 "minimum_should_match": 1,
             }
         },
-        {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
+        {"range": {"@timestamp": {"gte": since}}},
     ]
 
     if severity is not None:

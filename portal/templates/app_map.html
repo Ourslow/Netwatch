@@ -5,11 +5,10 @@
 {# Styles : section 11.3b « Carte des dépendances applicatives » de static/css/style.css #}
 
 {% block topbar_actions %}
-<div class="btn-group btn-group-sm" role="group">
-  <a href="#" data-days="1"  class="btn btn-outline-secondary depmap-day-btn active">24h</a>
-  <a href="#" data-days="7"  class="btn btn-outline-secondary depmap-day-btn">7j</a>
-  <a href="#" data-days="30" class="btn btn-outline-secondary depmap-day-btn">30j</a>
-</div>
+{# Fenêtre = plage globale (sélecteur topbar), en jours entiers : min 24 h #}
+<span class="badge bg-dark" title="Fenêtre d'analyse (plage globale, min 24 h)">
+  <i class="bi bi-calendar3 me-1"></i>{{ range_days }} j{% if range_hours < 24 %} <span class="text-dim">· min 24 h</span>{% endif %}
+</span>
 {% endblock %}
 
 {% block content %}
@@ -53,7 +52,7 @@
   var overlay  = document.getElementById('depmap-overlay');
   var tooltip  = document.getElementById('depmap-tooltip');
   var wrap     = document.getElementById('depmap-wrap');
-  var days     = 1;
+  var days     = {{ range_days }};   /* plage globale (jours entiers) */
   var simulation, gLinks, gNodes;
 
   function esc(s) {
@@ -179,16 +178,6 @@
     gNodes.classed('dim', false);
     gLinks.classed('dim', false);
   }
-
-  document.querySelectorAll('.depmap-day-btn').forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      document.querySelectorAll('.depmap-day-btn').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      days = parseInt(btn.dataset.days, 10);
-      load();
-    });
-  });
 
   window.addEventListener('resize', function () { if (simulation) load(); });
 

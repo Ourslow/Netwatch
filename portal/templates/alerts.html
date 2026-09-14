@@ -21,8 +21,9 @@
   <div class="col-6 col-md-3">
     <div class="card stat-card text-center">
       <div class="card-body py-3">
-        <p class="stat-label" data-i18n="stat_total">Total alertes</p>
-        <h2 class="stat-value" data-countup="{{ stats.total }}">{{ stats.total }}</h2>
+        <p class="stat-label"><span data-i18n="stat_total">Alertes</span> · {{ range_label }}</p>
+        <h2 class="stat-value" data-countup="{{ stats.window }}">{{ stats.window }}</h2>
+        <div data-delta-cur="{{ stats.window }}" data-delta-prev="{{ stats.prev_window }}"></div>
       </div>
     </div>
   </div>
@@ -57,7 +58,7 @@
 <div class="card mb-4" data-spark-wrap>
   <div class="card-body py-3">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <span class="stat-label mb-0" data-i18n="spark_label">Activité des alertes · 24 h</span>
+      <span class="stat-label mb-0"><span data-i18n="spark_label">Activité des alertes</span> · {{ range_label }}</span>
       <span class="d-flex gap-3 small text-muted">
         <span class="d-inline-flex align-items-center gap-1">
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span><span data-i18n="spark_volume">Volume</span>

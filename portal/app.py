@@ -521,6 +521,18 @@ def _range():
     return key, RANGES[key]
 
 
+def _range_days(default=None):
+    """Plage en jours entiers (min 1, max 30) pour les modules qui ne
+    travaillent qu'en jours (applications, SLA). `?days=` reste prioritaire
+    (liens historiques)."""
+    explicit = _safe_int(request.args.get("days"))
+    if explicit:
+        return max(1, min(30, explicit))
+    if default is not None and not request.args.get("range") and not request.cookies.get("nw_range"):
+        return default
+    return max(1, min(30, _range()[1] // 24 or 1))
+
+
 @app.context_processor
 def _inject_globals():
     """Hostgroups pour le sélecteur global de la topbar — injectés côté serveur
@@ -541,6 +553,7 @@ def _inject_globals():
         "proxmox_node":      config.PROXMOX_NODE,
         "current_range":     range_key,
         "range_hours":       range_hours,
+        "range_days":        max(1, min(30, range_hours // 24 or 1)),
         "range_label":       RANGE_LABELS[range_key],
         "range_options":     [(k, RANGE_LABELS[k]) for k in RANGES],
     }
@@ -1057,15 +1070,19 @@ def alerts():
     search    = request.args.get("q",        "").strip()
     hostgroup = request.args.get("hostgroup", "")
 
-    alerts_list, error = es_client.get_recent_alerts(
-        size=100,
-        engine=engine   or None,
-        severity=_safe_int(severity),
-        search=search   or None,
+    _, hours = _range()
+    (alerts_list, error), (stats, _) = es_client.run_parallel(
+        lambda: es_client.get_recent_alerts(
+            size=100,
+            engine=engine   or None,
+            severity=_safe_int(severity),
+            search=search   or None,
+            hours=hours,
+        ),
+        lambda: es_client.get_alert_stats(days=max(1, hours // 24 or 1), hours=hours),
     )
     if hostgroup:
         alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
-    stats, _ = es_client.get_alert_stats()
 
     return render_template(
         "alerts.html",
@@ -1091,6 +1108,7 @@ def api_alerts():
         engine=engine or None,
         severity=_safe_int(severity),
         search=search or None,
+        hours=_range()[1],
     )
     if error:
         return jsonify({"error": error}), 503
@@ -1117,6 +1135,7 @@ def api_alerts_stream():
     search    = request.args.get("q",        "").strip()
     hostgroup = request.args.get("hostgroup", "")
     since     = request.args.get("since",    "")
+    _, hours  = _range()   # lu ici : pas de contexte de requête dans le générateur
 
     def generate():
         last_ts = since or None
@@ -1130,6 +1149,7 @@ def api_alerts_stream():
                     engine=engine or None,
                     severity=_safe_int(severity),
                     search=search or None,
+                    hours=hours,
                 )
                 if error:
                     yield f"event: stream-error\ndata: {json.dumps({'error': error})}\n\n"
@@ -1170,6 +1190,7 @@ def alerts_export_csv():
         engine=engine   or None,
         severity=_safe_int(severity),
         search=search   or None,
+        hours=_range()[1],
     )
     if hostgroup:
         alerts_list = nw_hostgroups.filter_items_by_group(alerts_list, hostgroup, ["src_ip", "dest_ip"])
@@ -1275,7 +1296,7 @@ def api_hostgroups():
 @app.route("/applications")
 @login_required
 def applications_page():
-    days = request.args.get("days", default=1, type=int)
+    days = _range_days()
     hostgroup = request.args.get("hostgroup", "").strip()
     apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
     scores, _ = nw_app_dictionary.get_app_health_scores(days=days, hostgroup=hostgroup or None)
@@ -1286,7 +1307,7 @@ def applications_page():
 @app.route("/api/applications")
 @login_required
 def api_applications():
-    days = request.args.get("days", default=1, type=int)
+    days = _range_days()
     hostgroup = request.args.get("hostgroup", "").strip()
     apps, unmatched, err = nw_app_dictionary.get_app_traffic_stats(days=days, hostgroup=hostgroup or None)
     if err:
@@ -1297,7 +1318,7 @@ def api_applications():
 @app.route("/api/applications/health")
 @login_required
 def api_applications_health():
-    days = request.args.get("days", default=1, type=int)
+    days = _range_days()
     hostgroup = request.args.get("hostgroup", "").strip()
     scores, err = nw_app_dictionary.get_app_health_scores(days=days, hostgroup=hostgroup or None)
     if err:
@@ -1388,7 +1409,7 @@ def app_map_page():
 @app.route("/api/app-map")
 @login_required
 def api_app_map():
-    days = request.args.get("days", default=1, type=int)
+    days = _range_days()
     hostgroup = request.args.get("hostgroup", "").strip()
     graph, err = nw_app_dictionary.get_app_dependency_map(days=days, hostgroup=hostgroup or None)
     if err:
@@ -1479,7 +1500,7 @@ def api_geo():
 @app.route("/incidents")
 @login_required
 def incidents():
-    alerts_list, error = es_client.get_recent_alerts(size=500)
+    alerts_list, error = es_client.get_recent_alerts(size=500, hours=_range()[1])
     inc_list = nw_incidents.build_incidents(alerts_list, window_minutes=5)
     return render_template("incidents.html", incidents=inc_list, error=error)
 
@@ -1828,9 +1849,9 @@ def api_exec_stats():
 @app.route("/sla")
 @login_required
 def sla():
-    """Page SLA Compliance — gauges, timeline 7j, analyse Business Hours."""
-    days = _safe_int(request.args.get("days"), 7)
-    days = max(1, min(days, 30))
+    """Page SLA Compliance — gauges, timeline, analyse Business Hours.
+    Fenêtre = plage globale en jours (défaut historique 7 j si aucune plage choisie)."""
+    days = _range_days(default=7)
     sla_data, es_error = es_client.get_sla_stats(days=days)
     no_data = all(s["buckets_total"] == 0 for s in sla_data.get("slas", []))
     return render_template(
@@ -1846,8 +1867,7 @@ def sla():
 @login_required
 def api_sla_stats():
     """SLA compliance data (JSON) — consommé par le refresh auto."""
-    days = _safe_int(request.args.get("days"), 7)
-    days = max(1, min(days, 30))
+    days = _range_days(default=7)
     data, error = es_client.get_sla_stats(days=days)
     if error:
         return jsonify({"error": error}), 503
