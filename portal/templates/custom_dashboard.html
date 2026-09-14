@@ -225,7 +225,7 @@
       '<div class="card widget" data-size="' + w.size + '" data-id="' + w.id + '" data-type="' + w.type + '">' +
         '<div class="card-header d-flex align-items-center justify-content-between py-2">' +
           '<span><i class="bi ' + cat.icon + ' me-2"></i>' + esc(cat.title) + '</span>' +
-          '<span class="d-flex align-items-center gap-2 widget-controls" style="display:none">' +
+          '<span class="widget-controls align-items-center gap-2">' +
             '<i class="bi bi-grip-vertical widget-drag-handle" draggable="true"></i>' +
             '<select class="form-select form-select-sm widget-size-select" style="width:auto">' +
               ['sm', 'md', 'lg'].map(function (s) { return '<option value="' + s + '"' + (s === w.size ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
@@ -252,10 +252,9 @@
   }
 
   function applyEditMode() {
+    /* L'affichage des contrôles est piloté par #widget-grid.edit-mode (CSS) —
+       un display inline perdait contre le !important de Bootstrap. */
     grid.classList.toggle('edit-mode', editMode);
-    grid.querySelectorAll('.widget-controls').forEach(function (el) {
-      el.style.display = editMode ? 'flex' : 'none';
-    });
     grid.querySelectorAll('.widget-drag-handle').forEach(function (el) {
       el.setAttribute('draggable', editMode ? 'true' : 'false');
     });

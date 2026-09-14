@@ -30,7 +30,7 @@
       <div class="col-12 col-lg-4">
         <div class="chart-title">Top 10 sources (bytes)</div>
         <div id="donut-src-wrap">
-          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+          <div class="chart-skel skeleton" aria-label="Chargement"></div>
         </div>
       </div>
 
@@ -38,7 +38,7 @@
       <div class="col-12 col-lg-4">
         <div class="chart-title">Top 10 ports</div>
         <div id="bar-ports-wrap">
-          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+          <div class="chart-skel skeleton" aria-label="Chargement"></div>
         </div>
       </div>
 
@@ -46,7 +46,7 @@
       <div class="col-12 col-lg-4">
         <div class="chart-title">Volume 24h (bytes/heure)</div>
         <div id="line-tl-wrap">
-          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+          <div class="chart-skel skeleton" aria-label="Chargement"></div>
         </div>
       </div>
 
@@ -107,7 +107,7 @@
       <div class="col-12 col-lg-5">
         <div class="chart-title">Top 10 catégories (bytes)</div>
         <div id="donut-cat-wrap">
-          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+          <div class="chart-skel skeleton" aria-label="Chargement"></div>
         </div>
       </div>
 
@@ -115,7 +115,7 @@
       <div class="col-12 col-lg-7">
         <div class="chart-title">Top 10 applications (bytes)</div>
         <div id="bar-apps-wrap">
-          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+          <div class="chart-skel skeleton" aria-label="Chargement"></div>
         </div>
         <!-- Légende badges catégories -->
         <div id="cat-legend" class="mt-2 d-flex flex-wrap gap-2" style="font-size:.7rem;display:none!important"></div>
@@ -220,24 +220,14 @@
 (function () {
   'use strict';
 
-  /* ─── Palette de couleurs ─────────────────────────────── */
-  var COLORS = [
-    'rgba(34,211,238,.8)',  'rgba(94,231,251,.75)',  'rgba(56,189,248,.75)',
-    'rgba(129,140,248,.75)','rgba(167,139,250,.75)', 'rgba(232,121,249,.75)',
-    'rgba(251,191,36,.8)',  'rgba(52,211,153,.75)',  'rgba(248,113,113,.8)',
-    'rgba(251,146,60,.75)'
-  ];
+  /* ─── Thème des graphiques = tokens du design system (thème clair inclus) ─── */
+  var TH = NW.chartTheme();
+  var COLORS = TH.palette;
 
   var CHART_BASE = {
     plugins: {
       legend:  { display: false },
-      tooltip: {
-        backgroundColor: '#121b2b',
-        borderColor: '#1e2a3c',
-        borderWidth: 1,
-        titleColor: '#d6e0ec',
-        bodyColor:  '#7d8ba0',
-      }
+      tooltip: TH.tooltip,
     }
   };
 
@@ -263,8 +253,8 @@
   }
 
   function rttColor(ms) {
-    if (ms === null || ms === undefined) return '#57647a';
-    return ms < 50 ? '#2ee6a6' : ms < 150 ? '#f5a524' : '#ff4d5e';
+    if (ms === null || ms === undefined) return TH.tick;
+    return ms < 50 ? TH.ok : ms < 150 ? TH.warn : TH.crit;
   }
 
   /* ?refresh=1 après clic sur « Rafraîchir » → vide le cache TTL côté serveur */
@@ -301,13 +291,13 @@
             type: 'doughnut',
             data: {
               labels: srcLabels,
-              datasets: [{ data: srcBytes, backgroundColor: COLORS, borderWidth: 1, borderColor: '#0a0e16' }]
+              datasets: [{ data: srcBytes, backgroundColor: COLORS, borderWidth: 1, borderColor: TH.bg }]
             },
             options: Object.assign({}, CHART_BASE, {
               plugins: Object.assign({}, CHART_BASE.plugins, {
                 legend: {
                   display: true, position: 'right',
-                  labels: { font: { size: 10 }, color: '#7d8ba0', boxWidth: 10, padding: 8 }
+                  labels: { font: { size: 10 }, color: TH.text, boxWidth: 10, padding: 8 }
                 },
                 tooltip: Object.assign({}, CHART_BASE.plugins.tooltip, {
                   callbacks: { label: function (ctx) { return ' ' + fmtBytes(ctx.parsed); } }
@@ -342,13 +332,13 @@
               indexAxis: 'y',
               scales: {
                 x: {
-                  grid:  { color: 'rgba(30,42,60,.7)' },
-                  ticks: { color: '#57647a', font: { size: 10 },
+                  grid:  { color: TH.grid },
+                  ticks: { color: TH.tick, font: { size: 10 },
                            callback: function (v) { return fmtBytes(v); } }
                 },
                 y: {
-                  grid:  { color: 'rgba(30,42,60,.5)' },
-                  ticks: { color: '#7d8ba0', font: { size: 10 } }
+                  grid:  { color: TH.grid },
+                  ticks: { color: TH.text, font: { size: 10 } }
                 }
               }
             })
@@ -385,17 +375,17 @@
           options: Object.assign({}, CHART_BASE, {
             scales: {
               x: {
-                grid:  { color: 'rgba(30,42,60,.7)' },
+                grid:  { color: TH.grid },
                 ticks: {
-                  color: '#57647a', font: { size: 9 },
+                  color: TH.tick, font: { size: 9 },
                   maxTicksLimit: 8, maxRotation: 0,
                 }
               },
               y: {
                 beginAtZero: true,
-                grid:  { color: 'rgba(30,42,60,.7)' },
+                grid:  { color: TH.grid },
                 ticks: {
-                  color: '#57647a', font: { size: 10 },
+                  color: TH.tick, font: { size: 10 },
                   callback: function (v) { return fmtBytes(v); }
                 }
               }
@@ -474,7 +464,7 @@
           data: {
             datasets: [{
               data: [gaugeVal, gaugeMax - gaugeVal],
-              backgroundColor: [col, 'rgba(26,35,50,.7)'],
+              backgroundColor: [col, TH.grid],
               borderWidth: 0,
             }]
           },
@@ -587,7 +577,7 @@
                 data:            cats.map(function (c) { return c.bytes; }),
                 backgroundColor: cats.map(function (c) { return catColor(c.cat); }),
                 borderWidth: 1,
-                borderColor: '#0a0e16',
+                borderColor: TH.bg,
               }]
             },
             options: Object.assign({}, CHART_BASE, {
@@ -597,7 +587,7 @@
                   position: 'right',
                   labels: {
                     font:     { size: 10 },
-                    color:    '#7d8ba0',
+                    color:    TH.text,
                     boxWidth: 10,
                     padding:  8,
                     generateLabels: function (chart) {
@@ -606,7 +596,7 @@
                         return {
                           text:        lbl + ' (' + (cat ? cat.pct : 0) + '%)',
                           fillStyle:   catColor(lbl),
-                          strokeStyle: '#0a0e16',
+                          strokeStyle: TH.bg,
                           lineWidth:   1,
                           index:       i,
                         };
@@ -654,15 +644,15 @@
               indexAxis: 'y',
               scales: {
                 x: {
-                  grid:  { color: 'rgba(30,42,60,.7)' },
+                  grid:  { color: TH.grid },
                   ticks: {
-                    color: '#57647a', font: { size: 10 },
+                    color: TH.tick, font: { size: 10 },
                     callback: function (v) { return fmtBytes(v); }
                   }
                 },
                 y: {
-                  grid:  { color: 'rgba(30,42,60,.5)' },
-                  ticks: { color: '#7d8ba0', font: { size: 10 } }
+                  grid:  { color: TH.grid },
+                  ticks: { color: TH.text, font: { size: 10 } }
                 }
               },
               plugins: Object.assign({}, CHART_BASE.plugins, {
@@ -719,7 +709,7 @@
     /* Reset loading states */
     ['donut-src-wrap','bar-ports-wrap','line-tl-wrap'].forEach(function (id) {
       document.getElementById(id).innerHTML =
-        '<div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>';
+        '<div class="chart-skel skeleton" aria-label="Chargement"></div>';
     });
     document.getElementById('art-tbody').innerHTML =
       '<tr><td colspan="6" class="text-center py-3 text-muted" style="font-size:.83rem">'
@@ -735,7 +725,7 @@
     /* Reset Section 4 */
     ['donut-cat-wrap', 'bar-apps-wrap'].forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.innerHTML = '<div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>';
+      if (el) el.innerHTML = '<div class="chart-skel skeleton" aria-label="Chargement"></div>';
     });
     document.getElementById('cat-legend').style.display = 'none';
     Chart.getChart('gauge-rtt') && Chart.getChart('gauge-rtt').destroy();

@@ -10,6 +10,11 @@
       try {
         var t = localStorage.getItem("nw_theme");
         if (t === "light" || t === "dark") document.documentElement.setAttribute("data-bs-theme", t);
+        /* Sidebar en mode rail : appliqué avant le premier rendu (pas de saut de layout) */
+        if (localStorage.getItem("nw_nav_rail") === "1") {
+          document.addEventListener("DOMContentLoaded", function () { document.body.classList.add("nav-rail"); }, { once: true });
+          document.documentElement.classList.add("nav-rail-pending");
+        }
       } catch (e) {}
     })();
   </script>
@@ -69,7 +74,7 @@
       </li>
       <li class="nav-item">
         <a href="{{ url_for('app_map_page') }}" class="nav-link {% if request.endpoint == 'app_map_page' %}active{% endif %}">
-          <i class="bi bi-diagram-3-fill"></i> <span data-i18n="nav_app_map">Dépendances applicatives</span>
+          <i class="bi bi-diagram-3-fill"></i> <span data-i18n="nav_app_map">Dépendances</span>
         </a>
       </li>
       <li class="nav-item">
@@ -94,7 +99,7 @@
       </li>
       <li class="nav-item">
         <a href="{{ url_for('thresholds_page') }}" class="nav-link {% if request.endpoint == 'thresholds_page' %}active{% endif %}">
-          <i class="bi bi-bell"></i> <span data-i18n="nav_thresholds">Alertes sur seuil</span>
+          <i class="bi bi-bell"></i> <span data-i18n="nav_thresholds">Seuils</span>
         </a>
       </li>
     </ul>
@@ -210,8 +215,12 @@
     </ul>
 
     <div class="mt-auto sidebar-footer">
-      <i class="bi bi-hdd-network me-1"></i>
-      {{ proxmox_host if proxmox_host is defined and proxmox_host else '—' }}
+      <span class="sidebar-footer-host" title="{{ proxmox_host or '' }}">
+        <i class="bi bi-hdd-network me-1"></i>{{ proxmox_host if proxmox_host is defined and proxmox_host else '—' }}
+      </span>
+      <button class="nav-rail-btn" id="nav-rail-toggle" title="Réduire / étendre le menu">
+        <i class="bi bi-chevron-double-left"></i>
+      </button>
     </div>
   </nav>
 
@@ -426,6 +435,26 @@
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
   });
+})();
+
+// ── Sidebar rail (icônes seules) — bouton + préférence mémorisée ──
+(function () {
+  var btn = document.getElementById('nav-rail-toggle');
+  if (!btn) return;
+  function applyTitles() {
+    /* En mode rail, le libellé masqué devient une infobulle */
+    document.querySelectorAll('.sidebar .nav-link').forEach(function (a) {
+      var span = a.querySelector('span');
+      if (span) a.title = document.body.classList.contains('nav-rail') ? span.textContent.trim() : '';
+    });
+  }
+  btn.addEventListener('click', function () {
+    var on = document.body.classList.toggle('nav-rail');
+    try { localStorage.setItem('nw_nav_rail', on ? '1' : '0'); } catch (e) {}
+    applyTitles();
+    window.dispatchEvent(new Event('resize'));   /* graphiques responsive */
+  });
+  applyTitles();
 })();
 
 // ── Badge alertes critiques dans le nav (agg cachée 30 s côté serveur) ──

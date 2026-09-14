@@ -74,8 +74,8 @@
       "nav_hostgroups":    "Hostgroups",
       "nav_custom_dashboard": "Tableau personnalisé",
       "nav_applications":  "Applications",
-      "nav_app_map":       "Dépendances applicatives",
-      "nav_thresholds":    "Alertes sur seuil",
+      "nav_app_map":       "Dépendances",
+      "nav_thresholds":    "Seuils",
       "live_30s":          "live 30 s",
       /* Home observabilité */
       "dash_traffic":      "Trafic 24h",
@@ -223,8 +223,8 @@
       "nav_hostgroups":    "Hostgroups",
       "nav_custom_dashboard": "Custom dashboard",
       "nav_applications":  "Applications",
-      "nav_app_map":       "Application dependencies",
-      "nav_thresholds":    "Threshold alerts",
+      "nav_app_map":       "Dependencies",
+      "nav_thresholds":    "Thresholds",
       "live_30s":          "live 30 s",
       /* Observability home */
       "dash_traffic":      "Traffic 24h",
@@ -544,15 +544,11 @@
         responsive: true,
         maintainAspectRatio: false,
         animation: prefersReduced ? false : { duration: 600 },
-        plugins: { legend: { display: false }, tooltip: opts.tooltip === false ? { enabled: false } : {
+        plugins: { legend: { display: false }, tooltip: opts.tooltip === false ? { enabled: false } : Object.assign({}, NW.chartTheme().tooltip, {
           displayColors: false,
-          backgroundColor: "#0b1019",
-          borderColor: "#1e2a3c",
-          borderWidth: 1,
-          padding: 8,
           callbacks: { title: function () { return ""; },
-            label: function (c) { return c.parsed.y + " alerte(s)"; } },
-        } },
+            label: function (c) { return c.parsed.y + " " + NW.t("spark_tooltip"); } },
+        }) },
         scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
       },
     });

@@ -258,6 +258,7 @@
 
   var ctx = document.getElementById('sparklineChart');
   if (!ctx) return;
+  var TH = NW.chartTheme();   /* couleurs = tokens du design system (thème clair inclus) */
 
   new Chart(ctx, {
     type: 'line',
@@ -268,9 +269,9 @@
         data: counts,
         fill: true,
         tension: 0.4,
-        borderColor: 'rgba(34,211,238,.85)',
-        backgroundColor: 'rgba(34,211,238,.08)',
-        pointBackgroundColor: 'rgba(34,211,238,.9)',
+        borderColor: TH.accent,
+        backgroundColor: TH.accentSoft,
+        pointBackgroundColor: TH.accent,
         pointRadius: 3,
         pointHoverRadius: 5,
         borderWidth: 2,
@@ -281,30 +282,21 @@
       maintainAspectRatio: true,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: '#121b2b',
-          borderColor: '#1e2a3c',
-          borderWidth: 1,
-          titleColor: '#d6e0ec',
-          bodyColor: '#7d8ba0',
+        tooltip: Object.assign({}, TH.tooltip, {
           callbacks: {
             label: function (ctx) { return ' ' + ctx.parsed.y + ' alertes'; },
           },
-        },
+        }),
       },
       scales: {
         x: {
-          grid:  { color: 'rgba(30,42,60,.7)' },
-          ticks: { color: '#57647a', font: { size: 11 } },
+          grid:  { color: TH.grid },
+          ticks: { color: TH.tick, font: { size: 11 } },
         },
         y: {
           beginAtZero: true,
-          grid:  { color: 'rgba(30,42,60,.7)' },
-          ticks: {
-            color: '#57647a',
-            font: { size: 11 },
-            precision: 0,
-          },
+          grid:  { color: TH.grid },
+          ticks: { color: TH.tick, font: { size: 11 }, precision: 0 },
         },
       },
     },

@@ -124,16 +124,16 @@
       </thead>
       <tbody>
       {% for sla in sla_data.slas %}
-        {% set fill = '#10b981' if sla.status == 'ok' else ('#f59e0b' if sla.status == 'warn' else '#ef4444') %}
+        {% set tone = 'ok' if sla.status == 'ok' else ('warn' if sla.status == 'warn' else 'crit') %}
         {% set bar_w = [sla.compliance_pct, 100.0] | min %}
         <tr>
           <td class="ps-4 fw-semibold">{{ sla.name }}</td>
           <td><code>&le;&nbsp;{{ sla.target_ms }}&nbsp;ms</code></td>
           <td>{{ sla.target_pct }}%</td>
-          <td class="fw-bold" style="color:{{ fill }}">{{ '%.2f'|format(sla.compliance_pct) }}%</td>
+          <td class="fw-bold tone-text-{{ tone }}">{{ '%.2f'|format(sla.compliance_pct) }}%</td>
           <td>
             <div class="compliance-bar">
-              <div class="compliance-bar-fill" style="width:{{ bar_w }}%;background:{{ fill }}"></div>
+              <div class="compliance-bar-fill fill-{{ tone }}" style="width:{{ bar_w }}%"></div>
             </div>
           </td>
           <td>
@@ -177,10 +177,10 @@
           </thead>
           <tbody>
           {% for sla in sla_data.business_hours.slas %}
-            {% set fill = '#10b981' if sla.status == 'ok' else ('#f59e0b' if sla.status == 'warn' else '#ef4444') %}
+            {% set tone = 'ok' if sla.status == 'ok' else ('warn' if sla.status == 'warn' else 'crit') %}
             <tr>
               <td class="ps-3 fw-semibold">{{ sla.name }}</td>
-              <td class="fw-bold" style="color:{{ fill }}">{{ '%.2f'|format(sla.compliance_pct) }}%</td>
+              <td class="fw-bold tone-text-{{ tone }}">{{ '%.2f'|format(sla.compliance_pct) }}%</td>
               <td>
                 {% if sla.status == 'ok' %}
                 <span class="badge bg-success"><i class="bi bi-check2"></i></span>
@@ -222,10 +222,10 @@
           </thead>
           <tbody>
           {% for sla in sla_data.off_hours.slas %}
-            {% set fill = '#10b981' if sla.status == 'ok' else ('#f59e0b' if sla.status == 'warn' else '#ef4444') %}
+            {% set tone = 'ok' if sla.status == 'ok' else ('warn' if sla.status == 'warn' else 'crit') %}
             <tr>
               <td class="ps-3 fw-semibold">{{ sla.name }}</td>
-              <td class="fw-bold" style="color:{{ fill }}">{{ '%.2f'|format(sla.compliance_pct) }}%</td>
+              <td class="fw-bold tone-text-{{ tone }}">{{ '%.2f'|format(sla.compliance_pct) }}%</td>
               <td>
                 {% if sla.status == 'ok' %}
                 <span class="badge bg-success"><i class="bi bi-check2"></i></span>
@@ -259,18 +259,14 @@
   var SLA        = {{ sla_data | tojson }};
   var TARGET_PCT = SLA.slas.length ? SLA.slas[0].target_pct : 99.0;
 
-  /* ── Color palette ── */
-  var cs = getComputedStyle(document.documentElement);
-  function cssVar(v, fallback) {
-    var val = cs.getPropertyValue(v).trim();
-    return val || fallback;
-  }
+  /* ── Couleurs = tokens du design system (thème clair inclus) ── */
+  var TH = NW.chartTheme();
   var C = {
-    ok:    cssVar('--ok',   '#10b981'),
-    warn:  cssVar('--warn', '#f59e0b'),
-    crit:  cssVar('--crit', '#ef4444'),
-    track: cssVar('--bg-elev-2', '#1e293b'),
-    lines: ['#22d3ee', '#a78bfa', '#fb923c'],
+    ok:    TH.ok,
+    warn:  TH.warn,
+    crit:  TH.crit,
+    track: TH.grid,
+    lines: [TH.accent, NW.cssVar('--violet', '#a78bfa'), NW.cssVar('--orange', '#fb923c')],
   };
 
   function statusColor(s) {
@@ -336,7 +332,7 @@
     datasets.push({
       label:       'Cible (' + TARGET_PCT + '%)',
       data:        labels.map(function () { return TARGET_PCT; }),
-      borderColor: 'rgba(255,255,255,0.28)',
+      borderColor: TH.tick,
       borderDash:  [6, 4],
       borderWidth: 1.5,
       pointRadius: 0,
@@ -354,29 +350,29 @@
             min: 0,
             max: 100,
             ticks: {
-              color: 'rgba(255,255,255,0.5)',
+              color: TH.tick,
               callback: function (v) { return v + '%'; },
             },
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            grid: { color: TH.grid },
           },
           x: {
-            ticks: { color: 'rgba(255,255,255,0.5)' },
-            grid:  { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: TH.tick },
+            grid:  { color: TH.grid },
           }
         },
         plugins: {
           legend: {
             position: 'top',
-            labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 12, padding: 16 },
+            labels: { color: TH.text, boxWidth: 12, padding: 16 },
           },
-          tooltip: {
+          tooltip: Object.assign({}, TH.tooltip, {
             callbacks: {
               label: function (ctx) {
                 if (ctx.parsed.y === null || ctx.parsed.y === undefined) return null;
                 return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%';
               }
             }
-          }
+          })
         }
       }
     });
