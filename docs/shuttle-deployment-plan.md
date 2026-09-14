@@ -14,8 +14,8 @@ SPAN, stack complète répartie sur 2 VMs, portail NetWatch piloté depuis le PC
 | Élément | Besoin | Pourquoi |
 |---|---|---|
 | CPU | Xeon avec VT-x/VT-d | Virtualisation + passthrough NIC dédiée |
-| RAM | 16 Go mini (32-64 Go si extensible) | 2 VMs (6 Go + 10 Go) + marge Proxmox |
-| Disque | ~120 Go dispo (SSD si possible) | ES a un ILM 30j, logs Zeek/Snort/Suricata |
+| RAM | 16 Go mini · **32 Go recommandé** avec l'édition IA | 2 VMs (6 Go + 10 Go) + marge Proxmox — voir le budget mémoire §3 |
+| Disque | ~120 Go (SSD) **+ un volume dédié PCAP pour Arkime** (200 Go+ selon la rétention voulue) | ES a un ILM 30j, logs Zeek/Snort/Suricata ; Arkime garde les PCAP jusqu'à `ARKIME_FREE_SPACE_G` |
 | NIC capture | Intel i350-T2 (2 ports, pilote igb) | Un port dédié SPAN, isolé du management |
 | Switch | Manageable, port mirroring (SPAN) | Copier le trafic à surveiller vers la NIC capture |
 | Accès BIOS | Activer VT-x + VT-d + éventuellement SR-IOV | Sans VT-d, pas de passthrough NIC propre |
@@ -75,20 +75,64 @@ la VM ne le traite comme du trafic normal (pas d'IP, pas de routage dessus).
 
 ## 3. Architecture 2 VMs — répartition des services
 
-| VM | vCPU / RAM | Services docker-compose |
-|---|---|---|
-| **VM Sensors** | 4 vCPU / 6 Go | `zeek`, `snort`, `suricata`, `filebeat`, `goflow2`, `beacon-detect`, `autoblock` |
-| **VM Data** | 4 vCPU / 10 Go | `elasticsearch`, `grafana`, `prometheus`, `node-exporter`, `crowdsec`, `ollama`, `n8n` |
+Les services se répartissent selon un seul critère : **a-t-il besoin du port SPAN ?**
+Oui → VM Sensors. Non → VM Data. Les cinq services d'observabilité complémentaire
+(commit `9189bcc` et suivants) suivent la même règle.
 
-- Créer les 2 VMs sous Proxmox : Ubuntu 22.04 LTS (cloud-init image, plus rapide
-  à provisionner qu'un ISO manuel), Docker + Docker Compose installés.
-- Réseau : VM Sensors a la carte de capture (`vmbr1`, cf. §2) **+** une carte LAN
-  normale (`vmbr0`) pour parler à Filebeat → Elasticsearch sur VM Data.
-- Découper `docker-compose.yml` en deux fichiers (`docker-compose.sensors.yml` /
-  `docker-compose.data.yml`) — pas encore fait dans le repo, à créer avant le
-  transfert. Pointer `filebeat.yml` (côté Sensors) vers l'IP LAN de VM Data pour
-  Elasticsearch, et les datasources Grafana / Prometheus scrape targets côté
-  Data vers l'IP LAN de VM Sensors.
+| VM | vCPU / RAM | Services docker-compose | RAM mesurée (labo 14/09/2026) |
+|---|---|---|---|
+| **VM Sensors** | 4 vCPU / 6 Go | `zeek`, `snort`, `suricata`, `filebeat`, `goflow2`, `beacon-detect`, `autoblock`, `crowdsec`, `node-exporter` **+ `arkime` (capture + viewer), `ntopng`** | ≈ 3,5-4,5 Go (suricata 0,3-1 Go selon les règles, arkime 0,5-1 Go, ntopng 0,2 Go) |
+| **VM Data** | 4 vCPU / 10 Go | `elasticsearch`, `grafana`, `prometheus`, `node-exporter`, `n8n` **+ `kibana`, `blackbox`, `netbox` (+ postgres, 2 redis, worker)** | ≈ 6 Go hors IA (ES heap 2 Go ≈ 3 Go RSS, netbox 1,2 Go, kibana 0,5 Go, grafana/prometheus/n8n ≈ 0,8 Go) |
+| **VM Data — édition IA** | idem | `ollama` + modèle chargé | **+ 4-5 Go** avec `mistral` (7B) — voir ci-dessous |
+
+### Budget mémoire et édition IA
+
+- **Sans IA** (`OLLAMA_URL=` vide dans `.env` : le portail masque les boutons ✨ et
+  ne surveille pas Ollama) : 16 Go suffisent largement — Data ≈ 6 Go sur 10.
+- **Avec IA** : `mistral` occupe 4-5 Go *quand il est chargé*. Ollama décharge le
+  modèle après 5 min d'inactivité (`OLLAMA_KEEP_ALIVE`, défaut 5m) : au repos la
+  VM Data retombe à ≈ 6 Go, mais pendant/juste après une explication d'alerte elle
+  monte à ≈ 10-11 Go — c'est exactement la saturation observée sur la VM WSL de
+  7,8 Go le 14/09. Trois options :
+  1. **32 Go sur le Shuttle** (recommandé pour vendre « IA locale incluse » sans
+     compromis) → VM Data à 16 Go, `ES_HEAP=-Xms4g -Xmx4g`.
+  2. Rester à 16 Go et prendre un modèle plus petit pour la démo
+     (`OLLAMA_MODEL=llama3.2:3b`, ≈ 2,5 Go chargé).
+  3. Rester à 16 Go avec `mistral` et accepter 10-20 s de latence à la première
+     explication (chargement du modèle), en gardant `OLLAMA_KEEP_ALIVE=5m`.
+- Ne jamais dimensionner en dessous : Elasticsearch **et** Arkime ont été tués en
+  OOM (exit 137) sur la VM 7,8 Go avec la stack complète. Sur une petite machine,
+  `ES_HEAP=-Xms1g -Xmx1g` dans `.env` (documenté dans `.env.example`).
+
+### Deux éditions d'un même dépôt
+
+Il n'y a pas deux produits à maintenir : c'est le même `docker-compose.yml`, et
+l'IA est un **module** activé par la configuration.
+
+| | Édition Core | Édition IA |
+|---|---|---|
+| `.env` | `OLLAMA_URL=` (vide) | `OLLAMA_URL=http://<VM_Data_IP>:11434`, `OLLAMA_MODEL=mistral` |
+| Conteneur `ollama` | non démarré | démarré + `make llm-pull` une fois |
+| Portail | boutons ✨ masqués, `/status` sans la carte « Assistant IA », `/agents` et `/llmops` vides | explication d'alertes, narration PCAP, résumé exécutif, monitoring LLMOps |
+| RAM VM Data | ≈ 6 Go | ≈ 6 Go au repos, 10-11 Go en génération |
+
+Passage Core → IA sur un site déjà déployé : renseigner `OLLAMA_URL`, démarrer le
+conteneur, `make llm-pull`, redémarrer le portail — aucune migration de données.
+(À faire côté code : un `profiles: [ia]` sur le service `ollama` pour que
+`docker compose up -d` de l'édition Core ne le lance pas du tout — voir §6.)
+
+### Réseau entre les deux VMs
+
+- VM Sensors a la carte de capture (`vmbr1`, cf. §2) **+** une carte LAN
+  normale (`vmbr0`) pour parler à Elasticsearch sur VM Data (Filebeat, Arkime
+  capture/viewer, beacon-detect) et à Prometheus (node-exporter, blackbox scrape).
+- Les fichiers `docker-compose.sensors.yml` / `docker-compose.data.yml` existent
+  dans le repo pour le cœur de la stack ; **les 10 services complémentaires n'y
+  sont pas encore répartis** (ils ne sont que dans `docker-compose.yml`) — à faire
+  avant le transfert (§6). Pointer `filebeat.yml` et `ARKIME__elasticsearch` (côté
+  Sensors) vers l'IP LAN de VM Data ; côté Data, les datasources Grafana, les
+  cibles Prometheus (`node-exporter` Sensors, `blackbox`) et `NETWATCH_*_URL` du
+  portail vers les bonnes IPs.
 
 ---
 
@@ -100,7 +144,15 @@ la VM ne le traite comme du trafic normal (pas d'IP, pas de routage dessus).
 3. `docker compose -f docker-compose.sensors.yml up -d` sur VM Sensors.
 4. `docker compose -f docker-compose.data.yml up -d` sur VM Data.
 5. Portail Flask : soit sur VM Data, soit sur une 3e petite VM/le PC de gestion
-   — pointer `portal/.env` (`PROXMOX_HOST`, `ES_HOST`, etc.) vers les IPs réelles.
+   — pointer `portal/.env` (`PROXMOX_HOST`, `FLASK_SECRET_KEY`, `PORTAL_*`) et le
+   `.env` racine (`NETWATCH_ES_URL`, `NETWATCH_*_URL`, `NETBOX_*`, `OLLAMA_URL`)
+   vers les IPs réelles — le portail lit les deux fichiers.
+6. Services complémentaires : `make arkime-init` (une fois, côté Sensors),
+   `make kibana-setup` (côté Data), puis `make demo-netbox` si on veut des données
+   d'inventaire de démonstration. Secrets à générer (jamais les valeurs de démo
+   `netwatch`) : voir les commandes dans `.env.example`.
+7. Arkime en production : `ARKIME_AUTH_MODE=form` derrière le reverse-proxy
+   HTTPS (`authTrustProxy`), et changer le mot de passe `admin` dans *Users*.
 
 ---
 
@@ -114,6 +166,10 @@ la VM ne le traite comme du trafic normal (pas d'IP, pas de routage dessus).
 | Grafana (`<VM_Data_IP>:3000`) | Dashboards affichent des données non vides |
 | Portail (`:5050`) | `/status` vert sur tous les services, `/topology` détecte au moins la passerelle |
 | Débit SPAN vs débit réel | Pas de perte de paquets visible (`zeek/stats.log` — `pkts_dropped` ≈ 0) |
+| `make health` | Les 5 services complémentaires `UP` ; `/sla` → sondes Blackbox 100 % sur les cibles du site (`prometheus/blackbox-targets.yml` adapté : passerelle, DNS interne, serveurs critiques) |
+| Arkime (`:8005`) | Sessions du VLAN mirroré visibles ; `arkime_sessions3-*` grossit dans ES ; espace disque PCAP surveillé (`ARKIME_FREE_SPACE_G`) |
+| NetBox (`:8000`) | Préfixes du site saisis → `/ip/<ip>` affiche la carte « Contexte NetBox », import hostgroups OK |
+| Mémoire (`free -m` sur chaque VM) | ≥ 1 Go disponible après 15 min de capture, y compris après une explication IA (édition IA) |
 
 ---
 
@@ -125,6 +181,20 @@ la VM ne le traite comme du trafic normal (pas d'IP, pas de routage dessus).
    `tcpdump -i <iface_capture>` avant même de monter les VMs Docker.
 3. VM Sensors + VM Data (§3-4).
 4. Portail + validation (§5).
+
+**À faire dans le repo avant le transfert** (aucun ne bloque le labo actuel) :
+
+- Répartir les 10 services complémentaires dans `docker-compose.sensors.yml`
+  (`arkime`, `ntopng`) et `docker-compose.data.yml` (`blackbox`, `kibana`,
+  `netbox`, `netbox-postgres`, `netbox-redis`, `netbox-redis-cache`,
+  `netbox-worker`) avec les IPs croisées en variables (`ES_HOST`, `DATA_IP`).
+- `profiles: [ia]` sur `ollama` : l'édition Core (`docker compose up -d`) ne le
+  démarre pas, l'édition IA fait `docker compose --profile ia up -d`.
+- Portail : quand `OLLAMA_URL` est vide, retirer Ollama des checks `/status`
+  (aujourd'hui il compte comme service cœur) et masquer les boutons ✨ — à
+  vérifier page par page (`/alerts`, `/pcap-analysis`, `/report`, `/agents`).
+- `.env.example` : bloc « Édition » en tête (Core / IA) avec les deux lignes à
+  changer.
 
 **Pourquoi cet ordre** : la capture réseau (SPAN) est la partie la plus proche
 du matériel physique et la moins réversible à distance si mal câblée/configurée
