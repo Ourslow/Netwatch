@@ -329,7 +329,7 @@ Cinq services choisis pour combler un **trou** de la stack de base, pas pour la 
 | **Kibana** `:5601` | Grafana est fait pour les dashboards, pas pour **fouiller** un log. | Bouton « Kibana » sur `/zeek` (Discover). Même version qu'Elasticsearch (8.13). |
 
 ```bash
-# 1. Secrets dans .env (voir .env.example : ARKIME_PASSWORD_SECRET, NETBOX_*, NETBOX_TOKEN_KEY, NETBOX_TOKEN)
+# 1. Secrets dans .env (voir .env.example : ARKIME_PASSWORD_SECRET, NETBOX_* dont NETBOX_API_TOKEN_PEPPER, NETBOX_TOKEN_KEY, NETBOX_TOKEN)
 # 2. Démarrer les services complémentaires
 make observability
 # 3. Arkime uniquement, une fois : index ES + utilisateur admin

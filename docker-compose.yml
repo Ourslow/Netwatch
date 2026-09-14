@@ -483,8 +483,10 @@ services:
       - SUPERUSER_NAME=${NETBOX_SUPERUSER_NAME:-admin}
       - SUPERUSER_EMAIL=${NETBOX_SUPERUSER_EMAIL:-admin@netwatch.local}
       - SUPERUSER_PASSWORD=${NETBOX_SUPERUSER_PASSWORD:?NETBOX_SUPERUSER_PASSWORD manquant dans .env}
-      # Token API v2 (NetBox ≥ 4.6) = identifiant public (12 alnum) + secret (40 alnum).
+      # Token API v2 (NetBox ≥ 4.6) = identifiant public (12 alnum) + secret (40 alnum),
+      # stocké en HMAC avec le « pepper » ci-dessous (sans pepper, les tokens v2 sont refusés).
       # Le portail envoie « Authorization: Bearer nbt_<KEY>.<TOKEN> ».
+      - API_TOKEN_PEPPER_1=${NETBOX_API_TOKEN_PEPPER:?NETBOX_API_TOKEN_PEPPER manquant dans .env (50 caractères min)}
       - SUPERUSER_API_KEY=${NETBOX_TOKEN_KEY:?NETBOX_TOKEN_KEY manquant dans .env (12 caractères alphanumériques)}
       - SUPERUSER_API_TOKEN=${NETBOX_TOKEN:?NETBOX_TOKEN manquant dans .env (40 caractères alphanumériques)}
       - METRICS_ENABLED=true
@@ -501,7 +503,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-      start_period: 90s
+      start_period: 180s     # migrations + collectstatic au premier démarrage (~80 s en labo)
     depends_on:
       netbox-postgres:
         condition: service_healthy
@@ -520,9 +522,12 @@ services:
       - netbox-media:/opt/netbox/netbox/media
       - netbox-reports:/opt/netbox/netbox/reports
       - netbox-scripts:/opt/netbox/netbox/scripts
+    # service_started (pas service_healthy) : au premier démarrage `up -d` abandonne le
+    # worker si netbox n'est pas healthy dans le délai — restart: unless-stopped le fait
+    # simplement réessayer jusqu'à ce que les migrations soient passées.
     depends_on:
       netbox:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
 volumes:
