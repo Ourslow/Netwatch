@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox
 
 # ============================================================
 # Services d'observabilité complémentaires
@@ -15,6 +15,10 @@ observability:
 
 observability-stop:
 	docker compose stop blackbox kibana ntopng arkime netbox-worker netbox netbox-redis netbox-redis-cache netbox-postgres
+
+# Données de démo dans NetBox (site, préfixes, IP nommées) → /ip/<ip> et import hostgroups parlants
+demo-netbox:
+	bash scripts/demo/netbox-seed.sh
 
 # Premier lancement d'Arkime : création des index ES (arkime_*). L'utilisateur
 # admin/admin est créé au démarrage du service (--add-admin) — changer le mot de
@@ -246,6 +250,10 @@ help:
 	@echo "  make demo            Démonstration complète (6h de trafic)"
 	@echo "  make demo-fast       Démonstration rapide (1h, intensité high)"
 	@echo "  make demo-client     Démo client pipeline NDR (--auto, < 5 min)"
+	@echo "  make observability   Démarrer Blackbox, Kibana, ntopng, Arkime, NetBox"
+	@echo "  make arkime-init     Arkime : créer les index ES (premier lancement)"
+	@echo "  make arkime-reset    Arkime : repartir de zéro (index + templates)"
+	@echo "  make demo-netbox     Données de démo NetBox (site, préfixes, IP nommées)"
 	@echo "  make sim             Simuler 6h de trafic avec attaques"
 	@echo "  make sim-fast        Simuler 1h de trafic rapide"
 	@echo ""

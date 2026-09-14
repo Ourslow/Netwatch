@@ -57,7 +57,7 @@
 <tr>
 <td align="center">
 <img src="docs/screenshots/portal-status.png" alt="Portail — Services Status" width="100%"/>
-<br/><em>Services Status — supervision temps réel des services Docker (Elasticsearch, Grafana, Prometheus, AutoBlock, IA locale)</em>
+<br/><em>Services Status — supervision temps réel de la stack (Elasticsearch, Grafana, Prometheus, AutoBlock, IA locale) et des services complémentaires optionnels (Blackbox, Kibana, ntopng, Arkime, NetBox), sondes actives Blackbox</em>
 </td>
 </tr>
 <tr>
@@ -329,16 +329,21 @@ Cinq services choisis pour combler un **trou** de la stack de base, pas pour la 
 | **Kibana** `:5601` | Grafana est fait pour les dashboards, pas pour **fouiller** un log. | Bouton « Kibana » sur `/zeek` (Discover). Même version qu'Elasticsearch (8.13). |
 
 ```bash
-# 1. Secrets dans .env (voir .env.example : ARKIME_PASSWORD_SECRET, NETBOX_* dont NETBOX_API_TOKEN_PEPPER, NETBOX_TOKEN_KEY, NETBOX_TOKEN)
+# 1. Secrets dans .env (voir .env.example : ARKIME_PASSWORD_SECRET, NETBOX_* dont NETBOX_API_TOKEN_PEPPER,
+#    NETBOX_TOKEN_KEY + NETBOX_TOKEN). Le portail lit ce même .env (en plus de portal/.env).
 # 2. Démarrer les services complémentaires
 make observability
-# 3. Arkime uniquement, une fois : index ES + utilisateur admin
+# 3. Arkime uniquement, une fois : index ES + utilisateur admin (make arkime-reset pour repartir de zéro)
 make arkime-init
-# 4. Vérifier
+# 4. Optionnel — données de démo NetBox : site, préfixes, IP nommées → /ip/<ip> et import hostgroups
+make demo-netbox
+# 5. Vérifier
 make health
 ```
 
-> **Labo isolé (sans internet)** : exporter les images depuis un poste connecté — `docker save prom/blackbox-exporter:v0.25.0 docker.elastic.co/kibana/kibana:8.13.0 ntop/ntopng:stable redis:7-alpine ghcr.io/arkime/arkime/arkime:v6-latest netboxcommunity/netbox:v4.7-5.1.1 postgres:16-alpine | gzip > netwatch-observability.tar.gz` puis `docker load` sur la VM.
+> **Machine ≤ 8 Go** : la stack complète (ES + Kibana + NetBox + Arkime) est serrée — mettre `ES_HEAP=-Xms1g -Xmx1g` dans `.env` avant `make start`.
+
+> **Labo isolé (sans internet)** : exporter les images depuis un poste connecté — `docker save prom/blackbox-exporter:v0.25.0 docker.elastic.co/kibana/kibana:8.13.0 ntop/ntopng:latest redis:7-alpine ghcr.io/arkime/arkime/arkime:v6-latest netboxcommunity/netbox:v4.7-5.1.1 postgres:16-alpine | gzip > netwatch-observability.tar.gz` puis `docker load` sur la VM. Arkime télécharge ses fichiers OUI/GeoIP au démarrage (`--update-geo`) : en air-gap, copier `oui.txt` et `ipv4-address-space.csv` dans le volume `arkime-etc`.
 
 > **Étape suivante (architecture)** : quand la stack aura une dizaine de sources, un **OpenTelemetry Collector** comme point d'entrée unique (receivers syslog/SNMP/NetFlow → processors d'enrichissement hostgroup/site → exporters ES/Prometheus) évitera de dupliquer parsing et enrichissement dans chaque pipeline. Ce n'est pas un prérequis pour les services ci-dessus.
 
