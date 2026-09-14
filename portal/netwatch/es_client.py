@@ -17,23 +17,89 @@ Structure normalisée :
   }
 """
 
+import copy
 import math
 import re
-import requests
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
+from functools import wraps
+
+import requests
+from requests.adapters import HTTPAdapter
 
 import config
 
 _TIMEOUT = 5
 
+# Session HTTP partagée : keep-alive + pool de connexions vers ES. Sans elle,
+# chaque agg ouvrait une nouvelle connexion TCP (handshake à chaque requête —
+# sensible sur la VM Shuttle dont l'I/O est lent).
+_SESSION = requests.Session()
+_SESSION.mount("http://",  HTTPAdapter(pool_connections=4, pool_maxsize=16))
+_SESSION.mount("https://", HTTPAdapter(pool_connections=4, pool_maxsize=16))
+
 
 def _es(path, body=None, method="post"):
     url = config.NETWATCH_ES_URL.rstrip("/") + path
-    fn  = getattr(requests, method)
     kw  = {"timeout": _TIMEOUT, "verify": config.ES_VERIFY_SSL}
     if body is not None:
         kw["json"] = body
-    return fn(url, **kw)
+    return _SESSION.request(method.upper(), url, **kw)
+
+
+# ------------------------------------------------------------------ #
+# Cache TTL en mémoire + exécution parallèle                           #
+# ------------------------------------------------------------------ #
+
+_CACHE: dict = {}
+_CACHE_LOCK = threading.Lock()
+_ERROR_TTL  = 10   # un résultat en erreur (ES down) n'est gardé que 10 s
+
+
+def _ttl_cache(ttl):
+    """Mémoïse le résultat d'une fonction pendant `ttl` s (clé = nom + args).
+    Les aggs ES sont relancées par le polling de plusieurs pages (badge nav,
+    dashboard, status…) ; les servir depuis le cache évite N requêtes
+    identiques par minute. Les résultats sont copiés en profondeur pour que
+    l'appelant puisse les modifier sans polluer le cache. Le dernier élément
+    d'un tuple retourné est traité comme l'erreur : s'il est non nul, l'entrée
+    n'est conservée que _ERROR_TTL s pour ne pas masquer un retour à la normale."""
+    def deco(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            key = (fn.__name__, repr(args), repr(sorted(kwargs.items())))
+            now = time.monotonic()
+            with _CACHE_LOCK:
+                hit = _CACHE.get(key)
+                if hit and hit[0] > now:
+                    return copy.deepcopy(hit[1])
+            result = fn(*args, **kwargs)
+            err = result[-1] if isinstance(result, tuple) and isinstance(result[-1], (str, type(None))) else None
+            with _CACHE_LOCK:
+                _CACHE[key] = (now + (_ERROR_TTL if err else ttl), copy.deepcopy(result))
+            return result
+        return wrapper
+    return deco
+
+
+def cache_clear():
+    """Vide le cache (tests / bouton refresh forcé)."""
+    with _CACHE_LOCK:
+        _CACHE.clear()
+
+
+def _parallel(*calls):
+    """Exécute des callables sans argument en parallèle et retourne leurs
+    résultats dans l'ordre — pour les requêtes indépendantes d'une même page."""
+    if len(calls) == 1:
+        return [calls[0]()]
+    with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+        return list(pool.map(lambda c: c(), calls))
+
+
+run_parallel = _parallel   # nom public pour app.py
 
 
 # ------------------------------------------------------------------ #
@@ -252,6 +318,7 @@ def get_alerts_by_community_id(community_id):
         return [], str(e)[:120]
 
 
+@_ttl_cache(60)
 def get_alert_timeseries(hours=24, interval="1h"):
     """
     Série temporelle des alertes pour les sparklines (volume horaire sur 24h).
@@ -316,6 +383,7 @@ def get_alert_timeseries(hours=24, interval="1h"):
         return [], str(e)[:80]
 
 
+@_ttl_cache(60)
 def get_geo_data():
     """
     Agrège tous les événements géolocalisés (alertes + Zeek) par pays.
@@ -455,13 +523,13 @@ def get_ip_events(ip, size=200):
         },
     }
 
-    alerts, error = [], None
-    try:
-        r = _es("/suricata-*,snort-*/_search", alert_body)
-        r.raise_for_status()
-        alerts = [_normalize(h) for h in r.json().get("hits", {}).get("hits", [])]
-    except Exception as e:
-        error = str(e)[:80]
+    def _fetch_alerts():
+        try:
+            r = _es("/suricata-*,snort-*/_search", alert_body)
+            r.raise_for_status()
+            return [_normalize(h) for h in r.json().get("hits", {}).get("hits", [])], None
+        except Exception as e:
+            return [], str(e)[:80]
 
     zeek_body = {
         "size": 0,
@@ -483,24 +551,27 @@ def get_ip_events(ip, size=200):
         },
     }
 
-    conn_stats = {}
-    try:
-        r = _es("/zeek-*/_search", zeek_body)
-        r.raise_for_status()
-        data = r.json()
-        aggs = data.get("aggregations", {})
-        conn_stats = {
-            "total_conns":  data.get("hits", {}).get("total", {}).get("value", 0),
-            "top_ports":    [(b["key"], b["doc_count"])
-                             for b in aggs.get("top_ports", {}).get("buckets", [])],
-            "total_bytes":  int(aggs.get("total_bytes", {}).get("value") or 0),
-            "first_seen":   aggs.get("first_seen", {}).get("value_as_string", ""),
-            "last_seen":    aggs.get("last_seen",  {}).get("value_as_string", ""),
-            "protocols":    [b["key"] for b in aggs.get("proto", {}).get("buckets", [])],
-        }
-    except Exception:
-        pass
+    def _fetch_conn():
+        try:
+            r = _es("/zeek-*/_search", zeek_body)
+            r.raise_for_status()
+            data = r.json()
+            aggs = data.get("aggregations", {})
+            return {
+                "total_conns":  data.get("hits", {}).get("total", {}).get("value", 0),
+                "top_ports":    [(b["key"], b["doc_count"])
+                                 for b in aggs.get("top_ports", {}).get("buckets", [])],
+                "total_bytes":  int(aggs.get("total_bytes", {}).get("value") or 0),
+                "first_seen":   aggs.get("first_seen", {}).get("value_as_string", ""),
+                "last_seen":    aggs.get("last_seen",  {}).get("value_as_string", ""),
+                "protocols":    [b["key"] for b in aggs.get("proto", {}).get("buckets", [])],
+            }
+        except Exception:
+            return {}
 
+    # Alertes (suricata/snort) et stats conn (zeek) : deux index, deux requêtes
+    # indépendantes → en parallèle.
+    (alerts, error), conn_stats = _parallel(_fetch_alerts, _fetch_conn)
     return alerts, conn_stats, error
 
 
@@ -509,6 +580,7 @@ _EMPTY_ALERT_STATS = {
 }
 
 
+@_ttl_cache(30)
 def get_alert_stats(days=7):
     """
     Statistiques pour le widget dashboard et le header /alerts.
@@ -533,13 +605,15 @@ def get_alert_stats(days=7):
             "last_24h": {
                 "filter": {"range": {"@timestamp": {"gte": "now-24h"}}},
                 "aggs": {
+                    # value_type : indispensable quand le champ n'est pas mappé
+                    # dans certains index (missing + champ inconnu → 400 ES)
                     "by_severity_24h": {
-                        "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+                        "terms": {"field": "alert.severity", "size": 5, "missing": 3, "value_type": "long"}
                     }
                 },
             },
             "by_severity": {
-                "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+                "terms": {"field": "alert.severity", "size": 5, "missing": 3, "value_type": "long"}
             },
             "by_mitre": {
                 "terms": {
@@ -711,14 +785,14 @@ def get_suspicious_files(size=50):
         return [], str(e)[:120]
 
 
+@_ttl_cache(60)
 def get_exec_stats():
     """
     Statistiques pour le dashboard exécutif RSSI.
+    Les 4 sources (stats 24h, top règles, sparkline 7j, AutoBlock) sont
+    indépendantes → interrogées en parallèle.
     Retourne (data: dict, error: str|None).
     """
-    results: dict = {}
-    err = None
-
     # --- 1. Stats 24h : total, par sévérité, top IPs, cardinal règles ---
     body_24h = {
         "size": 0,
@@ -734,7 +808,7 @@ def get_exec_stats():
         },
         "aggs": {
             "by_severity": {
-                "terms": {"field": "alert.severity", "size": 5, "missing": 3}
+                "terms": {"field": "alert.severity", "size": 5, "missing": 3, "value_type": "long"}
             },
             "top_src_ip": {
                 "terms": {"field": "src_ip", "size": 3},
@@ -750,43 +824,36 @@ def get_exec_stats():
         },
     }
 
-    try:
-        r = _es("/suricata-*,snort-*/_search", body_24h)
-        r.raise_for_status()
-        data = r.json()
-        aggs  = data.get("aggregations", {})
-        total_24h = data.get("hits", {}).get("total", {}).get("value", 0)
+    _empty_24h = {
+        "total_24h": 0, "critical_24h": 0, "high_24h": 0,
+        "medium_24h": 0, "unique_rules_count": 0, "top_ips": [],
+    }
 
-        sev = {b["key"]: b["doc_count"]
-               for b in aggs.get("by_severity", {}).get("buckets", [])}
-
-        top_ips = []
-        for b in aggs.get("top_src_ip", {}).get("buckets", []):
-            idx_buckets = b.get("top_engine", {}).get("buckets", [])
-            engine = "suricata" if idx_buckets and "suricata" in idx_buckets[0].get("key", "") else "snort"
-            top_ips.append({"ip": b["key"], "count": b["doc_count"], "engine": engine})
-
-        unique_rules_count = int(aggs.get("unique_rules", {}).get("value", 0))
-
-        results["total_24h"]         = total_24h
-        results["critical_24h"]      = sev.get(1, 0)
-        results["high_24h"]          = sev.get(2, 0)
-        results["medium_24h"]        = sev.get(3, 0)
-        results["unique_rules_count"] = unique_rules_count
-        results["top_ips"]           = top_ips
-
-    except requests.exceptions.ConnectionError:
-        err = "Elasticsearch non joignable"
-        results.update({
-            "total_24h": 0, "critical_24h": 0, "high_24h": 0,
-            "medium_24h": 0, "unique_rules_count": 0, "top_ips": [],
-        })
-    except Exception as e:
-        err = str(e)[:80]
-        results.update({
-            "total_24h": 0, "critical_24h": 0, "high_24h": 0,
-            "medium_24h": 0, "unique_rules_count": 0, "top_ips": [],
-        })
+    def _fetch_24h():
+        try:
+            r = _es("/suricata-*,snort-*/_search", body_24h)
+            r.raise_for_status()
+            data = r.json()
+            aggs  = data.get("aggregations", {})
+            sev = {b["key"]: b["doc_count"]
+                   for b in aggs.get("by_severity", {}).get("buckets", [])}
+            top_ips = []
+            for b in aggs.get("top_src_ip", {}).get("buckets", []):
+                idx_buckets = b.get("top_engine", {}).get("buckets", [])
+                engine = "suricata" if idx_buckets and "suricata" in idx_buckets[0].get("key", "") else "snort"
+                top_ips.append({"ip": b["key"], "count": b["doc_count"], "engine": engine})
+            return {
+                "total_24h":          data.get("hits", {}).get("total", {}).get("value", 0),
+                "critical_24h":       sev.get(1, 0),
+                "high_24h":           sev.get(2, 0),
+                "medium_24h":         sev.get(3, 0),
+                "unique_rules_count": int(aggs.get("unique_rules", {}).get("value", 0)),
+                "top_ips":            top_ips,
+            }, None
+        except requests.exceptions.ConnectionError:
+            return dict(_empty_24h), "Elasticsearch non joignable"
+        except Exception as e:
+            return dict(_empty_24h), str(e)[:80]
 
     # --- 2. Top 5 règles 24h (Suricata — champ alert.signature) ---
     body_rules = {
@@ -807,22 +874,22 @@ def get_exec_stats():
         },
     }
 
-    try:
-        r = _es("/suricata-*/_search", body_rules)
-        r.raise_for_status()
-        aggs = r.json().get("aggregations", {})
-        top_rules = []
-        for b in aggs.get("top_rules", {}).get("buckets", []):
-            sev_val = b.get("min_sev", {}).get("value")
-            sev_int = int(sev_val) if sev_val is not None else 3
-            top_rules.append({
-                "rule":     b["key"],
-                "count":    b["doc_count"],
-                "severity": sev_int,
-            })
-        results["top_rules"] = top_rules
-    except Exception:
-        results["top_rules"] = []
+    def _fetch_rules():
+        try:
+            r = _es("/suricata-*/_search", body_rules)
+            r.raise_for_status()
+            aggs = r.json().get("aggregations", {})
+            top_rules = []
+            for b in aggs.get("top_rules", {}).get("buckets", []):
+                sev_val = b.get("min_sev", {}).get("value")
+                top_rules.append({
+                    "rule":     b["key"],
+                    "count":    b["doc_count"],
+                    "severity": int(sev_val) if sev_val is not None else 3,
+                })
+            return top_rules
+        except Exception:
+            return []
 
     # --- 3. Sparkline 7 jours ---
     body_7d = {
@@ -849,32 +916,37 @@ def get_exec_stats():
         },
     }
 
-    try:
-        r = _es("/suricata-*,snort-*/_search", body_7d)
-        r.raise_for_status()
-        buckets = (r.json().get("aggregations", {})
-                           .get("per_day", {})
-                           .get("buckets", []))
-        results["sparkline_7d"] = [
-            {"t": b.get("key_as_string", ""), "count": b.get("doc_count", 0)}
-            for b in buckets
-        ]
-    except Exception:
-        results["sparkline_7d"] = []
+    def _fetch_7d():
+        try:
+            r = _es("/suricata-*,snort-*/_search", body_7d)
+            r.raise_for_status()
+            buckets = (r.json().get("aggregations", {})
+                               .get("per_day", {})
+                               .get("buckets", []))
+            return [{"t": b.get("key_as_string", ""), "count": b.get("doc_count", 0)}
+                    for b in buckets]
+        except Exception:
+            return []
 
     # --- 4. IPs bloquées (AutoBlock) ---
-    try:
-        rb = requests.get(
-            config.NETWATCH_AUTOBLOCK_URL.rstrip("/") + "/blocked",
-            timeout=3,
-        )
-        if rb.status_code == 200:
-            blocked = rb.json()
-            results["blocked_count"] = len(blocked) if isinstance(blocked, list) else 0
-        else:
-            results["blocked_count"] = 0
-    except Exception:
-        results["blocked_count"] = 0
+    def _fetch_blocked():
+        try:
+            rb = _SESSION.get(config.NETWATCH_AUTOBLOCK_URL.rstrip("/") + "/blocked", timeout=3)
+            if rb.status_code == 200:
+                blocked = rb.json()
+                return len(blocked) if isinstance(blocked, list) else 0
+        except Exception:
+            pass
+        return 0
+
+    (stats_24h, err), top_rules, sparkline, blocked = _parallel(
+        _fetch_24h, _fetch_rules, _fetch_7d, _fetch_blocked)
+    results: dict = {
+        **stats_24h,
+        "top_rules":     top_rules,
+        "sparkline_7d":  sparkline,
+        "blocked_count": blocked,
+    }
 
     # --- 5. Score de posture ---
     crit   = results.get("critical_24h", 0)
@@ -929,8 +1001,10 @@ def get_weird_events(size=50):
 # Flows — T_019                                                        #
 # ------------------------------------------------------------------ #
 
+@_ttl_cache(300)
 def _index_exists(pattern):
-    """Retourne True si le pattern d'index contient au moins un document."""
+    """Retourne True si le pattern d'index contient au moins un document.
+    Mis en cache 5 min : la présence d'un index ne change pas à la seconde."""
     try:
         r = _es(f"/{pattern}/_count", method="get")
         if r.status_code in (400, 404):
@@ -941,6 +1015,7 @@ def _index_exists(pattern):
         return False
 
 
+@_ttl_cache(60)
 def get_flows_stats():
     """
     Top talkers (src/dst), top proto/ports, timeline 24h.
@@ -1005,6 +1080,11 @@ def get_flows_stats():
                 return {"ip": b["key"],
                         "bytes": int(b.get("bytes", {}).get("value") or 0),
                         "count": b["doc_count"]}
+
+            # Index netflow-* présent mais vide sur 24h (ex. quelques docs de
+            # test GoFlow2) → ne pas afficher « 0 B » alors que Zeek a des flux.
+            if not aggs.get("top_src", {}).get("buckets"):
+                raise LookupError("netflow-* sans données sur 24h")
 
             return {
                 "source": "netflow",
@@ -1138,10 +1218,35 @@ def _ip_filter(ip):
     }]
 
 
+def _pct_aggs(field):
+    """Sous-aggs percentiles p50/p95/p99 + compte pour un champ de durée."""
+    return {
+        "pct": {"percentiles": {"field": field, "percents": [50, 95, 99]}},
+        "cnt": {"value_count": {"field": field}},
+    }
+
+
+def _pct_entry(agg, conv):
+    """Bucket {pct, cnt} → {p50, p95, p99, count} ou None si aucun échantillon."""
+    cnt = int(agg.get("cnt", {}).get("value") or 0)
+    if cnt <= 0:
+        return None
+    pts = agg.get("pct", {}).get("values", {})
+    return {
+        "p50":   conv(pts.get("50.0")),
+        "p95":   conv(pts.get("95.0")),
+        "p99":   conv(pts.get("99.0")),
+        "count": cnt,
+    }
+
+
+@_ttl_cache(60)
 def get_art_stats(ip=None):
     """
     Application Response Time p50/p95/p99 par service (http/dns/tls).
     Essaie art.log → fallback conn.log (HTTP/TLS) et dns.log (RTT DNS natif).
+    Une seule requête ES : la sonde art.log et les 3 fallbacks sont des
+    filter-aggs de la même recherche (4 aller-retours → 1).
     ip : si fourni, restreint aux échanges impliquant ce device (orig ou resp).
     Retourne (data: dict, error: str|None).
     """
@@ -1169,167 +1274,118 @@ def get_art_stats(ip=None):
         except (TypeError, ValueError):
             return None
 
-    # ── 1. Vérifier si art.log est indexé ──
-    art_field = None
-    svc_field = None
-    try:
-        r_chk = _es("/zeek-*/_search", {
-            "size": 1,
-            "query": {
-                "bool": {
-                    "should": [
-                        {"term":   {"log.file.path.keyword": "/zeek/logs/art.log"}},
-                        {"exists": {"field": "art.art_ms"}},
-                        {"exists": {"field": "art_ms"}},
-                    ],
-                    "minimum_should_match": 1,
-                }
+    body = {
+        "size": 0,
+        "query": {"bool": {"filter": [{"range": {"@timestamp": {"gte": "now-24h"}}}] + ip_filter}},
+        "aggs": {
+            # Sonde art.log : `global` = hors fenêtre 24h et hors filtre IP, comme
+            # avant (on veut savoir si le log existe, pas s'il a bougé aujourd'hui).
+            "art_probe": {
+                "global": {},
+                "aggs": {"probe": {
+                    "filter": {"bool": {
+                        "should": [
+                            {"term":   {"log.file.path.keyword": "/zeek/logs/art.log"}},
+                            {"exists": {"field": "art.art_ms"}},
+                            {"exists": {"field": "art_ms"}},
+                        ],
+                        "minimum_should_match": 1,
+                    }},
+                    "aggs": {"sample": {"top_hits": {
+                        "size": 1,
+                        "_source": ["art.art_ms", "art_ms", "art.service", "service"],
+                    }}},
+                }},
             },
-            "_source": ["art.art_ms", "art_ms", "art.service", "service"],
-        })
-        if r_chk.status_code == 200:
-            data_chk = r_chk.json()
-            if data_chk.get("hits", {}).get("total", {}).get("value", 0) > 0:
-                src = (data_chk.get("hits", {}).get("hits", [{}])[0]).get("_source", {})
-                if src.get("art", {}).get("art_ms") is not None:
-                    art_field = "art.art_ms"
-                    svc_field = "art.service"
-                elif "art_ms" in src:
-                    art_field = "art_ms"
-                    svc_field = "service"
-    except Exception:
-        pass
+            "dns": {
+                "filter": {"bool": {"filter": [
+                    {"term":   {"log.file.path.keyword": "/zeek/logs/dns.log"}},
+                    {"exists": {"field": "rtt"}},
+                ]}},
+                "aggs": _pct_aggs("rtt"),
+            },
+            "http": {
+                "filter": {"bool": {"filter": [
+                    {"term":   {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    {"exists": {"field": "duration"}},
+                    {"term":   {"service": "http"}},
+                ]}},
+                "aggs": _pct_aggs("duration"),
+            },
+            "tls": {
+                "filter": {"bool": {"filter": [
+                    {"term":   {"log.file.path.keyword": "/zeek/logs/conn.log"}},
+                    {"exists": {"field": "duration"}},
+                    {"bool": {"should": [{"term": {"service": "ssl"}}, {"term": {"service": "tls"}}],
+                              "minimum_should_match": 1}},
+                ]}},
+                "aggs": _pct_aggs("duration"),
+            },
+        },
+    }
 
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        aggs = r.json().get("aggregations", {})
+    except requests.exceptions.ConnectionError:
+        return result, "Elasticsearch non joignable"
+    except Exception as e:
+        return result, str(e)[:120]
+
+    # ── 1. art.log présent → aggs dédiées par service (2e requête, rare) ──
+    probe_hits = (aggs.get("art_probe", {}).get("probe", {}).get("sample", {})
+                      .get("hits", {}).get("hits", []))
+    art_field = svc_field = None
+    if probe_hits:
+        src = probe_hits[0].get("_source", {})
+        if src.get("art", {}).get("art_ms") is not None:
+            art_field, svc_field = "art.art_ms", "art.service"
+        elif "art_ms" in src:
+            art_field, svc_field = "art_ms", "service"
     if art_field:
         try:
             r_art = _es("/zeek-*/_search", {
                 "size": 0,
-                "query": {
-                    "bool": {
-                        "filter": ip_filter,
-                        "should": [
-                            {"term": {"log.file.path.keyword": "/zeek/logs/art.log"}},
-                            {"exists": {"field": art_field}},
-                        ],
-                        "minimum_should_match": 1,
-                    }
-                },
-                "aggs": {
-                    "by_svc": {
-                        "terms": {"field": svc_field, "size": 10},
-                        "aggs": {
-                            "pct": {
-                                "percentiles": {
-                                    "field": art_field,
-                                    "percents": [50, 95, 99],
-                                }
-                            },
-                            "cnt": {"value_count": {"field": art_field}},
-                        },
-                    }
-                },
+                "query": {"bool": {
+                    "filter": ip_filter,
+                    "should": [
+                        {"term":   {"log.file.path.keyword": "/zeek/logs/art.log"}},
+                        {"exists": {"field": art_field}},
+                    ],
+                    "minimum_should_match": 1,
+                }},
+                "aggs": {"by_svc": {
+                    "terms": {"field": svc_field, "size": 10},
+                    "aggs": _pct_aggs(art_field),
+                }},
             })
             r_art.raise_for_status()
-            for b in (r_art.json().get("aggregations", {})
-                                   .get("by_svc", {}).get("buckets", [])):
+            for b in r_art.json().get("aggregations", {}).get("by_svc", {}).get("buckets", []):
                 svc = b["key"].lower()
-                if svc not in result:
-                    continue
-                pts = b.get("pct", {}).get("values", {})
-                result[svc] = {
-                    "p50":   _ms_direct(pts.get("50.0")),
-                    "p95":   _ms_direct(pts.get("95.0")),
-                    "p99":   _ms_direct(pts.get("99.0")),
-                    "count": int(b.get("cnt", {}).get("value") or 0),
-                }
+                entry = _pct_entry(b, _ms_direct)
+                if svc in result and entry:
+                    result[svc] = entry
             return result, None
         except Exception:
-            pass
+            pass  # → fallback conn/dns déjà calculé ci-dessous
 
-    # ── 2. DNS rtt natif du dns.log Zeek ──
-    try:
-        r_dns = _es("/zeek-*/_search", {
-            "size": 0,
-            "query": {
-                "bool": {
-                    "filter": [
-                        {"range": {"@timestamp": {"gte": "now-24h"}}},
-                        {"term":  {"log.file.path.keyword": "/zeek/logs/dns.log"}},
-                        {"exists": {"field": "rtt"}},
-                    ] + ip_filter
-                }
-            },
-            "aggs": {
-                "pct": {"percentiles": {"field": "rtt", "percents": [50, 95, 99]}},
-                "cnt": {"value_count": {"field": "rtt"}},
-            },
-        })
-        if r_dns.status_code == 200:
-            aggs = r_dns.json().get("aggregations", {})
-            pts  = aggs.get("pct", {}).get("values", {})
-            cnt  = int(aggs.get("cnt", {}).get("value") or 0)
-            if cnt > 0:
-                result["dns"] = {
-                    "p50":   _ms(pts.get("50.0")),
-                    "p95":   _ms(pts.get("95.0")),
-                    "p99":   _ms(pts.get("99.0")),
-                    "count": cnt,
-                }
-    except Exception:
-        pass
-
-    # ── 3. HTTP & TLS : durée conn.log par service ──
-    for svc_key, extra_filter in [
-        ("http", [{"term": {"service": "http"}}]),
-        ("tls",  [{
-            "bool": {
-                "should": [
-                    {"term": {"service": "ssl"}},
-                    {"term": {"service": "tls"}},
-                ],
-                "minimum_should_match": 1,
-            }
-        }]),
-    ]:
-        try:
-            r_svc = _es("/zeek-*/_search", {
-                "size": 0,
-                "query": {
-                    "bool": {
-                        "filter": [
-                            {"range": {"@timestamp": {"gte": "now-24h"}}},
-                            {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
-                            {"exists": {"field": "duration"}},
-                        ] + extra_filter + ip_filter,
-                    }
-                },
-                "aggs": {
-                    "pct": {"percentiles": {"field": "duration", "percents": [50, 95, 99]}},
-                    "cnt": {"value_count": {"field": "duration"}},
-                },
-            })
-            if r_svc.status_code == 200:
-                aggs = r_svc.json().get("aggregations", {})
-                pts  = aggs.get("pct", {}).get("values", {})
-                cnt  = int(aggs.get("cnt", {}).get("value") or 0)
-                if cnt > 0:
-                    result[svc_key] = {
-                        "p50":   _ms(pts.get("50.0")),
-                        "p95":   _ms(pts.get("95.0")),
-                        "p99":   _ms(pts.get("99.0")),
-                        "count": cnt,
-                    }
-        except Exception:
-            pass
+    # ── 2. Fallback : DNS rtt natif, HTTP/TLS durée conn.log ──
+    for svc in ("dns", "http", "tls"):
+        entry = _pct_entry(aggs.get(svc, {}), _ms)
+        if entry:
+            result[svc] = entry
 
     return result, None
 
 
+@_ttl_cache(60)
 def get_tcp_perf(ip=None):
     """
     Métriques de santé TCP depuis zeek-* conn.log (24h).
-    RTT depuis conn.rtt (Zeek 6+), retransmissions via history,
-    zero-windows via history.
+    RTT depuis conn.rtt (Zeek 6+), retransmissions et zero-windows via history.
+    Une seule requête ES : RTT, volume par IP, retransmissions et zero-windows
+    sont des filter-aggs de la même recherche (4 aller-retours → 1).
     ip : si fourni, restreint aux échanges impliquant ce device (orig ou resp).
     Retourne (data: dict, error: str|None).
     """
@@ -1346,88 +1402,68 @@ def get_tcp_perf(ip=None):
         {"term": {"proto": "tcp"}},
     ] + _ip_filter(ip)
 
+    body = {
+        "size": 0,
+        "query": {"bool": {"filter": base}},
+        "aggs": {
+            "rtt": {
+                "filter": {"exists": {"field": "rtt"}},
+                "aggs": {
+                    "avg": {"avg": {"field": "rtt"}},
+                    "pct": {"percentiles": {"field": "rtt", "percents": [95]}},
+                    "cnt": {"value_count": {"field": "rtt"}},
+                },
+            },
+            # Volume total par IP source (dénominateur du % retransmissions)
+            "per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 100}},
+            # history contient T ou t → retransmission
+            "retrans": {
+                "filter": {"regexp": {"history.keyword": ".*[Tt].*"}},
+                "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
+            },
+            # history contient W ou w → zero-window
+            "zero_win": {"filter": {"regexp": {"history.keyword": ".*[Ww].*"}}},
+        },
+    }
+
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        aggs = r.json().get("aggregations", {})
+    except requests.exceptions.ConnectionError:
+        return result, "Elasticsearch non joignable"
+    except Exception as e:
+        return result, str(e)[:120]
+
     # ── RTT ──
-    try:
-        r_rtt = _es("/zeek-*/_search", {
-            "size": 0,
-            "query": {"bool": {"filter": base + [{"exists": {"field": "rtt"}}]}},
-            "aggs": {
-                "avg": {"avg": {"field": "rtt"}},
-                "pct": {"percentiles": {"field": "rtt", "percents": [95]}},
-                "cnt": {"value_count": {"field": "rtt"}},
-            },
-        })
-        if r_rtt.status_code == 200:
-            aggs = r_rtt.json().get("aggregations", {})
-            cnt  = int(aggs.get("cnt", {}).get("value") or 0)
-            avg  = aggs.get("avg", {}).get("value")
-            p95  = aggs.get("pct", {}).get("values", {}).get("95.0")
-            if cnt > 0:
-                if avg is not None and not math.isnan(float(avg)):
-                    result["avg_rtt_ms"] = round(float(avg) * 1000, 2)
-                if p95 is not None and not math.isnan(float(p95)):
-                    result["p95_rtt_ms"] = round(float(p95) * 1000, 2)
-    except Exception:
-        pass
+    rtt = aggs.get("rtt", {})
+    if int(rtt.get("cnt", {}).get("value") or 0) > 0:
+        avg = rtt.get("avg", {}).get("value")
+        p95 = rtt.get("pct", {}).get("values", {}).get("95.0")
+        if avg is not None and not math.isnan(float(avg)):
+            result["avg_rtt_ms"] = round(float(avg) * 1000, 2)
+        if p95 is not None and not math.isnan(float(p95)):
+            result["p95_rtt_ms"] = round(float(p95) * 1000, 2)
 
-    # ── Top IPs par retransmissions (history contient T ou t) ──
-    try:
-        r_tot = _es("/zeek-*/_search", {
-            "size": 0,
-            "query": {"bool": {"filter": base}},
-            "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 100}}},
-        })
-        total_per_ip = {}
-        if r_tot.status_code == 200:
-            for b in (r_tot.json().get("aggregations", {})
-                                   .get("per_ip", {}).get("buckets", [])):
-                total_per_ip[b["key"]] = b["doc_count"]
+    # ── Top IPs par retransmissions ──
+    total_per_ip = {b["key"]: b["doc_count"]
+                    for b in aggs.get("per_ip", {}).get("buckets", [])}
+    rows = []
+    for b in aggs.get("retrans", {}).get("per_ip", {}).get("buckets", []):
+        ip_, cnt = b["key"], b["doc_count"]
+        tot = total_per_ip.get(ip_, cnt)
+        rows.append({"ip": ip_, "count": cnt,
+                     "retransmit_pct": round(cnt / tot * 100, 2) if tot > 0 else 0.0})
+    rows.sort(key=lambda x: x["retransmit_pct"], reverse=True)
+    result["top_retransmit_ips"] = rows[:10]
 
-        r_rt = _es("/zeek-*/_search", {
-            "size": 0,
-            "query": {
-                "bool": {
-                    "filter": base,
-                    "must": [{"regexp": {"history.keyword": ".*[Tt].*"}}],
-                }
-            },
-            "aggs": {"per_ip": {"terms": {"field": "id.orig_h.keyword", "size": 10}}},
-        })
-        if r_rt.status_code == 200:
-            rows = []
-            for b in (r_rt.json().get("aggregations", {})
-                                   .get("per_ip", {}).get("buckets", [])):
-                ip  = b["key"]
-                cnt = b["doc_count"]
-                tot = total_per_ip.get(ip, cnt)
-                pct = round(cnt / tot * 100, 2) if tot > 0 else 0.0
-                rows.append({"ip": ip, "retransmit_pct": pct, "count": cnt})
-            rows.sort(key=lambda x: x["retransmit_pct"], reverse=True)
-            result["top_retransmit_ips"] = rows[:10]
-    except Exception:
-        pass
-
-    # ── Zero-windows (history contient W ou w) ──
-    try:
-        r_zw = _es("/zeek-*/_search", {
-            "size": 0,
-            "query": {
-                "bool": {
-                    "filter": base,
-                    "must": [{"regexp": {"history.keyword": ".*[Ww].*"}}],
-                }
-            },
-        })
-        if r_zw.status_code == 200:
-            result["zero_windows_count"] = int(
-                r_zw.json().get("hits", {}).get("total", {}).get("value", 0)
-            )
-    except Exception:
-        pass
+    # ── Zero-windows ──
+    result["zero_windows_count"] = int(aggs.get("zero_win", {}).get("doc_count", 0))
 
     return result, None
 
 
+@_ttl_cache(60)
 def get_top_talkers(size=10, ip_ranges=None):
     """
     Top devices par volume (octets, 24h) depuis conn.log.
@@ -1489,50 +1525,26 @@ _OFF_SCRIPT = (
 )
 
 
-def _run_sla_query(index, base_filters, field, days, biz_filter=None):
-    """
-    date_histogram 1h query for SLA compliance.
-    biz_filter: None (all hours) | "business" | "off"
-    Returns list of bucket dicts; [] on any error.
-    """
-    extra = []
-    if biz_filter == "business":
-        extra = [{"script": {"script": {"source": _BIZ_SCRIPT, "lang": "painless"}}}]
-    elif biz_filter == "off":
-        extra = [{"script": {"script": {"source": _OFF_SCRIPT, "lang": "painless"}}}]
+_BIZ_FILTERS = {
+    None:       [],
+    "business": [{"script": {"script": {"source": _BIZ_SCRIPT, "lang": "painless"}}}],
+    "off":      [{"script": {"script": {"source": _OFF_SCRIPT, "lang": "painless"}}}],
+}
 
-    body = {
-        "size": 0,
-        "query": {"bool": {"filter": [
-            {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
-            *base_filters,
-            *extra,
-        ]}},
-        "aggs": {
-            "per_hour": {
-                "date_histogram": {
-                    "field":          "@timestamp",
-                    "fixed_interval": "1h",
-                    "min_doc_count":  1,
-                },
-                "aggs": {
-                    "p95": {
-                        "percentiles": {
-                            "field":    field,
-                            "percents": [95],
-                        }
-                    }
-                },
-            }
-        },
+
+def _sla_filter_agg(base_filters, field, biz_filter):
+    """filter-agg (spec × plage horaire) → date_histogram 1h → p95 du champ."""
+    return {
+        "filter": {"bool": {"filter": [*base_filters, *_BIZ_FILTERS[biz_filter]]}},
+        "aggs": {"per_hour": {
+            "date_histogram": {
+                "field":          "@timestamp",
+                "fixed_interval": "1h",
+                "min_doc_count":  1,
+            },
+            "aggs": {"p95": {"percentiles": {"field": field, "percents": [95]}}},
+        }},
     }
-
-    try:
-        r = _es(f"/{index}/_search", body)
-        r.raise_for_status()
-        return r.json().get("aggregations", {}).get("per_hour", {}).get("buckets", [])
-    except Exception:
-        return []
 
 
 def _compute_sla_compliance(name, target_ms, target_pct, buckets, scale_ms, days):
@@ -1608,6 +1620,7 @@ def _compute_sla_compliance(name, target_ms, target_pct, buckets, scale_ms, days
     }
 
 
+@_ttl_cache(120)
 def get_sla_stats(days=7):
     """
     SLA compliance sur `days` jours pour HTTP ART, DNS RTT, TCP RTT.
@@ -1616,15 +1629,17 @@ def get_sla_stats(days=7):
       - DNS RTT  : zeek-* dns.log   (rtt,      secondes → ms)
       - TCP RTT  : zeek-* conn.log  (rtt > 0,  secondes → ms, proto=tcp)
     Business hours : L-V 8h-18h UTC (filtre Painless).
+    Une seule requête ES : les 3 SLA × 3 plages horaires sont 9 filter-aggs de
+    la même recherche (9 aller-retours → 1).
     Retourne (data: dict, error: str|None).
     """
     target_pct = config.SLA_TARGET_PCT
 
     sla_specs = [
         {
+            "key":       "http",
             "name":      "HTTP ART",
             "target_ms": config.SLA_HTTP_TARGET_MS,
-            "index":     "zeek-*",
             "filters":   [
                 {"term":   {"log.file.path.keyword": "/zeek/logs/http.log"}},
                 {"exists": {"field": "duration"}},
@@ -1633,9 +1648,9 @@ def get_sla_stats(days=7):
             "scale_ms": True,
         },
         {
+            "key":       "dns",
             "name":      "DNS RTT",
             "target_ms": config.SLA_DNS_TARGET_MS,
-            "index":     "zeek-*",
             "filters":   [
                 {"term":   {"log.file.path.keyword": "/zeek/logs/dns.log"}},
                 {"exists": {"field": "rtt"}},
@@ -1644,9 +1659,9 @@ def get_sla_stats(days=7):
             "scale_ms": True,
         },
         {
+            "key":       "tcp",
             "name":      "TCP RTT",
             "target_ms": config.SLA_RTT_TARGET_MS,
-            "index":     "zeek-*",
             "filters":   [
                 {"term":  {"log.file.path.keyword": "/zeek/logs/conn.log"}},
                 {"term":  {"proto": "tcp"}},
@@ -1656,29 +1671,43 @@ def get_sla_stats(days=7):
             "scale_ms": True,
         },
     ]
+    windows = [(None, "slas"), ("business", "business_hours"), ("off", "off_hours")]
+
+    body = {
+        "size": 0,
+        "query": {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
+        "aggs": {
+            f"{spec['key']}__{biz or 'all'}": _sla_filter_agg(spec["filters"], spec["field"], biz)
+            for spec in sla_specs for biz, _ in windows
+        },
+    }
+
+    aggs, error = {}, None
+    try:
+        r = _es("/zeek-*/_search", body)
+        r.raise_for_status()
+        aggs = r.json().get("aggregations", {})
+    except requests.exceptions.ConnectionError:
+        error = "Elasticsearch non joignable"
+    except Exception as e:
+        error = str(e)[:120]
 
     result: dict = {
         "slas":           [],
         "business_hours": {"slas": []},
         "off_hours":      {"slas": []},
     }
-
     for spec in sla_specs:
-        for biz_filter, target_key in [
-            (None,       "slas"),
-            ("business", "business_hours"),
-            ("off",      "off_hours"),
-        ]:
-            buckets = _run_sla_query(
-                spec["index"], spec["filters"], spec["field"], days, biz_filter
-            )
+        for biz, target_key in windows:
+            buckets = (aggs.get(f"{spec['key']}__{biz or 'all'}", {})
+                           .get("per_hour", {}).get("buckets", []))
             entry = _compute_sla_compliance(
                 spec["name"], spec["target_ms"], target_pct,
                 buckets, spec["scale_ms"], days,
             )
-            if biz_filter is None:
+            if biz is None:
                 result["slas"].append(entry)
             else:
                 result[target_key]["slas"].append(entry)
 
-    return result, None
+    return result, error
