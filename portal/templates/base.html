@@ -233,7 +233,7 @@
       <h5 class="mb-0 page-title">{% block page_title %}{% endblock %}</h5>
       <div class="topbar-actions">
         {% if proxmox_node is defined and proxmox_node and proxmox_host %}
-        <span class="badge bg-dark d-none d-xl-inline-flex">
+        <span class="badge bg-dark topbar-proxmox">
           <i class="bi bi-box me-1"></i>Proxmox {{ proxmox_node }}
         </span>
         {% endif %}

@@ -468,8 +468,13 @@ body.nav-rail .nav-rail-btn .bi { transform: rotate(180deg); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.topbar-actions { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.topbar-actions { display: flex; align-items: center; gap: .6rem; flex-shrink: 1; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.topbar .page-title { flex-shrink: 0; max-width: 42%; }
 .topbar .form-select-sm { font-size: .78rem; }
+#hostgroup-filter { max-width: 170px !important; }
+/* Badge Proxmox : seulement sur très grand écran, la topbar est déjà dense */
+.topbar-proxmox { display: none; }
+@media (min-width: 1600px) { .topbar-proxmox { display: inline-flex; } }
 /* Largeur intermédiaire : le titre garde la priorité, les actions passent
    dessous plutôt que de le tronquer */
 @media (max-width: 1250px) {

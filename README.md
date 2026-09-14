@@ -44,14 +44,26 @@
 <table>
 <tr>
 <td align="center">
+<img src="docs/screenshots/portal-dashboard.png" alt="Portail — Dashboard" width="100%"/>
+<br/><em>Home — triage (état global + points d'attention), KPIs avec sparklines et tendances, volume réseau, top talkers, temps de réponse, alertes IDS, points d'écoute PCAP — le tout sur la plage temporelle globale (1 h → 30 j)</em>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/screenshots/portal-flows.png" alt="Portail — Flux & performance" width="100%"/>
+<br/><em>Flux & performance — top sources / ports (drill-down vers le pivot IP), Application Response Time p50/p95/p99, santé TCP (RTT, retransmissions, zero-window)</em>
+</td>
+</tr>
+<tr>
+<td align="center">
 <img src="docs/screenshots/portal-status.png" alt="Portail — Services Status" width="100%"/>
 <br/><em>Services Status — supervision temps réel des services Docker (Elasticsearch, Grafana, Prometheus, AutoBlock, IA locale)</em>
 </td>
 </tr>
 <tr>
 <td align="center">
-<img src="docs/screenshots/portal-dashboard.png" alt="Portail — Dashboard" width="100%"/>
-<br/><em>Dashboard — vue observabilité réseau : trafic 24 h, RTT/ART, top talkers, alertes IDS, points d'écoute PCAP</em>
+<img src="docs/screenshots/portal-dashboard-light.png" alt="Portail — thème clair" width="100%"/>
+<br/><em>Même portail en thème clair — un seul design system, tokens CSS, graphiques et jauges qui suivent le thème</em>
 </td>
 </tr>
 </table>
