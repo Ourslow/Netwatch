@@ -2,32 +2,7 @@
 {% block title %}Tableau de bord personnalisé — NetWatch Portal{% endblock %}
 {% block page_title %}Tableau de bord personnalisé{% endblock %}
 
-{% block head %}
-<style>
-  #widget-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-  }
-  @media (max-width: 900px) { #widget-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 560px) { #widget-grid { grid-template-columns: 1fr; } }
-  .widget[data-size="sm"] { grid-column: span 1; }
-  .widget[data-size="md"] { grid-column: span 2; }
-  .widget[data-size="lg"] { grid-column: span 4; }
-  @media (max-width: 900px) { .widget[data-size="lg"], .widget[data-size="md"] { grid-column: span 2; } }
-  @media (max-width: 560px) { .widget { grid-column: span 1 !important; } }
-
-  .widget { min-height: 160px; }
-  .widget-drag-handle { cursor: grab; opacity: .55; }
-  .widget-drag-handle:hover { opacity: 1; }
-  #widget-grid.edit-mode .widget { border: 1px dashed var(--border-strong, #2a3a52); }
-  .widget.drag-over { outline: 2px dashed var(--accent, #22d3ee); outline-offset: 2px; }
-  .widget-body-mini { font-size: .8rem; }
-  .widget-stat { text-align: center; }
-  .widget-stat .v { font-size: 1.4rem; font-weight: 700; }
-  .widget-stat .l { font-size: .68rem; color: var(--text-muted, #8fa0b8); text-transform: uppercase; letter-spacing: .04em; }
-</style>
-{% endblock %}
+{# Styles : section 11.3c « Tableau de bord personnalisé » de static/css/style.css #}
 
 {% block topbar_actions %}
 <div class="btn-group btn-group-sm">

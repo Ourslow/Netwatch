@@ -2,40 +2,7 @@
 {% block title %}Dépendances applicatives — NetWatch Portal{% endblock %}
 {% block page_title %}Dépendances applicatives{% endblock %}
 
-{% block head %}
-<style>
-  #depmap-wrap {
-    height: calc(100vh - 160px);
-    min-height: 420px;
-    border-radius: .5rem;
-    overflow: hidden;
-    background: #0a0e16;
-    position: relative;
-  }
-  #depmap-svg { width: 100%; height: 100%; display: block; }
-  #depmap-overlay {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: .6rem; color: #8fa0b8; font-size: .88rem; pointer-events: none;
-  }
-  #depmap-overlay.hidden { display: none; }
-  .depmap-node circle { stroke: #0a0e16; stroke-width: 1.5px; cursor: pointer; }
-  .depmap-node text { fill: #dbe4f0; font-size: 10px; pointer-events: none; }
-  .depmap-node.dim circle, .depmap-node.dim text { opacity: .18; }
-  .depmap-link { stroke: #3a4a63; stroke-opacity: .55; fill: none; }
-  .depmap-link.dim { stroke-opacity: .06; }
-  .depmap-tooltip {
-    position: absolute; pointer-events: none; z-index: 5;
-    background: #111827; border: 1px solid #1e2d3d; border-radius: .4rem;
-    padding: .5rem .65rem; font-size: .78rem; color: #dbe4f0;
-    box-shadow: 0 8px 24px -8px rgba(0,0,0,.6); display: none; max-width: 240px;
-  }
-  #depmap-legend {
-    display: flex; flex-wrap: wrap; gap: 1rem; font-size: .74rem; color: #8fa0b8;
-  }
-  #depmap-legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; }
-</style>
-{% endblock %}
+{# Styles : section 11.3b « Carte des dépendances applicatives » de static/css/style.css #}
 
 {% block topbar_actions %}
 <div class="btn-group btn-group-sm" role="group">
@@ -57,9 +24,9 @@
 <div class="card mb-3">
   <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
     <div id="depmap-legend">
-      <span><span class="swatch" style="background:#22d3ee"></span>Interne</span>
-      <span><span class="swatch" style="background:#f5a524"></span>Externe (app reconnue)</span>
-      <span><span class="swatch" style="background:#57647a"></span>Externe (non catalogué)</span>
+      <span><span class="swatch swatch-internal"></span>Interne</span>
+      <span><span class="swatch swatch-app"></span>Externe (app reconnue)</span>
+      <span><span class="swatch swatch-unknown"></span>Externe (non catalogué)</span>
       <span>Épaisseur du lien = volume (octets)</span>
     </div>
     <span class="text-muted small"><b id="depmap-stat-nodes">—</b> nœuds · <b id="depmap-stat-edges">—</b> liens</span>
@@ -69,7 +36,7 @@
 <div id="depmap-wrap" class="card">
   <svg id="depmap-svg"></svg>
   <div id="depmap-overlay">
-    <span class="spinner-border spinner-border-sm" style="color:#22d3ee"></span>
+    <span class="spinner-border spinner-border-sm"></span>
     <span>Chargement…</span>
   </div>
   <div class="depmap-tooltip" id="depmap-tooltip"></div>
@@ -78,9 +45,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/d3/d3.min.js') }}"></script>
 <script>
 (function () {
+  var TH       = NW.chartTheme();   /* couleurs de nœuds = tokens du design system (thème clair inclus) */
   var svg      = d3.select('#depmap-svg');
   var overlay  = document.getElementById('depmap-overlay');
   var tooltip  = document.getElementById('depmap-tooltip');
@@ -101,8 +69,8 @@
   }
 
   function nodeColor(d) {
-    if (d.internal) return '#22d3ee';
-    return d.category ? '#f5a524' : '#57647a';
+    if (d.internal) return TH.accent;
+    return d.category ? TH.warn : TH.tick;
   }
 
   function load() {
@@ -178,7 +146,7 @@
         tooltip.innerHTML = '<b>' + esc(d.label) + '</b><br>'
           + (d.id !== d.label ? esc(d.id) + '<br>' : '')
           + (d.category ? esc(d.category) + '<br>' : '')
-          + fmtBytes(d.bytes) + ' échangés';
+          + NW.fmtBytes(d.bytes) + ' échangés';
       })
       .on('mousemove', function (ev) {
         tooltip.style.left = (ev.offsetX + 16) + 'px';
@@ -210,14 +178,6 @@
   function clearHighlight() {
     gNodes.classed('dim', false);
     gLinks.classed('dim', false);
-  }
-
-  function fmtBytes(b) {
-    if (!b) return '0 B';
-    var units = ['B', 'KB', 'MB', 'GB'];
-    var i = 0;
-    while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
-    return b.toFixed(1) + ' ' + units[i];
   }
 
   document.querySelectorAll('.depmap-day-btn').forEach(function (btn) {

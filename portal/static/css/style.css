@@ -1512,6 +1512,68 @@ thead .tool-highlight { border-top: 2px solid var(--accent); }
 .nw-sb-fill { height: 100%; border-radius: 2px; }
 .nw-sb-empty { padding: 1.5rem .5rem; text-align: center; color: var(--text-dim); font-size: .72rem; }
 
+/* ---- 11.3b Carte des dépendances applicatives (app_map) ---- */
+#depmap-wrap {
+  height: calc(100vh - 160px);
+  min-height: 420px;
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--bg-base);
+  position: relative;
+  border: 1px solid var(--border);
+}
+#depmap-svg { width: 100%; height: 100%; display: block; }
+#depmap-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .6rem; color: var(--text-muted); font-size: .88rem; pointer-events: none;
+}
+#depmap-overlay.hidden { display: none; }
+#depmap-overlay .spinner-border { color: var(--accent); }
+.depmap-node circle { stroke: var(--bg-base); stroke-width: 1.5px; cursor: pointer; }
+.depmap-node text { fill: var(--text); font-size: 10px; pointer-events: none; font-family: var(--font-mono); }
+.depmap-node.dim circle, .depmap-node.dim text { opacity: .18; }
+.depmap-link { stroke: var(--border-strong); stroke-opacity: .55; fill: none; }
+.depmap-link.dim { stroke-opacity: .06; }
+.depmap-tooltip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--bg-elev-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  padding: .5rem .65rem; font-size: .78rem; color: var(--text);
+  box-shadow: var(--shadow-card); display: none; max-width: 240px;
+}
+#depmap-legend { display: flex; flex-wrap: wrap; gap: 1rem; font-size: .74rem; color: var(--text-muted); }
+#depmap-legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; }
+.swatch-internal { background: var(--accent); }
+.swatch-app      { background: var(--med); }
+.swatch-unknown  { background: var(--text-dim); }
+
+/* ---- 11.3c Tableau de bord personnalisé (widgets glisser-déposer) ---- */
+#widget-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.widget { min-height: 160px; }
+.widget[data-size="sm"] { grid-column: span 1; }
+.widget[data-size="md"] { grid-column: span 2; }
+.widget[data-size="lg"] { grid-column: span 4; }
+.widget-drag-handle { cursor: grab; opacity: .55; }
+.widget-drag-handle:hover { opacity: 1; }
+#widget-grid.edit-mode .widget { border: 1px dashed var(--border-strong); }
+.widget.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.widget-body-mini { font-size: .8rem; }
+.widget-stat { text-align: center; }
+.widget-stat .v { font-size: 1.4rem; font-weight: 700; color: var(--text-strong); font-feature-settings: "tnum"; }
+.widget-stat .l { font-size: .68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+@media (max-width: 900px) {
+  #widget-grid { grid-template-columns: repeat(2, 1fr); }
+  .widget[data-size="lg"], .widget[data-size="md"] { grid-column: span 2; }
+}
+@media (max-width: 560px) {
+  #widget-grid { grid-template-columns: 1fr; }
+  .widget { grid-column: span 1 !important; }
+}
+
 /* ---- 11.4 Login ---- */
 .login-body {
   display: flex; align-items: center; justify-content: center;
