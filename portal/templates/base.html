@@ -386,7 +386,7 @@
     { icon: 'bi-clipboard2-check',       label: 'Conformité',                url: '/compliance',       hint: 'NIS2 · NIST · ISO' },
     { icon: 'bi-robot',                  label: 'Agents IA',                 url: '/agents',           hint: 'Statut des agents' },
     { icon: 'bi-bar-chart-fill',         label: 'Grafana',                   url: '{{ grafana_url | browser_url }}', hint: 'Dashboards · alerting', blank: true },
-    {% if tool_urls.kibana %}{ icon: 'bi-search',        label: 'Kibana',  url: '{{ tool_urls.kibana | browser_url }}/app/discover', hint: 'Explorer les logs Zeek / IDS', blank: true },{% endif %}
+    {% if tool_urls.kibana %}{ icon: 'bi-search',        label: 'Kibana',  url: '{{ tool_urls.kibana | browser_url }}/app/discover#/?_a=(dataSource:(dataViewId:%27netwatch-zeek%27,type:dataView))', hint: 'Explorer les logs Zeek / IDS', blank: true },{% endif %}
     {% if tool_urls.ntopng %}{ icon: 'bi-pie-chart',     label: 'ntopng',  url: '{{ tool_urls.ntopng | browser_url }}', hint: 'Visibilité applicative nDPI', blank: true },{% endif %}
     {% if tool_urls.arkime %}{ icon: 'bi-hdd-stack-fill', label: 'Arkime', url: '{{ tool_urls.arkime | browser_url }}', hint: 'Full packet capture · sessions', blank: true },{% endif %}
     {% if tool_urls.netbox %}{ icon: 'bi-diagram-3',     label: 'NetBox',  url: '{{ tool_urls.netbox | browser_url }}', hint: 'Inventaire · IPAM', blank: true },{% endif %}

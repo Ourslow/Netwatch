@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup
 
 # ============================================================
 # Services d'observabilité complémentaires
@@ -15,6 +15,10 @@ observability:
 
 observability-stop:
 	docker compose stop blackbox kibana ntopng arkime netbox-worker netbox netbox-redis netbox-redis-cache netbox-postgres
+
+# Data views Kibana (zeek-*, suricata-*, snort-*, netflow-*, beacons, arkime) — Discover prêt à l'emploi
+kibana-setup:
+	bash scripts/setup-kibana.sh
 
 # Données de démo dans NetBox (site, préfixes, IP nommées) → /ip/<ip> et import hostgroups parlants
 demo-netbox:
@@ -253,6 +257,7 @@ help:
 	@echo "  make observability   Démarrer Blackbox, Kibana, ntopng, Arkime, NetBox"
 	@echo "  make arkime-init     Arkime : créer les index ES (premier lancement)"
 	@echo "  make arkime-reset    Arkime : repartir de zéro (index + templates)"
+	@echo "  make kibana-setup    Kibana : data views des index NetWatch (Discover)"
 	@echo "  make demo-netbox     Données de démo NetBox (site, préfixes, IP nommées)"
 	@echo "  make sim             Simuler 6h de trafic avec attaques"
 	@echo "  make sim-fast        Simuler 1h de trafic rapide"

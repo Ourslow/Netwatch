@@ -326,7 +326,7 @@ Cinq services choisis pour combler un **trou** de la stack de base, pas pour la 
 | **Arkime** `:8005` | Pas de **PCAP complet** interrogeable : l'analyse tshark porte sur des fichiers déposés. Arkime capture en continu et indexe les sessions dans l'ES existant. | Bouton « Arkime » sur `/pcap-analysis`, « PCAP » sur `/ip/<ip>` (sessions filtrées sur l'adresse). Premier lancement : `make arkime-init`. |
 | **NetBox** `:8000` | Des adresses **nues** : rien ne dit qui est 10.0.3.14. NetBox est la source de vérité inventaire/IPAM. | `/ip/<ip>` → carte « Contexte NetBox » (device, site, VLAN, rôle, tenant) ; `/hostgroups` → « Importer depuis NetBox » (un groupe par préfixe). Token API v2 dans `.env` (`NETBOX_TOKEN_KEY` + `NETBOX_TOKEN`). |
 | **ntopng** `:3001` | Classification applicative limitée au SNI. nDPI reconnaît 300+ protocoles en temps réel. | Bouton « ntopng » sur `/flows`. Capture sur `IFACE` (mode `host`), Redis embarqué dans l'image. |
-| **Kibana** `:5601` | Grafana est fait pour les dashboards, pas pour **fouiller** un log. | Bouton « Kibana » sur `/zeek` (Discover). Même version qu'Elasticsearch (8.13). |
+| **Kibana** `:5601` | Grafana est fait pour les dashboards, pas pour **fouiller** un log. | Bouton « Kibana » sur `/zeek` (Discover sur la data view Zeek) et sur `/ip/<ip>` (logs Zeek filtrés sur l'adresse). `make kibana-setup` crée les data views (zeek, suricata, snort, netflow, beacons, arkime). Même version qu'Elasticsearch (8.13). |
 
 ```bash
 # 1. Secrets dans .env (voir .env.example : ARKIME_PASSWORD_SECRET, NETBOX_* dont NETBOX_API_TOKEN_PEPPER,
@@ -335,9 +335,11 @@ Cinq services choisis pour combler un **trou** de la stack de base, pas pour la 
 make observability
 # 3. Arkime uniquement, une fois : index ES + utilisateur admin (make arkime-reset pour repartir de zéro)
 make arkime-init
-# 4. Optionnel — données de démo NetBox : site, préfixes, IP nommées → /ip/<ip> et import hostgroups
+# 4. Kibana : data views des index NetWatch (Discover prêt à l'emploi)
+make kibana-setup
+# 5. Optionnel — données de démo NetBox : site, préfixes, IP nommées → /ip/<ip> et import hostgroups
 make demo-netbox
-# 5. Vérifier
+# 6. Vérifier
 make health
 ```
 

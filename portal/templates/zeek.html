@@ -5,7 +5,7 @@
 {% block topbar_actions %}
 <span class="text-muted small">weird · files · x509</span>
 {% if tool_urls.kibana %}
-<a href="{{ tool_urls.kibana | browser_url }}/app/discover" target="_blank" class="btn btn-sm btn-outline-secondary" title="Recherche libre dans les logs Zeek / IDS (Kibana Discover)">
+<a href="{{ tool_urls.kibana | browser_url }}/app/discover#/?_a=(dataSource:(dataViewId:%27netwatch-zeek%27,type:dataView))" target="_blank" class="btn btn-sm btn-outline-secondary" title="Recherche libre dans les logs Zeek / IDS (Kibana Discover)">
   <i class="bi bi-search me-1"></i>Kibana
 </a>
 {% endif %}
