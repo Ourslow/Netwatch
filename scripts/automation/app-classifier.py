@@ -735,7 +735,10 @@ def es_request(es_url: str, method: str, path: str,
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            body = resp.read().decode("utf-8")
+            # HEAD (index_exists) et certaines réponses 2xx n'ont pas de corps :
+            # succès sans payload, pas une erreur JSON.
+            return json.loads(body) if body.strip() else {}
     except urllib.error.HTTPError as e:
         body_txt = e.read()[:300].decode(errors="replace") if e.fp else ""
         if verbose:
