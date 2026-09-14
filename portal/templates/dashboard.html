@@ -1,215 +1,153 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — NetWatch Portal{% endblock %}
-{% block page_title %}<span data-i18n="page_dashboard">Dashboard</span>{% endblock %}
+{% block page_title %}<span data-i18n="page_dashboard">Dashboard</span> <span class="text-muted fw-normal" style="font-size:.8rem">· 24 h</span>{% endblock %}
+
+{% block topbar_actions %}
+<span class="live-pill" title="KPIs rafraîchis toutes les 30 s"><span class="dot"></span><span data-i18n="live_30s">live 30 s</span></span>
+{% endblock %}
 
 {% block content %}
+{% set up_count = services | selectattr('status', 'eq', 'up') | list | length %}
 
-<!-- Statut Proxmox -->
-{% if not proxmox_configured %}
-<div class="alert alert-info d-flex align-items-center gap-2">
-  <i class="bi bi-info-circle-fill"></i>
-  <div>
-    Proxmox non configuré — déploiement ESXi/standalone. La gestion des VMs Proxmox est désactivée.
-  </div>
-</div>
-{% elif not proxmox_ok %}
-<div class="alert alert-warning d-flex align-items-center gap-2">
-  <i class="bi bi-exclamation-triangle-fill"></i>
-  <div>
-    Proxmox non joignable (<code>{{ proxmox_host }}</code>).
-    Vérifiez <code>.env</code> et que le serveur est accessible.
-  </div>
-</div>
-{% endif %}
-
-<!-- Cartes ressources nœud -->
-{% if node_status %}
+<!-- ── KPI strip ── -->
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="card stat-card">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <p class="stat-label">CPU</p>
-            <h3 class="stat-value">{{ node_status.cpu_pct }}%</h3>
-          </div>
-          <span class="stat-icon tone-info"><i class="bi bi-cpu"></i></span>
-        </div>
-        <div class="progress mt-2" style="height:5px">
-          <div class="progress-bar bg-info" style="width:{{ node_status.cpu_pct }}%"></div>
-        </div>
-      </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi">
+      <div class="kpi-head"><span class="kpi-label" data-i18n="dash_traffic">Trafic 24h</span><i class="bi bi-arrow-down-up text-info"></i></div>
+      <div class="kpi-value" id="kpi-traffic">—</div>
+      <div class="kpi-sub" id="kpi-traffic-sub" data-i18n="dash_traffic_sub">volume observé</div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card stat-card">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <p class="stat-label">RAM</p>
-            <h3 class="stat-value">{{ node_status.ram_pct }}%</h3>
-            <small class="text-muted">{{ node_status.ram_used | fmt_bytes }} / {{ node_status.ram_total | fmt_bytes }}</small>
-          </div>
-          <span class="stat-icon tone-warning"><i class="bi bi-memory"></i></span>
-        </div>
-        <div class="progress mt-2" style="height:5px">
-          <div class="progress-bar bg-warning" style="width:{{ node_status.ram_pct }}%"></div>
-        </div>
-      </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi {% if alert_stats and alert_stats.critical %}is-crit{% endif %}">
+      <div class="kpi-head"><span class="kpi-label" data-i18n="dash_alerts_24h">Alertes 24h</span><i class="bi bi-shield-exclamation text-danger"></i></div>
+      <div class="kpi-value" id="dash-24h" data-countup="{{ alert_stats.last_24h if alert_stats else 0 }}">{{ alert_stats.last_24h if alert_stats else 0 }}</div>
+      <div class="kpi-sub"><span id="dash-crit">{{ alert_stats.critical if alert_stats else 0 }}</span> <span data-i18n="dash_critical_7d">critiques · 7 j</span></div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card stat-card">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <p class="stat-label">Disque</p>
-            <h3 class="stat-value">{{ node_status.disk_used | fmt_bytes }}</h3>
-            <small class="text-muted">/ {{ node_status.disk_total | fmt_bytes }}</small>
-          </div>
-          <span class="stat-icon tone-success"><i class="bi bi-hdd"></i></span>
-        </div>
-      </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    {% set rtt = dashboard.tcp.avg_rtt_ms %}
+    <div class="kpi {% if rtt is not none %}{% if rtt < 50 %}is-ok{% elif rtt < 150 %}is-warn{% else %}is-crit{% endif %}{% endif %}">
+      <div class="kpi-head"><span class="kpi-label" data-i18n="dash_rtt">RTT moyen</span><i class="bi bi-heart-pulse text-success"></i></div>
+      <div class="kpi-value">{{ rtt if rtt is not none else '—' }}<small> ms</small></div>
+      <div class="kpi-sub">p95 {{ dashboard.tcp.p95_rtt_ms if dashboard.tcp.p95_rtt_ms is not none else '—' }} ms</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    {% set art = dashboard.art.http.p50 if dashboard.art.http.p50 is not none else dashboard.art.tls.p50 %}
+    <div class="kpi {% if art is not none %}{% if art < 200 %}is-ok{% elif art < 500 %}is-warn{% else %}is-crit{% endif %}{% endif %}">
+      <div class="kpi-head"><span class="kpi-label">ART p50</span><i class="bi bi-hourglass-split text-info"></i></div>
+      <div class="kpi-value">{{ art if art is not none else '—' }}<small> ms</small></div>
+      <div class="kpi-sub">HTTP / TLS · Application Response Time</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    {% set zw = dashboard.tcp.zero_windows_count %}
+    <div class="kpi {% if zw > 1000 %}is-crit{% elif zw > 100 %}is-warn{% endif %}">
+      <div class="kpi-head"><span class="kpi-label">Zero-windows</span><i class="bi bi-pause-circle text-warning"></i></div>
+      <div class="kpi-value" data-countup="{{ zw }}">{{ zw }}</div>
+      <div class="kpi-sub" data-i18n="dash_zw_sub">connexions TCP saturées</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi {% if services %}{% if up_count == services|length %}is-ok{% elif up_count > services|length / 2 %}is-warn{% else %}is-crit{% endif %}{% endif %}">
+      <div class="kpi-head"><span class="kpi-label" data-i18n="dash_services">Services</span><i class="bi bi-activity text-success"></i></div>
+      <div class="kpi-value">{{ up_count }}<small> / {{ services | length }}</small></div>
+      <div class="kpi-sub"><a href="{{ url_for('status') }}" class="text-muted" data-i18n="dash_services_sub">stack NetWatch · détail</a></div>
     </div>
   </div>
 </div>
-{% endif %}
 
-<!-- Résumé -->
+<!-- ── Volume 24h + Top talkers ── -->
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body">
-        <p class="stat-label" data-i18n="dash_vms_running">VMs actives</p>
-        {% set running = vms | selectattr('status','eq','running') | list | length %}
-        <h2 class="stat-value text-success">
-          <span data-countup="{{ running }}">{{ running }}</span>
-          <small class="text-muted fs-6">/ {{ vms | length }}</small>
-        </h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body">
-        <p class="stat-label" data-i18n="dash_vms_stopped">VMs arrêtées</p>
-        {% set stopped = vms | selectattr('status','ne','running') | list | length %}
-        <h2 class="stat-value text-secondary" data-countup="{{ stopped }}">{{ stopped }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body">
-        <p class="stat-label" data-i18n="dash_tools_oss">Outils open-source</p>
-        <h2 class="stat-value text-info" data-countup="{{ open_source_count }}">{{ open_source_count }}</h2>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card stat-card text-center">
-      <div class="card-body">
-        <p class="stat-label" data-i18n="dash_tools_com">Outils commerciaux</p>
-        <h2 class="stat-value text-warning" data-countup="{{ commercial_count }}">{{ commercial_count }}</h2>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Widget dernières alertes IDS -->
-<div class="card mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <span><i class="bi bi-shield-exclamation me-2 text-danger"></i><span data-i18n="dash_last_alerts">Dernières alertes IDS</span></span>
-    <div class="d-flex align-items-center gap-2">
-      {% if alert_stats %}
-        <span class="badge bg-danger"><span id="dash-crit">{{ alert_stats.critical }}</span> <span data-i18n="sev_critical">Critique</span></span>
-        <span class="badge bg-warning text-dark"><span id="dash-med">{{ alert_stats.medium }}</span> <span data-i18n="sev_medium">Moyen</span></span>
-        <span class="text-muted small">24h : <span id="dash-24h">{{ alert_stats.last_24h }}</span></span>
-      {% endif %}
-      <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_see_all">Voir tout</a>
-    </div>
-  </div>
-  <div class="px-3 pt-3" data-spark-wrap>
-    <div class="spark-wrap" style="height:40px"><canvas data-sparkline="total"></canvas></div>
-  </div>
-  <div class="card-body p-0">
-    {% if recent_alerts %}
-    <table class="table table-hover mb-0 align-middle">
-      <thead><tr>
-        <th>Horodatage</th><th>Moteur</th><th>Sév.</th><th>Signature</th><th>Source</th><th>MITRE</th>
-      </tr></thead>
-      <tbody>
-        {% for a in recent_alerts %}
-        <tr class="alert-row-{% if a.severity == 1 %}critical{% elif a.severity == 2 %}medium{% else %}low{% endif %}">
-          <td class="text-muted fw-mono small" data-ts="{{ a.timestamp[:19] if a.timestamp else '' }}">{{ a.timestamp[:19] | replace('T', ' ') if a.timestamp else '—' }}</td>
-          <td>
-            {% if a.engine == 'suricata' %}
-              <span class="badge engine-suricata">Suricata</span>
-            {% else %}
-              <span class="badge engine-snort">Snort</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if a.severity == 1 %}<span class="sev sev-crit" data-i18n="sev_critical">Critique</span>
-            {% elif a.severity == 2 %}<span class="sev sev-med" data-i18n="sev_medium">Moyen</span>
-            {% else %}<span class="sev sev-low" data-i18n="sev_low">Faible</span>{% endif %}
-          </td>
-          <td class="small fw-medium">{{ a.signature | truncate(55) }}</td>
-          <td class="fw-mono small">{{ a.src_ip }}</td>
-          <td>
-            {% if a.mitre_tactic %}
-              <span class="badge mitre-badge">{{ a.mitre_tactic }}</span>
-            {% else %}<span class="text-muted">—</span>{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state py-4">
-      <i class="bi bi-shield-check empty-icon"></i>
-      <div class="small" data-i18n="dash_no_alerts">Aucune alerte — Elasticsearch vide ou non joignable</div>
-    </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- Liste VMs + accès rapide catalogue -->
-<div class="row g-3">
-  <div class="col-lg-7">
-    <div class="card">
+  <div class="col-lg-8">
+    <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-server me-2"></i><span data-i18n="dash_vms_section">Machines virtuelles</span></span>
-        <a href="{{ url_for('vms') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_see_all">Voir tout</a>
+        <span><i class="bi bi-graph-up me-2"></i><span data-i18n="dash_volume">Volume réseau · 24 h</span> <span id="flows-source-badge" class="ms-2"></span></span>
+        <a href="{{ url_for('flows') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_see_all">Voir tout</a>
+      </div>
+      <div class="card-body">
+        <div class="chart-box h-220" id="line-tl-wrap">
+          <div class="chart-loading"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart-line me-2"></i>Top talkers</span>
+        <span class="hint">24 h · conn.log</span>
       </div>
       <div class="card-body p-0">
-        {% if vms %}
-        <table class="table table-hover mb-0">
+        {% if dashboard.talkers %}
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr><th>IP</th><th class="text-end">Octets</th><th class="text-end">Conn.</th></tr></thead>
+          <tbody>
+            {% for t in dashboard.talkers %}
+            <tr>
+              <td><a href="{{ url_for('ip_detail', ip=t.ip) }}" class="ip-mono">{{ t.ip }}</a></td>
+              <td class="text-end small tnum">{{ t.bytes | fmt_bytes }}</td>
+              <td class="text-end small tnum">{{ t.conns }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state py-4"><i class="bi bi-inbox empty-icon"></i><div class="small" data-i18n="dash_no_flows">Aucun flux sur 24 h — Zeek silencieux ou Elasticsearch vide</div></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Temps de réponse / Santé TCP / ART (widgets partagés) ── -->
+{% include "_perf_widgets.html" %}
+
+<!-- ── Dernières alertes + points d'écoute PCAP ── -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shield-exclamation me-2 text-danger"></i><span data-i18n="dash_last_alerts">Dernières alertes IDS</span></span>
+        <div class="d-flex align-items-center gap-2">
+          {% if alert_stats %}
+            <span class="sev sev-crit"><span id="dash-crit-badge">{{ alert_stats.critical }}</span>&nbsp;<span data-i18n="sev_critical">Critique</span></span>
+            <span class="sev sev-med"><span id="dash-med">{{ alert_stats.medium }}</span>&nbsp;<span data-i18n="sev_medium">Moyen</span></span>
+          {% endif %}
+          <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_see_all">Voir tout</a>
+        </div>
+      </div>
+      <div class="px-3 pt-3" data-spark-wrap>
+        <div class="spark-wrap" style="height:40px"><canvas data-sparkline="total"></canvas></div>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_alerts %}
+        <table class="table table-hover mb-0 align-middle">
           <thead><tr>
-            <th>VMID</th><th>Nom</th><th>Statut</th><th>RAM</th><th>Uptime</th>
+            <th data-i18n="col_timestamp">Horodatage</th><th data-i18n="col_engine">Moteur</th><th data-i18n="col_severity">Sév.</th><th data-i18n="col_signature">Signature</th><th data-i18n="col_source">Source</th><th>MITRE</th>
           </tr></thead>
           <tbody>
-            {% for vm in vms[:8] %}
-            <tr>
-              <td class="text-muted">{{ vm.vmid }}</td>
-              <td class="fw-medium">{{ vm.name }}</td>
+            {% for a in recent_alerts %}
+            <tr class="alert-row-{% if a.severity == 1 %}critical{% elif a.severity == 2 %}medium{% else %}low{% endif %}">
+              <td class="text-muted fw-mono small" data-ts="{{ a.timestamp[:19] if a.timestamp else '' }}">{{ a.timestamp[:19] | replace('T', ' ') if a.timestamp else '—' }}</td>
+              <td>{% if a.engine == 'suricata' %}<span class="badge engine-suricata">Suricata</span>{% else %}<span class="badge engine-snort">Snort</span>{% endif %}</td>
               <td>
-                {% if vm.status == 'running' %}
-                  <span class="badge bg-success">running</span>
-                {% else %}
-                  <span class="badge bg-secondary">{{ vm.status }}</span>
-                {% endif %}
+                {% if a.severity == 1 %}<span class="sev sev-crit" data-i18n="sev_critical">Critique</span>
+                {% elif a.severity == 2 %}<span class="sev sev-med" data-i18n="sev_medium">Moyen</span>
+                {% else %}<span class="sev sev-low" data-i18n="sev_low">Faible</span>{% endif %}
               </td>
-              <td>{{ vm.mem | fmt_bytes }}</td>
-              <td class="text-muted">{{ vm.uptime | fmt_uptime }}</td>
+              <td class="small fw-medium">{{ a.signature | truncate(55) }}</td>
+              <td><a href="{{ url_for('ip_detail', ip=a.src_ip) }}" class="ip-mono">{{ a.src_ip }}</a></td>
+              <td>{% if a.mitre_tactic %}<span class="badge mitre-badge">{{ a.mitre_tactic }}</span>{% else %}<span class="text-dim">—</span>{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
         {% else %}
         <div class="empty-state py-4">
-          <i class="bi bi-server empty-icon"></i>
-          <div data-i18n="dash_no_vms">Aucune VM — Proxmox non connecté ou nœud vide</div>
+          <i class="bi bi-shield-check empty-icon"></i>
+          <div class="small" data-i18n="dash_no_alerts">Aucune alerte — Elasticsearch vide ou non joignable</div>
         </div>
         {% endif %}
       </div>
@@ -217,34 +155,49 @@
   </div>
 
   <div class="col-lg-5">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-grid-3x3-gap me-2"></i><span data-i18n="dash_quick">Accès rapide</span></span>
-        <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_catalog">Catalogue</a>
+        <span><i class="bi bi-broadcast-pin me-2"></i><span data-i18n="dash_listening_points">Points d'écoute PCAP</span></span>
+        <a href="{{ url_for('pcap_analysis_page') }}" class="btn btn-sm btn-outline-secondary" data-i18n="dash_see_all">Voir tout</a>
       </div>
-      <div class="card-body d-flex flex-column gap-2">
-        <a href="{{ url_for('catalog') }}?type=open-source" class="quick-link">
-          <i class="bi bi-code-slash text-info"></i>
-          <span data-i18n="dash_oss_link">Outils open-source</span>
-          <span class="badge bg-info ms-auto">{{ open_source_count }}</span>
-        </a>
-        <a href="{{ url_for('catalog') }}?type=commercial" class="quick-link">
-          <i class="bi bi-building text-warning"></i>
-          <span data-i18n="dash_com_link">Outils commerciaux Axians</span>
-          <span class="badge bg-warning text-dark ms-auto">{{ commercial_count }}</span>
-        </a>
-        <hr class="my-1">
-        <a href="{{ url_for('deploy', tool_id='netwatch') }}" class="quick-link">
-          <i class="bi bi-rocket-takeoff text-success"></i>
-          <span data-i18n="dash_deploy_nw">Déployer NetWatch v2</span>
-          <i class="bi bi-arrow-right ms-auto"></i>
-        </a>
-        <a href="{{ url_for('deploy', tool_id='security-onion') }}" class="quick-link">
-          <i class="bi bi-rocket-takeoff text-success"></i>
-          <span data-i18n="dash_deploy_so">Déployer Security Onion</span>
-          <i class="bi bi-arrow-right ms-auto"></i>
-        </a>
+      <div class="card-body">
+        {% if pcap_points %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for p in pcap_points %}
+          <span class="badge bg-info"><i class="bi bi-broadcast-pin me-1"></i>{{ p.name }} <span class="opacity-75">· {{ p.count }} conv.</span></span>
+          {% endfor %}
+        </div>
+        <div class="kpi-label mb-1" data-i18n="dash_top_conversations">Top conversations (octets)</div>
+        {% for c in pcap_top[:6] %}
+        {% set r = c.handshake_rating.server %}
+        <div class="kv py-1">
+          <span class="ip-mono">{{ c.client_ip }} <span class="text-dim">↔</span> {{ c.server_ip }}</span>
+          <span class="d-flex align-items-center gap-2">
+            <span class="small tnum text-muted">{{ c.total_bytes | fmt_bytes }}</span>
+            {% if r.label %}<span class="badge {% if r.label == 'EXCELLENT' %}bg-success{% elif r.label == 'POOR' %}bg-danger{% else %}bg-secondary{% endif %}">{{ r.label }}</span>{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state py-4">
+          <i class="bi bi-broadcast-pin empty-icon"></i>
+          <div class="small" data-i18n="dash_no_pcap">Aucun point d'écoute analysé — déposez un PCAP dans <code>pcaps/</code> et lancez l'analyse.</div>
+        </div>
+        {% endif %}
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bandeau services ── -->
+<div class="card">
+  <div class="card-body py-3">
+    <div class="svc-strip">
+      <span class="kpi-label mb-0" data-i18n="dash_services">Services</span>
+      {% for svc in services %}
+      <span class="svc-strip-item"><span class="dot-state {{ svc.status }}"></span>{{ svc.name }}{% if svc.latency is not none %} <span class="text-dim tnum">{{ svc.latency }} ms</span>{% endif %}</span>
+      {% endfor %}
+      <a href="{{ url_for('status') }}" class="ms-auto text-muted" style="font-size:.75rem"><i class="bi bi-arrow-right me-1"></i><span data-i18n="dash_detail">Détail</span></a>
     </div>
   </div>
 </div>
@@ -254,32 +207,75 @@
 {% block scripts %}
 <script>
 (function () {
-  var crit = document.getElementById('dash-crit');
-  var med  = document.getElementById('dash-med');
-  var h24  = document.getElementById('dash-24h');
-  if (!crit) return;
+  /* ── Volume 24h (Chart.js) + KPI trafic — /api/flows-stats est caché 60 s côté serveur ── */
+  var wrap = document.getElementById('line-tl-wrap');
+  var kpi  = document.getElementById('kpi-traffic');
+  var sub  = document.getElementById('kpi-traffic-sub');
+  var badge = document.getElementById('flows-source-badge');
 
+  fetch('/api/flows-stats')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (d) {
+      var tl = d.timeline || [];
+      var total = tl.reduce(function (s, x) { return s + (x.bytes || 0); }, 0);
+      kpi.textContent = NW.fmtBytes(total);
+      if (d.source === 'netflow') {
+        badge.innerHTML = '<span class="src-badge ok">GoFlow2</span>';
+        sub.textContent = 'NetFlow / IPFIX';
+      } else if (d.source === 'zeek') {
+        badge.innerHTML = '<span class="src-badge warn">Zeek conn.log</span>';
+        sub.textContent = 'Zeek conn.log · 24 h';
+      }
+      if (!tl.length || !total) {
+        wrap.innerHTML = '<div class="chart-loading"><i class="bi bi-inbox me-2"></i>Aucun flux sur 24 h</div>';
+        return;
+      }
+      wrap.innerHTML = '<canvas id="line-tl"></canvas>';
+      var th = NW.chartTheme();
+      new Chart(document.getElementById('line-tl'), {
+        type: 'line',
+        data: {
+          labels: tl.map(function (x) { return x.t ? new Date(x.t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''; }),
+          datasets: [{
+            data: tl.map(function (x) { return x.bytes; }),
+            fill: true, tension: .3, borderWidth: 2, pointRadius: 2, pointHoverRadius: 4,
+            borderColor: th.accent, backgroundColor: th.accentSoft,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false },
+                     tooltip: Object.assign({}, th.tooltip, { callbacks: { label: function (c) { return ' ' + NW.fmtBytes(c.parsed.y); } } }) },
+          scales: {
+            x: { grid: { color: th.grid }, ticks: { color: th.tick, font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 } },
+            y: { beginAtZero: true, grid: { color: th.grid }, ticks: { color: th.tick, font: { size: 10 }, callback: function (v) { return NW.fmtBytes(v); } } }
+          }
+        }
+      });
+    })
+    .catch(function () {
+      wrap.innerHTML = '<div class="chart-loading text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Flux indisponibles</div>';
+      kpi.textContent = '—';
+    });
+
+  /* ── Polling KPIs alertes (agg cachée 30 s côté serveur) ── */
+  var crit = document.getElementById('dash-crit'), critB = document.getElementById('dash-crit-badge');
+  var med  = document.getElementById('dash-med'),  h24   = document.getElementById('dash-24h');
   function animVal(el, next) {
-    if (parseInt(el.textContent, 10) === next) return;
+    if (!el || parseInt(el.textContent, 10) === next) return;
     el.textContent = next;
-    el.classList.remove('val-pulse');
-    void el.offsetWidth;
-    el.classList.add('val-pulse');
+    el.classList.remove('val-pulse'); void el.offsetWidth; el.classList.add('val-pulse');
   }
-
-  function poll() {
+  setInterval(function () {
     fetch('/api/stats')
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(d){
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
         if (!d || d.error) return;
-        animVal(crit, d.critical);
-        animVal(med,  d.medium);
-        animVal(h24,  d.last_24h);
+        animVal(crit, d.critical); animVal(critB, d.critical);
+        animVal(med, d.medium);    animVal(h24, d.last_24h);
       })
-      .catch(function(){});
-  }
-
-  setInterval(poll, 30000);
+      .catch(function () {});
+  }, 30000);
 })();
 </script>
 {% endblock %}

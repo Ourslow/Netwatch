@@ -55,11 +55,39 @@
       "empty_no_data":     "Aucune alerte — stack silencieuse ou Elasticsearch vide (<code>make sim</code> pour générer du trafic)",
       /* Navigation sidebar */
       "nav_supervision":   "Supervision",
+      "nav_observability": "Observabilité",
+      "nav_security":      "Sécurité",
+      "nav_project":       "Projet & infra",
       "nav_dashboard":     "Dashboard",
+      "nav_flows":         "Flux & performance",
+      "nav_topology":      "Topologie",
+      "nav_sla":           "SLA",
       "nav_alerts":        "Alertes IDS",
+      "nav_incidents":     "Incidents",
+      "nav_zeek":          "Analyse Zeek",
+      "nav_graph":         "Graphe IOC",
+      "nav_geomap":        "Carte GeoIP",
       "nav_audit":         "Audit réseau",
+      "nav_exec":          "Dashboard Exec",
+      "nav_agents":        "Agents IA",
       "nav_status":        "Statut services",
       "nav_hostgroups":    "Hostgroups",
+      "live_30s":          "live 30 s",
+      /* Home observabilité */
+      "dash_traffic":      "Trafic 24h",
+      "dash_traffic_sub":  "volume observé",
+      "dash_alerts_24h":   "Alertes 24h",
+      "dash_critical_7d":  "critiques · 7 j",
+      "dash_rtt":          "RTT moyen",
+      "dash_zw_sub":       "connexions TCP saturées",
+      "dash_services":     "Services",
+      "dash_services_sub": "stack NetWatch · détail",
+      "dash_volume":       "Volume réseau · 24 h",
+      "dash_no_flows":     "Aucun flux sur 24 h — Zeek silencieux ou Elasticsearch vide",
+      "dash_listening_points": "Points d'écoute PCAP",
+      "dash_top_conversations": "Top conversations (octets)",
+      "dash_no_pcap":      "Aucun point d'écoute analysé — déposez un PCAP dans <code>pcaps/</code> et lancez l'analyse.",
+      "dash_detail":       "Détail",
       "page_reports":      "Rapports",
       "reports_generate":  "Générer maintenant",
       "reports_col_date":  "Généré le",
@@ -172,11 +200,39 @@
       "empty_no_data":     "No alerts — stack silent or Elasticsearch empty (<code>make sim</code> to generate traffic)",
       /* Navigation sidebar */
       "nav_supervision":   "Monitoring",
+      "nav_observability": "Observability",
+      "nav_security":      "Security",
+      "nav_project":       "Project & infra",
       "nav_dashboard":     "Dashboard",
+      "nav_flows":         "Flows & performance",
+      "nav_topology":      "Topology",
+      "nav_sla":           "SLA",
       "nav_alerts":        "IDS Alerts",
+      "nav_incidents":     "Incidents",
+      "nav_zeek":          "Zeek Analysis",
+      "nav_graph":         "IOC Graph",
+      "nav_geomap":        "GeoIP Map",
       "nav_audit":         "Network Audit",
+      "nav_exec":          "Exec Dashboard",
+      "nav_agents":        "AI Agents",
       "nav_status":        "Services Status",
       "nav_hostgroups":    "Hostgroups",
+      "live_30s":          "live 30 s",
+      /* Observability home */
+      "dash_traffic":      "Traffic 24h",
+      "dash_traffic_sub":  "observed volume",
+      "dash_alerts_24h":   "Alerts 24h",
+      "dash_critical_7d":  "critical · 7 d",
+      "dash_rtt":          "Avg RTT",
+      "dash_zw_sub":       "saturated TCP connections",
+      "dash_services":     "Services",
+      "dash_services_sub": "NetWatch stack · details",
+      "dash_volume":       "Network volume · 24 h",
+      "dash_no_flows":     "No flows in 24 h — Zeek silent or Elasticsearch empty",
+      "dash_listening_points": "PCAP listening points",
+      "dash_top_conversations": "Top conversations (bytes)",
+      "dash_no_pcap":      "No listening point analysed — drop a PCAP in <code>pcaps/</code> and run the analysis.",
+      "dash_detail":       "Details",
       "page_reports":      "Reports",
       "reports_generate":  "Generate now",
       "reports_col_date":  "Generated at",
@@ -313,6 +369,59 @@
 
   const ACCENT = "#22d3ee";
   const CRIT   = "#ff4d5e";
+
+  /* ---- Thème Chart.js dérivé des tokens CSS ------------------
+     Une seule source de vérité : les graphiques lisent les variables du
+     design system au lieu de dupliquer des hex dans chaque page. */
+  NW.cssVar = function (name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback || "";
+  };
+  NW.chartTheme = function () {
+    const accent = NW.cssVar("--accent", ACCENT);
+    return {
+      accent:     accent,
+      accentSoft: NW.cssVar("--accent-soft", "rgba(34,211,238,.12)"),
+      crit:       NW.cssVar("--crit", CRIT),
+      warn:       NW.cssVar("--med", "#f5a524"),
+      ok:         NW.cssVar("--ok", "#2ee6a6"),
+      grid:       NW.cssVar("--grid-line", "rgba(30,42,60,.7)"),
+      tick:       NW.cssVar("--text-dim", "#57647a"),
+      text:       NW.cssVar("--text-muted", "#7d8ba0"),
+      bg:         NW.cssVar("--bg-base", "#0a0e16"),
+      tooltip: {
+        backgroundColor: NW.cssVar("--bg-elev-2", "#121b2b"),
+        borderColor:     NW.cssVar("--border", "#1e2a3c"),
+        borderWidth: 1,
+        titleColor:      NW.cssVar("--text", "#d6e0ec"),
+        bodyColor:       NW.cssVar("--text-muted", "#7d8ba0"),
+        padding: 8,
+      },
+      /* Palette catégorielle (donuts, barres) */
+      palette: [
+        "rgba(34,211,238,.8)",  "rgba(94,231,251,.75)",  "rgba(56,189,248,.75)",
+        "rgba(129,140,248,.75)","rgba(167,139,250,.75)", "rgba(232,121,249,.75)",
+        "rgba(251,191,36,.8)",  "rgba(52,211,153,.75)",  "rgba(248,113,113,.8)",
+        "rgba(251,146,60,.75)",
+      ],
+    };
+  };
+  /* Défauts globaux Chart.js (police, couleurs) — appliqués une fois */
+  if (typeof Chart !== "undefined") {
+    Chart.defaults.font.family = NW.cssVar("--font-ui", "Inter, sans-serif");
+    Chart.defaults.color = NW.cssVar("--text-muted", "#7d8ba0");
+    Chart.defaults.borderColor = NW.cssVar("--grid-line", "rgba(30,42,60,.7)");
+  }
+
+  /* Octets → unité lisible (partagé par toutes les pages) */
+  NW.fmtBytes = function (b) {
+    b = Number(b) || 0;
+    if (b === 0) return "0 B";
+    const u = ["B", "KB", "MB", "GB", "TB"];
+    let i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return b.toFixed(i === 0 ? 0 : 1) + " " + u[i];
+  };
 
   /* ---- Compteur animé -------------------------------------- */
   NW.countUp = function (el, to, duration) {

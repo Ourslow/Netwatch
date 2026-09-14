@@ -1,0 +1,76 @@
+{# Widgets de performance réutilisables à toutes les échelles (global, device,
+   hostgroup) — esprit Allegro Network Multimeter / Keysight : temps de réponse
+   décomposé, santé TCP, ART par service. Attend une variable `dashboard`
+   (voir app.py _perf_dashboard()). #}
+{% set rs  = dashboard.response_split %}
+{% set tcp = dashboard.tcp %}
+<div class="row g-3 mb-4">
+
+  <!-- Temps de réponse décomposé (Network / Server / App — vocabulaire Keysight) -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-speedometer me-2"></i>Temps de réponse</div>
+      <div class="card-body">
+        {% if rs.network_ms is not none or rs.app_ms is not none %}
+        <div class="kv"><span class="kv-label">Network Time (RTT TCP)</span>
+          <span class="kv-value">{{ rs.network_ms if rs.network_ms is not none else '—' }} ms</span></div>
+        <div class="kv"><span class="kv-label">Server Time (estimé)</span>
+          <span class="kv-value">{{ rs.server_ms if rs.server_ms is not none else '—' }} ms</span></div>
+        <div class="kv"><span class="kv-label">Application Response Time</span>
+          <span class="kv-value fw-bold text-info">{{ rs.app_ms if rs.app_ms is not none else '—' }} ms</span></div>
+        <div class="hint mt-2">Server Time = ART − Network Time (approximation)</div>
+        {% else %}
+        <div class="empty-state py-3">
+          <i class="bi bi-hourglass empty-icon" style="font-size:1.5rem"></i>
+          <div class="small">Pas assez de données RTT/ART sur cette échelle.</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Santé TCP -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-heart-pulse me-2"></i>Santé TCP</div>
+      <div class="card-body">
+        <div class="kv"><span class="kv-label">RTT moyen / p95</span>
+          <span class="kv-value">{{ tcp.avg_rtt_ms if tcp.avg_rtt_ms is not none else '—' }} / {{ tcp.p95_rtt_ms if tcp.p95_rtt_ms is not none else '—' }} ms</span></div>
+        <div class="kv"><span class="kv-label">Zero-windows (24h)</span>
+          <span class="kv-value {% if tcp.zero_windows_count %}text-warning{% endif %}">{{ tcp.zero_windows_count }}</span></div>
+        {% if tcp.top_retransmit_ips %}
+        <div class="kpi-label mt-3 mb-1">Top retransmissions</div>
+        {% for r in tcp.top_retransmit_ips[:5] %}
+        <div class="kv py-1">
+          <a href="{{ url_for('ip_detail', ip=r.ip) }}" class="ip-mono">{{ r.ip }}</a>
+          <span class="metric-pill {% if r.retransmit_pct < 1 %}metric-ok{% elif r.retransmit_pct < 3 %}metric-warn{% else %}metric-crit{% endif %}">{{ r.retransmit_pct }} %</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="hint mt-3"><i class="bi bi-check-circle text-success me-1"></i>Aucune retransmission détectée</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ART par service -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-hourglass-split me-2"></i>ART par service</div>
+      <div class="card-body">
+        {% for svc, label, lo, hi in [('http','HTTP',200,500), ('dns','DNS',50,200), ('tls','TLS',200,500)] %}
+        {% set s = dashboard.art.get(svc, {}) %}
+        <div class="kv">
+          <span class="kv-label">{{ label }} <span class="hint">({{ s.count or 0 }})</span></span>
+          <span class="d-flex gap-1">
+            {% for v in [s.p50, s.p95] %}
+            <span class="metric-pill {% if v is none %}metric-na{% elif v < lo %}metric-ok{% elif v < hi %}metric-warn{% else %}metric-crit{% endif %}" style="min-width:64px">{{ v if v is not none else '—' }}</span>
+            {% endfor %}
+          </span>
+        </div>
+        {% endfor %}
+        <div class="hint mt-2">p50 / p95 en ms · seuils HTTP/TLS 200–500, DNS 50–200</div>
+      </div>
+    </div>
+  </div>
+</div>

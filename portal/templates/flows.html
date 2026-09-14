@@ -2,140 +2,6 @@
 {% block title %}Analyse des flux — NetWatch Portal{% endblock %}
 {% block page_title %}<i class="bi bi-diagram-3 me-2"></i>Analyse des flux{% endblock %}
 
-{% block head %}
-<style>
-/* ── Flows-specific ── */
-.flows-section-title {
-  font-size: .72rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-dim);
-  margin-bottom: 1rem;
-}
-
-.art-badge {
-  display: inline-block;
-  min-width: 80px;
-  text-align: center;
-  padding: .2rem .6rem;
-  border-radius: var(--r-pill);
-  font-size: .76rem;
-  font-weight: 600;
-  font-family: var(--font-mono);
-}
-.art-ok      { background: rgba(46,230,166,.15); color: var(--ok);   border: 1px solid rgba(46,230,166,.25); }
-.art-warn    { background: rgba(245,165,36,.12); color: var(--warn); border: 1px solid rgba(245,165,36,.25); }
-.art-crit    { background: rgba(255,77,94,.12);  color: var(--crit); border: 1px solid rgba(255,77,94,.25); }
-.art-na      { background: var(--bg-inset); color: var(--text-dim);  border: 1px solid var(--border); }
-
-.rtt-badge   { background: rgba(46,230,166,.15); color: var(--ok);   border: 1px solid rgba(46,230,166,.25); }
-.rtt-warn    { background: rgba(245,165,36,.12); color: var(--warn); border: 1px solid rgba(245,165,36,.25); }
-.rtt-crit    { background: rgba(255,77,94,.12);  color: var(--crit); border: 1px solid rgba(255,77,94,.25); }
-
-.gauge-wrap {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-}
-.gauge-center {
-  position: absolute;
-  bottom: 12%;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-}
-.gauge-val {
-  font-family: var(--font-mono);
-  font-size: 1.35rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-strong);
-  white-space: nowrap;
-}
-.gauge-sub {
-  font-size: .65rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: .8px;
-  margin-top: .2rem;
-}
-
-.ip-mono {
-  font-family: var(--font-mono);
-  font-size: .83rem;
-  color: var(--accent);
-}
-
-.kpi-zw {
-  background: var(--bg-elev-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 1.4rem 1.2rem;
-  text-align: center;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .4rem;
-}
-.kpi-zw-val {
-  font-size: 2.5rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-strong);
-  font-family: var(--font-mono);
-}
-.kpi-zw-label {
-  font-size: .7rem;
-  text-transform: uppercase;
-  letter-spacing: .9px;
-  color: var(--text-dim);
-}
-
-.chart-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 180px;
-  color: var(--text-dim);
-  font-size: .83rem;
-}
-
-.chart-title {
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: .8px;
-  margin-bottom: .75rem;
-}
-
-/* ── Section 4 — Trafic applicatif ── */
-.cat-badge {
-  display: inline-block;
-  padding: .1rem .5rem;
-  border-radius: var(--r-pill);
-  font-size: .65rem;
-  font-weight: 600;
-  letter-spacing: .4px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.cat-web           { background: rgba(34,211,238,.15); color: #22d3ee; border: 1px solid rgba(34,211,238,.3); }
-.cat-database      { background: rgba(167,139,250,.15); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
-.cat-remote-access { background: rgba(248,113,113,.15); color: #f87171; border: 1px solid rgba(248,113,113,.3); }
-.cat-infrastructure{ background: rgba(52,211,153,.15);  color: #34d399; border: 1px solid rgba(52,211,153,.3); }
-.cat-email         { background: rgba(251,191,36,.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
-.cat-file-share    { background: rgba(251,146,60,.15);  color: #fb923c; border: 1px solid rgba(251,146,60,.3); }
-.cat-collaboration { background: rgba(232,121,249,.15); color: #e879f9; border: 1px solid rgba(232,121,249,.3); }
-.cat-streaming     { background: rgba(56,189,248,.15);  color: #38bdf8; border: 1px solid rgba(56,189,248,.3); }
-.cat-security      { background: rgba(255,77,94,.15);   color: #ff4d5e; border: 1px solid rgba(255,77,94,.3); }
-.cat-unknown       { background: rgba(100,116,139,.12); color: #94a3b8; border: 1px solid rgba(100,116,139,.25); }
-</style>
-{% endblock %}
-
 {% block topbar_actions %}
 <button id="btn-refresh" class="btn btn-sm btn-outline-secondary" title="Rafraîchir">
   <i class="bi bi-arrow-clockwise me-1"></i>Refresh
@@ -385,9 +251,12 @@
     return ms < 50 ? '#2ee6a6' : ms < 150 ? '#f5a524' : '#ff4d5e';
   }
 
+  /* ?refresh=1 après clic sur « Rafraîchir » → vide le cache TTL côté serveur */
+  var QS = '';
+
   /* ─── Section 1 : Flux réseau ──────────────────────────── */
   function loadFlows() {
-    fetch('/api/flows-stats')
+    fetch('/api/flows-stats' + QS)
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {
         /* Warning banner */
@@ -400,9 +269,9 @@
         /* Source badge */
         var srcBadge = document.getElementById('flows-source-badge');
         if (d.source === 'netflow') {
-          srcBadge.innerHTML = '<span class="badge" style="background:rgba(46,230,166,.15);color:var(--ok);border:1px solid rgba(46,230,166,.25);font-size:.68rem">GoFlow2</span>';
+          srcBadge.innerHTML = '<span class="src-badge ok">GoFlow2</span>';
         } else if (d.source === 'zeek') {
-          srcBadge.innerHTML = '<span class="badge" style="background:rgba(245,165,36,.1);color:var(--warn);border:1px solid rgba(245,165,36,.25);font-size:.68rem">Zeek fallback</span>';
+          srcBadge.innerHTML = '<span class="src-badge warn">Zeek fallback</span>';
         }
 
         /* Donut top sources */
@@ -526,7 +395,7 @@
 
   /* ─── Section 2 : ART ───────────────────────────────────── */
   function loadART() {
-    fetch('/api/art-stats')
+    fetch('/api/art-stats' + QS)
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {
         var rows = [
@@ -559,7 +428,7 @@
 
   /* ─── Section 3 : TCP perf ──────────────────────────────── */
   function loadTCP() {
-    fetch('/api/tcp-perf')
+    fetch('/api/tcp-perf' + QS)
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {
         /* ── Gauge RTT ── */
@@ -824,7 +693,9 @@
     });
     document.getElementById('cat-legend').style.display = 'none';
     Chart.getChart('gauge-rtt') && Chart.getChart('gauge-rtt').destroy();
+    QS = '?refresh=1';
     loadAll();
+    QS = '';
   });
 
 })();

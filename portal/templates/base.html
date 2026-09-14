@@ -8,17 +8,18 @@
   {# Favicon — radar cyan inline (pas de fichier, pas de build) #}
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0e16'/%3E%3Cg fill='none' stroke='%2322d3ee' stroke-width='1.6'%3E%3Ccircle cx='16' cy='16' r='9'/%3E%3Ccircle cx='16' cy='16' r='4.5'/%3E%3C/g%3E%3Cpath d='M16 16 L24 9' stroke='%235ee7fb' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='1.6' fill='%235ee7fb'/%3E%3C/svg%3E">
 
-  {# Typographie technique #}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  {# Assets vendorés (portal/static/vendor) — aucun CDN : fonctionne en labo
+     isolé, pas de FOUT sur les fontes, cache navigateur long. #}
+  <link href="{{ url_for('static', filename='vendor/fonts/fonts.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
   {% block head %}{% endblock %}
 </head>
 <body>
+
+{# Section secondaire ouverte automatiquement si la page courante en fait partie #}
+{% set secondary_endpoints = ['status', 'vms', 'catalog', 'tool_detail', 'deploy', 'compare', 'compliance', 'agents_page'] %}
 
 <div class="d-flex">
   <!-- Barre latérale -->
@@ -31,149 +32,137 @@
       </span>
     </a>
 
-    <div class="nav-section" data-i18n="nav_supervision">Supervision</div>
+    {# ── Observabilité (NPM) ── #}
+    <div class="nav-section" data-i18n="nav_observability">Observabilité</div>
     <ul class="nav nav-pills flex-column gap-1">
       <li class="nav-item">
-        <a href="{{ url_for('dashboard') }}"
-           class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
           <i class="bi bi-grid-1x2"></i> <span data-i18n="nav_dashboard">Dashboard</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('alerts') }}"
-           class="nav-link {% if request.endpoint in ['alerts', 'alerts_export_csv'] %}active{% endif %}">
+        <a href="{{ url_for('flows') }}" class="nav-link {% if request.endpoint == 'flows' %}active{% endif %}">
+          <i class="bi bi-diagram-3"></i> <span data-i18n="nav_flows">Flux & performance</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('pcap_analysis_page') }}" class="nav-link {% if request.endpoint == 'pcap_analysis_page' %}active{% endif %}">
+          <i class="bi bi-file-earmark-binary-fill"></i> <span data-i18n="page_pcap_analysis">Analyse PCAP</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('topology') }}" class="nav-link {% if request.endpoint == 'topology' %}active{% endif %}">
+          <i class="bi bi-diagram-2-fill"></i> <span data-i18n="nav_topology">Topologie</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('hostgroups_page') }}" class="nav-link {% if request.endpoint in ['hostgroups_page', 'hostgroup_dashboard'] %}active{% endif %}">
+          <i class="bi bi-collection"></i> <span data-i18n="nav_hostgroups">Hostgroups</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('sla') }}" class="nav-link {% if request.endpoint == 'sla' %}active{% endif %}">
+          <i class="bi bi-patch-check"></i> <span data-i18n="nav_sla">SLA</span>
+        </a>
+      </li>
+    </ul>
+
+    {# ── Sécurité (NDR) ── #}
+    <div class="nav-section" data-i18n="nav_security">Sécurité</div>
+    <ul class="nav nav-pills flex-column gap-1">
+      <li class="nav-item">
+        <a href="{{ url_for('alerts') }}" class="nav-link {% if request.endpoint in ['alerts', 'alerts_export_csv'] %}active{% endif %}">
           <i class="bi bi-shield-exclamation"></i> <span data-i18n="nav_alerts">Alertes IDS</span>
           <span class="nav-alert-badge" id="nav-alert-badge" style="display:none"></span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('incidents') }}"
-           class="nav-link {% if request.endpoint in ['incidents', 'ip_detail'] %}active{% endif %}">
-          <i class="bi bi-layers"></i> <span>Incidents</span>
+        <a href="{{ url_for('incidents') }}" class="nav-link {% if request.endpoint in ['incidents', 'ip_detail'] %}active{% endif %}">
+          <i class="bi bi-layers"></i> <span data-i18n="nav_incidents">Incidents</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('zeek_logs') }}"
-           class="nav-link {% if request.endpoint == 'zeek_logs' %}active{% endif %}">
-          <i class="bi bi-file-earmark-binary"></i> <span>Analyse Zeek</span>
+        <a href="{{ url_for('zeek_logs') }}" class="nav-link {% if request.endpoint == 'zeek_logs' %}active{% endif %}">
+          <i class="bi bi-file-earmark-binary"></i> <span data-i18n="nav_zeek">Analyse Zeek</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('flows') }}"
-           class="nav-link {% if request.endpoint == 'flows' %}active{% endif %}">
-          <i class="bi bi-diagram-3"></i> <span>Flows</span>
+        <a href="{{ url_for('graph') }}" class="nav-link {% if request.endpoint == 'graph' %}active{% endif %}">
+          <i class="bi bi-bezier2"></i> <span data-i18n="nav_graph">Graphe IOC</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('pcap_analysis_page') }}"
-           class="nav-link {% if request.endpoint == 'pcap_analysis_page' %}active{% endif %}">
-          <i class="bi bi-file-earmark-binary-fill"></i> <span data-i18n="page_pcap_analysis">Analyse PCAP</span>
+        <a href="{{ url_for('geomap') }}" class="nav-link {% if request.endpoint == 'geomap' %}active{% endif %}">
+          <i class="bi bi-globe"></i> <span data-i18n="nav_geomap">Carte GeoIP</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('topology') }}"
-           class="nav-link {% if request.endpoint == 'topology' %}active{% endif %}">
-          <i class="bi bi-diagram-2-fill"></i> <span>Topologie</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('hostgroups_page') }}"
-           class="nav-link {% if request.endpoint == 'hostgroups_page' %}active{% endif %}">
-          <i class="bi bi-collection"></i> <span data-i18n="nav_hostgroups">Hostgroups</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('graph') }}"
-           class="nav-link {% if request.endpoint == 'graph' %}active{% endif %}">
-          <i class="bi bi-bezier2"></i> <span>Graphe IOC</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('geomap') }}"
-           class="nav-link {% if request.endpoint == 'geomap' %}active{% endif %}">
-          <i class="bi bi-globe"></i> <span>Carte GeoIP</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('audit') }}"
-           class="nav-link {% if request.endpoint == 'audit' %}active{% endif %}">
+        <a href="{{ url_for('audit') }}" class="nav-link {% if request.endpoint == 'audit' %}active{% endif %}">
           <i class="bi bi-clipboard2-data"></i> <span data-i18n="nav_audit">Audit réseau</span>
         </a>
       </li>
-      <li class="nav-item">
-        <a href="{{ url_for('status') }}"
-           class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
-          <i class="bi bi-activity"></i> <span data-i18n="nav_status">Statut services</span>
-        </a>
-      </li>
     </ul>
 
-    <div class="nav-section" data-i18n="nav_infra">Infrastructure</div>
+    {# ── Rapports ── #}
+    <div class="nav-section" data-i18n="nav_report_sec">Rapports</div>
     <ul class="nav nav-pills flex-column gap-1">
       <li class="nav-item">
-        <a href="{{ url_for('vms') }}"
-           class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
-          <i class="bi bi-hdd-stack"></i> <span data-i18n="nav_vms">Machines virtuelles</span>
+        <a href="{{ url_for('exec_page') }}" class="nav-link {% if request.endpoint == 'exec_page' %}active{% endif %}">
+          <i class="bi bi-speedometer2"></i> <span data-i18n="nav_exec">Dashboard Exec</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('catalog') }}"
-           class="nav-link {% if request.endpoint in ['catalog','tool_detail','deploy'] %}active{% endif %}">
-          <i class="bi bi-grid-3x3-gap"></i> <span data-i18n="nav_catalog">Catalogue outils</span>
+        <a href="{{ url_for('reports_page') }}" class="nav-link {% if request.endpoint == 'reports_page' %}active{% endif %}">
+          <i class="bi bi-file-earmark-pdf"></i> <span data-i18n="page_reports">Rapports PDF</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('compare') }}"
-           class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
-          <i class="bi bi-bar-chart-steps"></i> <span data-i18n="nav_compare">Comparaison</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('compliance') }}"
-           class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
-          <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
-        </a>
-      </li>
-    </ul>
-
-    <div class="nav-section">Équipe IA</div>
-    <ul class="nav nav-pills flex-column gap-1">
-      <li class="nav-item">
-        <a href="{{ url_for('agents_page') }}"
-           class="nav-link {% if request.endpoint == 'agents_page' %}active{% endif %}">
-          <i class="bi bi-robot"></i> <span>Agents</span>
-        </a>
-      </li>
-    </ul>
-
-    <div class="nav-section" data-i18n="nav_report_sec">Rapport</div>
-    <ul class="nav nav-pills flex-column gap-1">
-      <li class="nav-item">
-        <a href="{{ url_for('exec_page') }}"
-           class="nav-link {% if request.endpoint == 'exec_page' %}active{% endif %}">
-          <i class="bi bi-speedometer2"></i> <span>Exec</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('sla') }}"
-           class="nav-link {% if request.endpoint == 'sla' %}active{% endif %}">
-          <i class="bi bi-patch-check"></i> <span>SLA</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('report') }}"
-           class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"
-           target="_blank">
+        <a href="{{ url_for('report') }}" class="nav-link" target="_blank">
           <i class="bi bi-file-earmark-text"></i> <span data-i18n="nav_report">Rapport exécutif</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('reports_page') }}"
-           class="nav-link {% if request.endpoint == 'reports_page' %}active{% endif %}">
-          <i class="bi bi-file-earmark-pdf"></i> <span data-i18n="page_reports">Rapports</span>
+          <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.7rem;opacity:.5"></i>
         </a>
       </li>
     </ul>
+
+    {# ── Projet & infra (repliable) ── #}
+    <details class="nav-group" id="nav-secondary" {% if request.endpoint in secondary_endpoints %}open data-forced{% endif %}>
+      <summary class="nav-section">
+        <span data-i18n="nav_project">Projet & infra</span>
+        <i class="bi bi-chevron-down"></i>
+      </summary>
+      <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item">
+          <a href="{{ url_for('status') }}" class="nav-link {% if request.endpoint == 'status' %}active{% endif %}">
+            <i class="bi bi-activity"></i> <span data-i18n="nav_status">Statut services</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('vms') }}" class="nav-link {% if request.endpoint == 'vms' %}active{% endif %}">
+            <i class="bi bi-hdd-stack"></i> <span data-i18n="nav_vms">Machines virtuelles</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('catalog') }}" class="nav-link {% if request.endpoint in ['catalog','tool_detail','deploy'] %}active{% endif %}">
+            <i class="bi bi-grid-3x3-gap"></i> <span data-i18n="nav_catalog">Catalogue outils</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('compare') }}" class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
+            <i class="bi bi-bar-chart-steps"></i> <span data-i18n="nav_compare">Comparaison</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('compliance') }}" class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
+            <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('agents_page') }}" class="nav-link {% if request.endpoint == 'agents_page' %}active{% endif %}">
+            <i class="bi bi-robot"></i> <span data-i18n="nav_agents">Agents IA</span>
+          </a>
+        </li>
+      </ul>
+    </details>
 
     <div class="mt-auto sidebar-footer">
       <i class="bi bi-hdd-network me-1"></i>
@@ -185,16 +174,21 @@
   <main class="main-content flex-grow-1">
     <div class="topbar d-flex align-items-center justify-content-between px-4">
       <h5 class="mb-0 page-title">{% block page_title %}{% endblock %}</h5>
-      <div class="d-flex align-items-center gap-3">
-        {% if proxmox_node is defined and proxmox_node %}
-        <span class="badge bg-dark">
+      <div class="topbar-actions">
+        {% if proxmox_node is defined and proxmox_node and proxmox_host %}
+        <span class="badge bg-dark d-none d-xl-inline-flex">
           <i class="bi bi-box me-1"></i>Proxmox {{ proxmox_node }}
         </span>
         {% endif %}
         {% block topbar_actions %}{% endblock %}
+        {# Filtre global par hostgroup — rendu côté serveur (context processor),
+           plus de fetch /api/hostgroups à chaque page #}
         <select id="hostgroup-filter" class="form-select form-select-sm" style="width:auto;max-width:220px"
-                title="Filtrer par groupe d'hôtes" data-current="{{ request.args.get('hostgroup', '') }}">
+                title="Filtrer par groupe d'hôtes">
           <option value="" data-i18n="hostgroup_filter_all">Tous les hôtes</option>
+          {% for g in nav_hostgroups %}
+          <option value="{{ g.name }}" {% if g.name == current_hostgroup %}selected{% endif %}>{{ g.name }} ({{ g.host_count }})</option>
+          {% endfor %}
         </select>
         <button class="cmd-trigger" id="cmd-open-btn" title="Palette de commandes (Ctrl+K)">
           <i class="bi bi-search"></i>
@@ -208,9 +202,7 @@
           <span class="text-muted mx-1">|</span>
           <span class="lang-other" style="opacity:.45">EN</span>
         </button>
-        <a href="{{ url_for('logout') }}"
-           class="btn btn-sm btn-outline-secondary"
-           title="Déconnexion">
+        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-secondary" title="Déconnexion">
           <i class="bi bi-box-arrow-right"></i>
         </a>
       </div>
@@ -248,30 +240,34 @@
 </div>
 <div id="toast-host" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/netwatch.js') }}"></script>
 {% block scripts %}{% endblock %}
 <script>
 (function () {
   var NAV = [
-    { icon: 'bi-grid-1x2',           label: 'Dashboard',            url: '/',            hint: 'Vue globale' },
-    { icon: 'bi-shield-exclamation',  label: 'Alertes IDS',          url: '/alerts',      hint: 'Snort · Suricata' },
-    { icon: 'bi-layers',              label: 'Incidents',            url: '/incidents',   hint: 'Fenêtres 5 min' },
-    { icon: 'bi-globe',               label: 'Carte GeoIP',          url: '/geomap',      hint: 'Origine des attaques' },
-    { icon: 'bi-clipboard2-data',     label: 'Audit réseau',         url: '/audit',       hint: 'Posture & score' },
-    { icon: 'bi-activity',            label: 'Statut services',      url: '/status',      hint: 'Health check' },
-    { icon: 'bi-hdd-stack',           label: 'Machines virtuelles',  url: '/vms',         hint: 'Proxmox VMs' },
-    { icon: 'bi-grid-3x3-gap',        label: 'Catalogue outils',     url: '/catalog',     hint: 'Open-source & commercial' },
-    { icon: 'bi-bar-chart-steps',     label: 'Comparaison',          url: '/compare',     hint: 'OS vs Commercial' },
-    { icon: 'bi-clipboard2-check',    label: 'Conformité',           url: '/compliance',  hint: 'NIS2 · NIST · ISO' },
-    { icon: 'bi-robot',               label: 'Agents IA',            url: '/agents',      hint: 'Statut des agents' },
-    { icon: 'bi-diagram-3',           label: 'Flows',                url: '/flows',       hint: 'Top talkers · ART · TCP' },
-    { icon: 'bi-diagram-2-fill',      label: 'Topologie',            url: '/topology',    hint: 'Carte réseau L2/L3 · LLDP' },
-    { icon: 'bi-bezier2',             label: 'Graphe IOC',           url: '/graph',       hint: 'IPs · règles · MITRE' },
-    { icon: 'bi-speedometer2',        label: 'Dashboard Exec',       url: '/exec',        hint: 'RSSI · posture · KPIs' },
-    { icon: 'bi-patch-check',         label: 'SLA Compliance',       url: '/sla',         hint: 'HTTP · DNS · RTT · Business Hours' },
-    { icon: 'bi-file-earmark-text',   label: 'Rapport exécutif',     url: '/report',      hint: 'PDF', blank: true },
+    { icon: 'bi-grid-1x2',               label: 'Dashboard',            url: '/',               hint: 'Vue observabilité' },
+    { icon: 'bi-diagram-3',              label: 'Flux & performance',   url: '/flows',          hint: 'Top talkers · ART · TCP' },
+    { icon: 'bi-file-earmark-binary-fill', label: 'Analyse PCAP',       url: '/pcap-analysis',  hint: 'Conversations · points d\'écoute' },
+    { icon: 'bi-diagram-2-fill',         label: 'Topologie',            url: '/topology',       hint: 'Carte réseau L2/L3 · LLDP' },
+    { icon: 'bi-collection',             label: 'Hostgroups',           url: '/hostgroups',     hint: 'Groupes d\'hôtes · filtres' },
+    { icon: 'bi-patch-check',            label: 'SLA Compliance',       url: '/sla',            hint: 'HTTP · DNS · RTT · Business Hours' },
+    { icon: 'bi-shield-exclamation',     label: 'Alertes IDS',          url: '/alerts',         hint: 'Snort · Suricata' },
+    { icon: 'bi-layers',                 label: 'Incidents',            url: '/incidents',      hint: 'Fenêtres 5 min' },
+    { icon: 'bi-file-earmark-binary',    label: 'Analyse Zeek',         url: '/zeek',           hint: 'weird · files · x509' },
+    { icon: 'bi-bezier2',                label: 'Graphe IOC',           url: '/graph',          hint: 'IPs · règles · MITRE' },
+    { icon: 'bi-globe',                  label: 'Carte GeoIP',          url: '/geomap',         hint: 'Origine des attaques' },
+    { icon: 'bi-clipboard2-data',        label: 'Audit réseau',         url: '/audit',          hint: 'Posture & score' },
+    { icon: 'bi-speedometer2',           label: 'Dashboard Exec',       url: '/exec',           hint: 'RSSI · posture · KPIs' },
+    { icon: 'bi-file-earmark-pdf',       label: 'Rapports PDF',         url: '/reports',        hint: 'Historique · génération' },
+    { icon: 'bi-file-earmark-text',      label: 'Rapport exécutif',     url: '/report',         hint: 'HTML imprimable', blank: true },
+    { icon: 'bi-activity',               label: 'Statut services',      url: '/status',         hint: 'Health check' },
+    { icon: 'bi-hdd-stack',              label: 'Machines virtuelles',  url: '/vms',            hint: 'Proxmox VMs' },
+    { icon: 'bi-grid-3x3-gap',           label: 'Catalogue outils',     url: '/catalog',        hint: 'Open-source & commercial' },
+    { icon: 'bi-bar-chart-steps',        label: 'Comparaison',          url: '/compare',        hint: 'OS vs Commercial' },
+    { icon: 'bi-clipboard2-check',       label: 'Conformité',           url: '/compliance',     hint: 'NIS2 · NIST · ISO' },
+    { icon: 'bi-robot',                  label: 'Agents IA',            url: '/agents',         hint: 'Statut des agents' },
   ];
   var IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
   var overlay = document.getElementById('cmd-overlay');
@@ -339,17 +335,13 @@
     if (it.blank) window.open(it.url, '_blank');
     else window.location.href = it.url;
   }
-
   function open() {
     overlay.classList.add('cmd-open');
     input.value = '';
     render();
     setTimeout(function () { input.focus(); }, 30);
   }
-
-  function close() {
-    overlay.classList.remove('cmd-open');
-  }
+  function close() { overlay.classList.remove('cmd-open'); }
 
   input.addEventListener('input', render);
   input.addEventListener('keydown', function (e) {
@@ -366,7 +358,19 @@
   });
 })();
 
-// ── Badge alertes critiques dans le nav ──
+// ── Section secondaire de la nav : état replié mémorisé ──
+(function () {
+  var d = document.getElementById('nav-secondary');
+  if (!d) return;
+  try {
+    if (!d.hasAttribute('data-forced') && localStorage.getItem('nw_nav_secondary') === 'open') d.open = true;
+    d.addEventListener('toggle', function () {
+      localStorage.setItem('nw_nav_secondary', d.open ? 'open' : 'closed');
+    });
+  } catch (e) {}
+})();
+
+// ── Badge alertes critiques dans le nav (agg cachée 30 s côté serveur) ──
 (function () {
   var badge = document.getElementById('nav-alert-badge');
   if (!badge) return;
@@ -392,19 +396,6 @@
 (function () {
   var sel = document.getElementById('hostgroup-filter');
   if (!sel) return;
-  fetch('/api/hostgroups')
-    .then(function (r) { return r.ok ? r.json() : []; })
-    .then(function (groups) {
-      (groups || []).forEach(function (g) {
-        var opt = document.createElement('option');
-        opt.value = g.name;
-        opt.textContent = g.name + ' (' + g.host_count + ')';
-        sel.appendChild(opt);
-      });
-      var current = sel.getAttribute('data-current');
-      if (current) sel.value = current;
-    })
-    .catch(function () {});
   sel.addEventListener('change', function () {
     var url = new URL(window.location.href);
     if (sel.value) url.searchParams.set('hostgroup', sel.value);

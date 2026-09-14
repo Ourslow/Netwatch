@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+import time as _time_mod
 from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlsplit, urlunsplit
@@ -388,13 +389,27 @@ def load_catalog():
     return _CATALOG_CACHE
 
 
+_PX_FAIL = {"ts": 0.0}
+_PX_FAIL_TTL = 60   # s — un Proxmox injoignable n'est pas retenté avant 60 s
+
+
+def _px_mark_failed():
+    """Mémorise l'échec Proxmox : les pages qui l'interrogent (home, status,
+    vms, report) ne repaieront pas le timeout de connexion (~5 s) à chaque
+    chargement tant que l'hôte reste injoignable."""
+    _PX_FAIL["ts"] = _time_mod.monotonic()
+
+
 def get_proxmox():
     """Retourne un client Proxmox, ou None si non configuré / non joignable."""
     if not config.PROXMOX_HOST:
         return None
+    if _time_mod.monotonic() - _PX_FAIL["ts"] < _PX_FAIL_TTL:
+        return None
     try:
         return px_client.get_client()
     except Exception:
+        _px_mark_failed()
         return None
 
 
@@ -475,6 +490,30 @@ def geo_flag(iso):
 
 app.jinja_env.filters["geo_flag"] = geo_flag
 
+
+_HG_NAV_CACHE = {"mtime": None, "groups": []}
+
+
+@app.context_processor
+def _inject_hostgroups():
+    """Hostgroups pour le sélecteur global de la topbar — injectés côté serveur
+    (plus de fetch /api/hostgroups à chaque page), rechargés seulement quand le
+    fichier JSON change (mtime)."""
+    try:
+        mtime = os.path.getmtime(nw_hostgroups.STORE_PATH)
+    except OSError:
+        mtime = None
+    if mtime != _HG_NAV_CACHE["mtime"]:
+        _HG_NAV_CACHE["groups"] = nw_hostgroups.list_groups() if mtime else []
+        _HG_NAV_CACHE["mtime"]  = mtime
+    return {
+        "nav_hostgroups":    _HG_NAV_CACHE["groups"],
+        "current_hostgroup": request.args.get("hostgroup", ""),
+        # Pied de sidebar / badge topbar — évite de les passer route par route
+        "proxmox_host":      config.PROXMOX_HOST,
+        "proxmox_node":      config.PROXMOX_NODE,
+    }
+
 # ============================================================
 # Routes — Auth
 # ============================================================
@@ -515,39 +554,25 @@ def logout():
 @app.route("/")
 @login_required
 def dashboard():
-    px = get_proxmox()
-    node_status = None
-    vms = []
-    proxmox_ok = False
-
-    if px:
-        try:
-            node_status = px_client.get_node_status(px)
-            vms = px_client.list_vms(px)
-            proxmox_ok = True
-        except Exception as e:
-            flash(f"Erreur Proxmox : {e}", "warning")
-
-    catalog = load_catalog()
-    open_source = [t for t in catalog if t["type"] == "open-source"]
-    commercial  = [t for t in catalog if t["type"] == "commercial"]
-
-    # Widget alertes IDS — dernières 5 alertes + stats
-    recent_alerts, _ = es_client.get_recent_alerts(size=5)
-    alert_stats, _   = es_client.get_alert_stats()
-
+    """Home = vue observabilité réseau (esprit Allegro / Riverbed) : KPIs trafic,
+    santé TCP, ART, top talkers, alertes récentes, points d'écoute, services.
+    Proxmox/VMs/catalogue ont leurs propres pages (Projet & infra)."""
+    (recent_alerts, _), (alert_stats, _), perf, (services, global_status) = es_client.run_parallel(
+        lambda: es_client.get_recent_alerts(size=8),
+        es_client.get_alert_stats,
+        lambda: _perf_dashboard(talkers_size=8),
+        _check_health,
+    )
+    pcap_points, pcap_top = _pcap_overview()
     return render_template(
         "dashboard.html",
-        node_status=node_status,
-        vms=vms,
-        proxmox_ok=proxmox_ok,
-        proxmox_configured=bool(config.PROXMOX_HOST),
-        open_source_count=len(open_source),
-        commercial_count=len(commercial),
-        proxmox_host=config.PROXMOX_HOST,
-        proxmox_node=config.PROXMOX_NODE,
         recent_alerts=recent_alerts,
         alert_stats=alert_stats,
+        dashboard=perf,
+        services=services,
+        global_status=global_status,
+        pcap_points=pcap_points,
+        pcap_top=pcap_top,
     )
 
 
@@ -560,6 +585,7 @@ def vms():
         try:
             vm_list.extend(px_client.list_vms(px))
         except Exception as e:
+            _px_mark_failed()
             flash(f"Proxmox : impossible de lister les VMs — {e}", "warning")
 
     esxi = get_esxi()
@@ -698,24 +724,37 @@ def deploy(px, tool_id):
     return render_template("deploy.html", tool=tool, templates=templates)
 
 
-@app.route("/status")
-@login_required
-def status():
-    services, global_status = nw_health.check_all(
+def _check_health():
+    """Health check de tous les services (ES, Grafana, Prometheus, AutoBlock, Ollama)."""
+    return nw_health.check_all(
         es_url         = config.NETWATCH_ES_URL,
         grafana_url    = config.NETWATCH_GRAFANA_URL,
         prometheus_url = config.NETWATCH_PROMETHEUS_URL,
         autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
         ollama_url     = config.OLLAMA_URL,
     )
-    # Infos Proxmox si dispo
+
+
+def _proxmox_snapshot(px, with_vms=False):
+    """(node_status, vms) depuis Proxmox, tolérant aux erreurs."""
+    if not px:
+        return None, []
+    try:
+        node = px_client.get_node_status(px)
+        vms  = px_client.list_vms(px) if with_vms else []
+        return node, vms
+    except Exception:
+        _px_mark_failed()
+        return None, []
+
+
+@app.route("/status")
+@login_required
+def status():
     px = get_proxmox()
-    node_status = None
-    if px:
-        try:
-            node_status = px_client.get_node_status(px)
-        except Exception:
-            pass
+    # Health checks HTTP et appel Proxmox : indépendants → en parallèle
+    (services, global_status), (node_status, _) = es_client.run_parallel(
+        _check_health, lambda: _proxmox_snapshot(px))
 
     return render_template(
         "status.html",
@@ -736,62 +775,30 @@ def status():
 @app.route("/api/status")
 @login_required
 def api_status():
-    services, global_status = nw_health.check_all(
-        es_url         = config.NETWATCH_ES_URL,
-        grafana_url    = config.NETWATCH_GRAFANA_URL,
-        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
-        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
-        ollama_url     = config.OLLAMA_URL,
-    )
+    services, global_status = _check_health()
     return jsonify({"global": global_status, "services": services})
 
 
 @app.route("/report")
 @login_required
 def report():
-
-
-    # Proxmox
     px = get_proxmox()
-    node_status = None
-    vms = []
-    if px:
-        try:
-            node_status = px_client.get_node_status(px)
-            vms = px_client.list_vms(px)
-        except Exception:
-            pass
 
-    # Health services
-    services, global_status = nw_health.check_all(
-        es_url         = config.NETWATCH_ES_URL,
-        grafana_url    = config.NETWATCH_GRAFANA_URL,
-        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
-        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
-        ollama_url     = config.OLLAMA_URL,
+    # Proxmox, health checks, 3 requêtes ES et audit : tous indépendants →
+    # en parallèle (la génération PDF appelle cette page, chaque seconde compte).
+    ((node_status, vms), (services, global_status),
+     (critical_alerts, _), (all_alerts, _), (alert_stats, _), audit_result) = es_client.run_parallel(
+        lambda: _proxmox_snapshot(px, with_vms=True),
+        _check_health,
+        lambda: es_client.get_recent_alerts(size=20, severity=1),
+        lambda: es_client.get_recent_alerts(size=5),
+        es_client.get_alert_stats,
+        nw_audit.run_audit,
     )
-
-    # Alertes IDS
-    critical_alerts, _ = es_client.get_recent_alerts(size=20, severity=1)
-    all_alerts,      _ = es_client.get_recent_alerts(size=5)
-    alert_stats,     _ = es_client.get_alert_stats()
 
     # Hostgroups + analyse PCAP (points d'écoute) — T_031
     report_hostgroups = nw_hostgroups.list_groups()
-    pcap_points, pcap_top_conversations = [], []
-    try:
-        netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with open(os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json"), encoding="utf-8") as f:
-            pcap_data = json.load(f)
-        pcap_points = [
-            {"name": p.get("name"), "count": p.get("conversation_count", 0)}
-            for p in pcap_data.get("listening_points", [])
-        ]
-        all_convs = [c for p in pcap_data.get("listening_points", []) for c in p.get("conversations", [])]
-        all_convs.sort(key=lambda c: c.get("total_bytes", 0), reverse=True)
-        pcap_top_conversations = all_convs[:10]
-    except Exception:
-        pass
+    pcap_points, pcap_top_conversations = _pcap_overview()
 
     return render_template(
         "report.html",
@@ -817,7 +824,7 @@ def report():
             "partial": sum(1 for m in NIS2_MATRIX if m["coverage"] == "partial"),
             "none":    sum(1 for m in NIS2_MATRIX if m["coverage"] == "none"),
         },
-        audit          = nw_audit.run_audit(),
+        audit          = audit_result,
         generated_at   = datetime.now().strftime("%d/%m/%Y à %H:%M"),
     )
 
@@ -1138,19 +1145,50 @@ def incidents():
     return render_template("incidents.html", incidents=inc_list, error=error)
 
 
+_PCAP_CACHE_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "scripts", "security", "pcap-analysis.json")
+_PCAP_CACHE = {"mtime": None, "data": {}}
+
+
+def _pcap_data():
+    """scripts/security/pcap-analysis.json, rechargé seulement si le fichier a
+    changé (mtime) — il est lu par la home, les dashboards device/hostgroup et
+    le rapport."""
+    try:
+        mtime = os.path.getmtime(_PCAP_CACHE_PATH)
+    except OSError:
+        return {}
+    if mtime != _PCAP_CACHE["mtime"]:
+        try:
+            with open(_PCAP_CACHE_PATH, encoding="utf-8") as f:
+                _PCAP_CACHE["data"] = json.load(f)
+        except Exception:
+            _PCAP_CACHE["data"] = {}
+        _PCAP_CACHE["mtime"] = mtime
+    return _PCAP_CACHE["data"]
+
+
+def _pcap_overview(top=10):
+    """(points d'écoute [{name, count}], top conversations tous points confondus)."""
+    data = _pcap_data()
+    points = [
+        {"name": p.get("name"), "count": p.get("conversation_count", len(p.get("conversations", [])))}
+        for p in data.get("listening_points", [])
+    ]
+    convs = [{**c, "listening_point": p.get("name")}
+             for p in data.get("listening_points", []) for c in p.get("conversations", [])]
+    convs.sort(key=lambda c: c.get("total_bytes", 0), reverse=True)
+    return points, convs[:top]
+
+
 def _pcap_conversations_for(ip=None, ranges=None):
     """
-    Conversations de scripts/security/pcap-analysis.json impliquant cette IP
-    (ou dans ces plages hostgroup). Lecture simple du cache, pas de relance
-    d'analyse — évite de coupler la page dashboard à tshark.
+    Conversations de pcap-analysis.json impliquant cette IP (ou dans ces plages
+    hostgroup). Lecture du cache, pas de relance d'analyse — évite de coupler
+    la page dashboard à tshark.
     """
-    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cache_path = os.path.join(netwatch_root, "scripts", "security", "pcap-analysis.json")
-    try:
-        with open(cache_path, encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
-        return []
+    data = _pcap_data()
     out = []
     for point in data.get("listening_points", []):
         for c in point.get("conversations", []):
@@ -1172,9 +1210,12 @@ def _perf_dashboard(ip=None, ranges=None, talkers_size=10):
     jeu de métriques aux deux échelles, esprit Allegro/Keysight : débit,
     santé TCP, ART décomposé Network/Server/App, top talkers, conversations.
     """
-    art, _  = es_client.get_art_stats(ip=ip) if ip else es_client.get_art_stats()
-    tcp, _  = es_client.get_tcp_perf(ip=ip) if ip else es_client.get_tcp_perf()
-    talkers, _ = es_client.get_top_talkers(size=talkers_size, ip_ranges=ranges)
+    # 3 requêtes ES indépendantes → en parallèle (chacune est déjà cachée 60 s)
+    (art, _), (tcp, _), (talkers, _) = es_client.run_parallel(
+        lambda: es_client.get_art_stats(ip=ip),
+        lambda: es_client.get_tcp_perf(ip=ip),
+        lambda: es_client.get_top_talkers(size=talkers_size, ip_ranges=ranges),
+    )
 
     network_ms = tcp.get("avg_rtt_ms")
     app_ms     = art.get("http", {}).get("p50") or art.get("tls", {}).get("p50")
@@ -1192,8 +1233,10 @@ def _perf_dashboard(ip=None, ranges=None, talkers_size=10):
 @app.route("/ip/<ip>")
 @login_required
 def ip_detail(ip):
-    alerts_list, conn_stats, error = es_client.get_ip_events(ip)
-    dashboard = _perf_dashboard(ip=ip)
+    (alerts_list, conn_stats, error), dashboard = es_client.run_parallel(
+        lambda: es_client.get_ip_events(ip),
+        lambda: _perf_dashboard(ip=ip),
+    )
     return render_template("ip_detail.html", ip=ip,
                            alerts=alerts_list, conn=conn_stats, error=error,
                            dashboard=dashboard)
@@ -1417,15 +1460,8 @@ def api_ioc_scores():
 @login_required
 def exec_page():
     """Dashboard exécutif RSSI — posture, KPIs, top règles, sparkline."""
-    stats, es_error = es_client.get_exec_stats()
-
-    services, _ = nw_health.check_all(
-        es_url         = config.NETWATCH_ES_URL,
-        grafana_url    = config.NETWATCH_GRAFANA_URL,
-        prometheus_url = config.NETWATCH_PROMETHEUS_URL,
-        autoblock_url  = config.NETWATCH_AUTOBLOCK_URL,
-        ollama_url     = config.OLLAMA_URL,
-    )
+    (stats, es_error), (services, _) = es_client.run_parallel(
+        es_client.get_exec_stats, _check_health)
     up_count   = sum(1 for s in services if s["status"] == "up")
     uptime_pct = round(up_count / len(services) * 100) if services else 0
 
@@ -1765,10 +1801,17 @@ def flows():
     return render_template("flows.html")
 
 
+def _maybe_refresh():
+    """?refresh=1 sur une API → vide le cache TTL (bouton « Rafraîchir »)."""
+    if request.args.get("refresh"):
+        es_client.cache_clear()
+
+
 @app.route("/api/flows-stats")
 @login_required
 def api_flows_stats():
     """Top talkers, top ports, timeline 24h (netflow-* ou zeek-* fallback)."""
+    _maybe_refresh()
     data, error = es_client.get_flows_stats()
     if error and not data.get("source"):
         return jsonify({"error": error}), 503
@@ -1779,6 +1822,7 @@ def api_flows_stats():
 @login_required
 def api_art_stats():
     """ART p50/p95/p99 par service HTTP/DNS/TLS."""
+    _maybe_refresh()
     data, error = es_client.get_art_stats()
     if error:
         return jsonify({"error": error}), 503
@@ -1789,6 +1833,7 @@ def api_art_stats():
 @login_required
 def api_tcp_perf():
     """Métriques santé TCP : RTT, retransmissions, zero-windows."""
+    _maybe_refresh()
     data, error = es_client.get_tcp_perf()
     if error:
         return jsonify({"error": error}), 503

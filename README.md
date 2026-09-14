@@ -51,7 +51,7 @@
 <tr>
 <td align="center">
 <img src="docs/screenshots/portal-dashboard.png" alt="Portail — Dashboard" width="100%"/>
-<br/><em>Dashboard — vue générale avec alertes IDS récentes, KPIs et accès rapide</em>
+<br/><em>Dashboard — vue observabilité réseau : trafic 24 h, RTT/ART, top talkers, alertes IDS, points d'écoute PCAP</em>
 </td>
 </tr>
 </table>
@@ -219,24 +219,29 @@ Trafic réseau (SPAN / PCAP)
 
 ## Portail web
 
-Le portail Flask (`:5050`) centralise toutes les données en une interface unifiée :
+Le portail Flask (`:5050`) centralise toutes les données en une interface unifiée, organisée en trois sections **Observabilité · Sécurité · Rapports** (+ une section repliée *Projet & infra*), avec un filtre global par hostgroup et une palette de commandes `Ctrl+K` :
 
 | Page | Description |
 |------|-------------|
-| `/alerts` | Alertes temps réel, sparklines, auto-refresh 30s, filtres moteur/sévérité |
-| `/exec` | Dashboard RSSI / direction — KPIs exécutifs, score IOC composite, escalade n8n |
-| `/flows` | Flux réseau (GoFlow2/NetFlow), ART applicatif, santé TCP, top apps par catégorie |
+| `/` | **Home observabilité** — KPIs trafic 24 h / RTT / ART / zero-windows / services, volume réseau, top talkers, temps de réponse Network-Server-App, alertes récentes, points d'écoute PCAP |
+| `/flows` | Flux réseau (GoFlow2/NetFlow, fallback Zeek), ART applicatif, santé TCP, top apps par catégorie |
+| `/pcap-analysis` | Analyse tshark par conversation TCP (handshake, retransmissions, fenêtre, QoS/VLAN, timeline zoomable) + narration IA — notion de *point d'écoute* |
 | `/topology` | Carte réseau L2/L3 D3.js force-directed — routeurs, switchs, firewalls, hôtes |
+| `/hostgroups` | Import CSV type NetScout (plages, CIDR, groupes imbriqués) → filtre global + dashboard par groupe |
+| `/ip/<ip>` | Pivot device : mêmes widgets de performance qu'un hostgroup ou que la home (esprit Allegro) |
 | `/sla` | Compliance SLA — taux HTTP/DNS/RTT sur 7j, Business Hours vs Off-hours, gauges 270° |
+| `/alerts` | Alertes temps réel, sparklines, auto-refresh 30s, filtres moteur/sévérité |
+| `/incidents` · `/zeek` · `/geomap` | Fenêtres d'incidents 5 min · weird/files/x509 Zeek · carte GeoIP des menaces |
 | `/graph` | Graphe IOC D3.js interactif — IPs, règles, TTPs, enrichissement AbuseIPDB |
 | `/audit` | Constats priorisés automatiquement, score de posture /100, recommandations |
-| `/compliance` | Matrices NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001/27002 (couvert/partiel/hors-périmètre) |
-| `/report` | Rapport de conseil PDF : bandeau couverture, KPI cards, sections numérotées |
-| `/status` | Santé des 14 services Docker en temps réel |
-| `/agents` | Monitoring des agents IA — état, ticket en cours, dernière activité (refresh 15s) |
-| `✨ IA` | Explication des alertes via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
+| `/exec` | Dashboard RSSI / direction — KPIs exécutifs, score IOC composite, escalade n8n |
+| `/report` · `/reports` | Rapport exécutif HTML imprimable · génération PDF (wkhtmltopdf) à la demande + historique |
+| `/status` · `/compliance` · `/agents` | Santé des 14 services · matrices NIS2/NIST/ANSSI/ISO · monitoring des agents IA |
+| `✨ IA` | Explication des alertes et des conversations TCP via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
-> Interface disponible en **FR / EN** (switch côté client, localStorage)
+> Interface disponible en **FR / EN** (switch côté client, localStorage).
+> Design system unique dans `portal/static/css/style.css` (thème « SOC Console », tokens → composants), assets vendorés dans `portal/static/vendor/` — **aucun CDN**, fonctionne en labo isolé.
+> Côté serveur : cache TTL sur les agrégations Elasticsearch, requêtes fusionnées (ART, TCP, SLA en une seule recherche), appels indépendants parallélisés.
 
 ---
 

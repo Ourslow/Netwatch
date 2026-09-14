@@ -1,0 +1,65 @@
+{# Tables de performance réutilisables : top talkers + conversations PCAP.
+   Attend `dashboard` (voir app.py _perf_dashboard()). #}
+<div class="row g-3 mb-4">
+
+  <!-- Top talkers -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>Top talkers</div>
+      <div class="card-body p-0">
+        {% if dashboard.talkers %}
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr><th>IP</th><th class="text-end">Octets</th><th class="text-end">Connexions</th></tr></thead>
+          <tbody>
+            {% for t in dashboard.talkers %}
+            <tr>
+              <td><a href="{{ url_for('ip_detail', ip=t.ip) }}" class="ip-mono">{{ t.ip }}</a></td>
+              <td class="text-end small tnum">{{ t.bytes | fmt_bytes }}</td>
+              <td class="text-end small tnum">{{ t.conns }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state py-4"><i class="bi bi-inbox empty-icon"></i><div class="small">Aucune donnée conn.log sur 24h.</div></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Conversations PCAP (analyse tshark, si disponibles) -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-earmark-binary-fill me-2"></i>Conversations PCAP</span>
+        <a href="{{ url_for('pcap_analysis_page') }}" class="btn btn-sm btn-outline-secondary">Voir tout</a>
+      </div>
+      <div class="card-body p-0">
+        {% if dashboard.pcap_conversations %}
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr><th>Conversation</th><th class="text-end">Octets</th><th>Handshake</th></tr></thead>
+          <tbody>
+            {% for c in dashboard.pcap_conversations[:8] %}
+            <tr>
+              <td class="ip-mono">{{ c.client_ip }} <span class="text-dim">↔</span> {{ c.server_ip }}</td>
+              <td class="text-end small tnum">{{ c.total_bytes | fmt_bytes }}</td>
+              <td>
+                {% set r = c.handshake_rating.server %}
+                {% if r.label %}
+                  <span class="badge {% if r.label == 'EXCELLENT' %}bg-success{% elif r.label == 'POOR' %}bg-danger{% else %}bg-secondary{% endif %}">{{ r.label }}</span>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state py-4">
+          <i class="bi bi-file-earmark-binary empty-icon"></i>
+          <div class="small">Aucune conversation PCAP pour cette échelle — voir <a href="{{ url_for('pcap_analysis_page') }}">Analyse PCAP</a>.</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

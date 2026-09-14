@@ -25,8 +25,9 @@ Thumbs.db
 *.log
 *.err
 
-# Configuration locale Claude Code (preview, creds de dev)
+# Configuration locale Claude Code (preview, creds de dev) + scripts de test jetables
 .claude/
+scratchpad/
 
 # Python
 __pycache__/
