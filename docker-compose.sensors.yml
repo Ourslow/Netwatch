@@ -173,6 +173,8 @@ services:
       # Lié à l'IP LAN Sensors : le portail (autre poste) doit l'atteindre.
       - "--http-port=192.168.100.11:3001"
       - "--disable-login=1"
+      # Profil proxy (Caddy sur la VM Data) : servi sous /ntopng. Vide : avertissement ntopng sans effet.
+      - "--http-prefix=${NETWATCH_PUBLIC_URL:+/ntopng}"
       - "--community"
     volumes:
       - ntopng-data:/var/lib/ntopng
@@ -199,6 +201,8 @@ services:
       - ARKIME__plugins=
       - ARKIME__authMode=${ARKIME_AUTH_MODE:-form}
       - ARKIME__authCookieSecure=false
+      # Profil proxy (Caddy sur la VM Data) : viewer servi sous /arkime/
+      - ARKIME__webBasePath=${ARKIME_WEB_BASE_PATH:-/}
     entrypoint: ["/opt/arkime/bin/docker.sh"]
     command: ["capture-viewer", "--wait-for-db", "http://192.168.100.12:9200", "--update-geo", "--add-admin", "--forever"]
     volumes:

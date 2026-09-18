@@ -559,7 +559,8 @@ ss -tlnp | grep 9200
 ```
 
 > **Attention** : N'exposer ES sur l'extérieur qu'en environnement de lab.
-> En production, placer un reverse-proxy nginx devant avec auth basique.
+> En production, ES reste lié à 127.0.0.1 et l'accès passe par le point
+> d'entrée HTTPS unique (profil `proxy`, Caddy — README « Accès unifié HTTPS »).
 
 ### Erreur 6 — CrowdSec : "cscli: not found"
 

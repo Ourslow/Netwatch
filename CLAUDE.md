@@ -92,7 +92,7 @@ Trafic réseau (SPAN / PCAP)
 ### v3 — produit (PLANIFIE, voir docs/positionnement-produit.md § 7)
 - [ ] Validation terrain : landing page + 10 conversations MSP/DSI + 1 pilote
 - [ ] Tests automatisés + CI (portail, health, replay PCAP)
-- [ ] Reverse proxy unique TLS + auth unifiée devant portail/Grafana/Kibana/Arkime
+- [x] Reverse proxy unique TLS + auth unifiée (Caddy, profil `proxy`, `caddy/Caddyfile`, `/auth/check`) — **à valider sur la VM** (sous-chemins Grafana/Kibana/Arkime/ntopng/NetBox jamais exécutés en réel)
 - [ ] Install une commande, `upgrade` sans perte, backup/restore, ILM ES
 - [ ] Versioning semver, tags, images publiées, changelog
 - [ ] Mécanisme de licence hors ligne (clé signée)
@@ -111,6 +111,7 @@ Trafic réseau (SPAN / PCAP)
 
 ## FICHIERS CLES
 - `docker-compose.yml` — Orchestration 6 services
+- `caddy/Caddyfile` — Point d'entrée HTTPS unique (profil `proxy`) : sous-chemins + auth unifiée via `/auth/check`
 - `replay-pcap.sh` — Replay PCAP sur les 3 moteurs
 - `simulate-traffic.py` — Simulateur de trafic (injecte directement dans ES)
 - `snort/snort.lua` — Config Snort 3

@@ -181,6 +181,16 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD manquant dans .env}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_UNIFIED_ALERTING_ENABLED=true
+      # Profil proxy (NETWATCH_PUBLIC_URL renseigné) : Grafana servi sous <public>/grafana/,
+      # Caddy retire le préfixe (serve_from_sub_path reste false) et connecte
+      # automatiquement l'utilisateur du portail via l'en-tête X-Webauth-User
+      # (auth proxy — l'utilisateur doit exister : « admin », pas d'auto-création).
+      # NETWATCH_PUBLIC_URL vide (labo) : tout ceci reste inactif.
+      - GF_SERVER_ROOT_URL=${NETWATCH_PUBLIC_URL:-http://localhost:3000}${NETWATCH_PUBLIC_URL:+/grafana/}
+      - GF_AUTH_PROXY_ENABLED=${NETWATCH_PUBLIC_URL:+true}
+      - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
+      - GF_AUTH_PROXY_HEADER_PROPERTY=username
+      - GF_AUTH_PROXY_AUTO_SIGN_UP=false
       # URL non vide par défaut : sans webhook réel, Grafana refuse de démarrer
       # (le contact point Slack exige une URL non vide). Renseigner SLACK_WEBHOOK_URL pour activer.
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-http://localhost/slack-not-configured}
@@ -354,7 +364,9 @@ services:
     container_name: netwatch-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - SERVER_PUBLICBASEURL=http://localhost:5601
+      # Profil proxy : Kibana génère ses liens sous /kibana, Caddy retire le préfixe.
+      - SERVER_PUBLICBASEURL=${NETWATCH_PUBLIC_URL:-http://localhost:5601}${NETWATCH_PUBLIC_URL:+/kibana}
+      - SERVER_BASEPATH=${NETWATCH_PUBLIC_URL:+/kibana}
       - TELEMETRY_ENABLED=false
       - XPACK_SECURITY_ENABLED=false
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-netwatch-kibana-encryption-key-32chars!!}
@@ -384,7 +396,10 @@ services:
     command:
       - "--interface=${IFACE:-eth0}"
       - "--http-port=127.0.0.1:3001"
-      - "--disable-login=1"          # labo : pas d'auth (lié à localhost) — retirer en prod
+      - "--disable-login=1"          # pas d'auth : lié à localhost, et derrière Caddy c'est la session du portail qui protège
+      # Profil proxy : servi sous /ntopng. Vide (labo) : ntopng logue un avertissement
+      # « -Z argument must begin with '/' : skipped » et garde la racine — sans effet.
+      - "--http-prefix=${NETWATCH_PUBLIC_URL:+/ntopng}"
       - "--community"
     volumes:
       - ntopng-data:/var/lib/ntopng
@@ -421,6 +436,8 @@ services:
       # créé par --add-admin) + authTrustProxy — cf. https://arkime.com/settings#authmode
       - ARKIME__authMode=${ARKIME_AUTH_MODE:-anonymous}
       - ARKIME__authCookieSecure=false
+      # Profil proxy : viewer servi sous /arkime/ (ARKIME_WEB_BASE_PATH=/arkime/ dans .env)
+      - ARKIME__webBasePath=${ARKIME_WEB_BASE_PATH:-/}
       - ARKIME__plugins=
     # L'image n'a pas d'entrypoint : docker.sh <mode> [options] génère config.ini
     # depuis les ARKIME__* puis lance capture + viewer. --update-geo télécharge
@@ -491,6 +508,10 @@ services:
       - SECRET_KEY=${NETBOX_SECRET_KEY:?NETBOX_SECRET_KEY manquant dans .env (50 caractères min)}
       - ALLOWED_HOSTS=*
       - CORS_ORIGIN_ALLOW_ALL=True
+      # Profil proxy : NetBox servi sous /netbox/ (préfixe transmis tel quel par Caddy)
+      # et origine HTTPS publique acceptée pour le CSRF des formulaires.
+      - BASE_PATH=${NETWATCH_PUBLIC_URL:+netbox/}
+      - CSRF_TRUSTED_ORIGINS=${NETWATCH_PUBLIC_URL:-http://localhost:8000}
       - SKIP_SUPERUSER=false
       - SUPERUSER_NAME=${NETBOX_SUPERUSER_NAME:-admin}
       - SUPERUSER_EMAIL=${NETBOX_SUPERUSER_EMAIL:-admin@netwatch.local}
@@ -542,7 +563,39 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # ============================================================
+  # POINT D'ENTRÉE HTTPS UNIQUE (Caddy) — profil « proxy »
+  # Un seul port 443 devant le portail et les outils (/grafana/, /kibana/,
+  # /arkime/, /ntopng/, /netbox/), TLS (CA locale par défaut), authentification
+  # unifiée : la session du portail vaut pour tous les outils (voir caddy/Caddyfile).
+  # Activer : COMPOSE_PROFILES=proxy + NETWATCH_PUBLIC_URL dans .env.
+  # network_mode host : joint le portail (processus hôte :5050) et les services
+  # liés à 127.0.0.1 sans exposer un port de plus.
+  # ============================================================
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: netwatch-caddy
+    profiles: ["proxy"]
+    network_mode: host
+    environment:
+      - NETWATCH_PUBLIC_URL=${NETWATCH_PUBLIC_URL:-https://localhost}
+      - NETWATCH_TLS=${NETWATCH_TLS:-internal}
+      - NETWATCH_UPSTREAM_PORTAL=${NETWATCH_UPSTREAM_PORTAL:-localhost:5050}
+      - NETWATCH_UPSTREAM_GRAFANA=${NETWATCH_UPSTREAM_GRAFANA:-localhost:3000}
+      - NETWATCH_UPSTREAM_KIBANA=${NETWATCH_UPSTREAM_KIBANA:-localhost:5601}
+      - NETWATCH_UPSTREAM_ARKIME=${NETWATCH_UPSTREAM_ARKIME:-localhost:8005}
+      - NETWATCH_UPSTREAM_NTOPNG=${NETWATCH_UPSTREAM_NTOPNG:-localhost:3001}
+      - NETWATCH_UPSTREAM_NETBOX=${NETWATCH_UPSTREAM_NETBOX:-localhost:8000}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/certs:/certs:ro
+      - caddy-data:/data        # CA locale, certificats ACME
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
+  caddy-data:
+  caddy-config:
   ntopng-data:
   arkime-etc:
   netbox-postgres-data:

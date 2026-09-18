@@ -352,6 +352,33 @@ make health
 
 ---
 
+## Accès unifié HTTPS (reverse proxy)
+
+En labo, chaque outil a son port, la plupart liés à `localhost`. Chez un client, un seul point d'entrée : **Caddy** sur `:443`, TLS, et **une seule authentification** — la session du portail vaut pour tous les outils (profil compose `proxy`, rien ne change tant qu'il n'est pas activé).
+
+| URL | Service | Authentification |
+|---|---|---|
+| `https://<sonde>/` | Portail | login du portail |
+| `https://<sonde>/grafana/` | Grafana | session portail → connecté automatiquement (auth proxy, utilisateur `admin`) |
+| `https://<sonde>/kibana/` · `/arkime/` · `/ntopng/` | Kibana · Arkime · ntopng | session portail — les outils restent en mode « sans login », joignables uniquement par ici |
+| `https://<sonde>/netbox/` | NetBox | session portail, puis login NetBox (ses droits comptent) |
+
+```bash
+# .env — bloc « POINT D'ENTRÉE HTTPS UNIQUE » (voir .env.example)
+COMPOSE_PROFILES=proxy                 # proxy,ia pour l'édition IA
+NETWATCH_PUBLIC_URL=https://192.168.1.10   # telle que tapée dans le navigateur (ou https://sonde.pme.lan)
+NETWATCH_TLS=internal                  # CA locale Caddy (défaut) | admin@pme.fr (Let's Encrypt) | /certs/cert.pem /certs/key.pem
+ARKIME_WEB_BASE_PATH=/arkime/
+NETWATCH_NETBOX_URL=http://localhost:8000/netbox
+
+make start && make portal              # le portail lit NETWATCH_PUBLIC_URL : X-Forwarded-*, cookie Secure, liens /grafana/…
+make proxy-ca                          # exporte la CA locale (netwatch-ca.crt) à importer sur les postes
+```
+
+Mécanique dans [`caddy/Caddyfile`](caddy/Caddyfile) : avant de servir un outil, Caddy interroge `/auth/check` sur le portail ; sans session, redirection vers la page de connexion puis retour à l'URL demandée. TLS `internal` = certificat signé par une CA que Caddy génère (avertissement navigateur tant qu'elle n'est pas importée) ; Let's Encrypt exige un nom DNS public joignable sur 80/443 ; un certificat d'entreprise se dépose dans `caddy/certs/`. En 2 VMs, Caddy tourne sur la VM Data (`docker-compose.data.yml`) et joint Arkime/ntopng via `NETWATCH_UPSTREAM_*`.
+
+---
+
 ## Quickstart
 
 ### Prérequis
@@ -426,6 +453,7 @@ docker compose ps   # 14 conteneurs attendus
 
 | Interface | URL | Credentials |
 |-----------|-----|-------------|
+| **Tout, en HTTPS** (profil `proxy`) | `https://<IP_VM>/` puis `/grafana/`, `/kibana/`, `/arkime/`, `/ntopng/`, `/netbox/` | login du portail — voir [Accès unifié HTTPS](#accès-unifié-https-reverse-proxy) |
 | **Grafana** | `http://<IP_VM>:3000` | `admin` / `<GRAFANA_ADMIN_PASSWORD>` |
 | **Portail Flask** | `http://<IP_VM>:5050` | `admin` / `netwatch` |
 | **Elasticsearch** | `http://<IP_VM>:9200` | — |

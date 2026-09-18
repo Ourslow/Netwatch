@@ -89,6 +89,41 @@ def test_suricata_custom_sids_in_range():
     assert len(sids) == len(set(sids)), "SID Suricata dupliqué"
 
 
+def _compose(path):
+    with path.open(encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+@pytest.mark.parametrize("name", ["docker-compose.yml", "docker-compose.data.yml"], ids=str)
+def test_caddy_is_opt_in_and_gets_every_caddyfile_variable(name):
+    """Chaque {$VAR} du Caddyfile doit être fourni par le service caddy, et le
+    proxy ne doit jamais démarrer sans le profil « proxy » (labo inchangé)."""
+    caddyfile = (ROOT / "caddy" / "Caddyfile").read_text(encoding="utf-8")
+    wanted = set(re.findall(r"\{\$([A-Z_]+)", caddyfile))
+    assert wanted, "aucune variable dans le Caddyfile ?"
+    caddy = _compose(ROOT / name)["services"]["caddy"]
+    assert caddy.get("profiles") == ["proxy"]
+    assert caddy.get("network_mode") == "host"
+    provided = {e.split("=", 1)[0] for e in caddy["environment"]}
+    assert wanted <= provided, f"{name} : variables manquantes pour Caddy : {sorted(wanted - provided)}"
+
+
+@pytest.mark.parametrize("name,expected", [
+    ("docker-compose.yml", ["${NETWATCH_PUBLIC_URL:+/grafana/}", "GF_AUTH_PROXY_ENABLED=${NETWATCH_PUBLIC_URL:+true}",
+                            "SERVER_BASEPATH=${NETWATCH_PUBLIC_URL:+/kibana}", "--http-prefix=${NETWATCH_PUBLIC_URL:+/ntopng}",
+                            "BASE_PATH=${NETWATCH_PUBLIC_URL:+netbox/}", "ARKIME__webBasePath=${ARKIME_WEB_BASE_PATH:-/}"]),
+    ("docker-compose.data.yml", ["${NETWATCH_PUBLIC_URL:+/grafana/}", "GF_AUTH_PROXY_ENABLED=${NETWATCH_PUBLIC_URL:+true}",
+                                 "SERVER_BASEPATH=${NETWATCH_PUBLIC_URL:+/kibana}", "BASE_PATH=${NETWATCH_PUBLIC_URL:+netbox/}"]),
+    ("docker-compose.sensors.yml", ["--http-prefix=${NETWATCH_PUBLIC_URL:+/ntopng}", "ARKIME__webBasePath=${ARKIME_WEB_BASE_PATH:-/}"]),
+], ids=lambda v: v if isinstance(v, str) else "")
+def test_proxy_settings_are_conditional(name, expected):
+    """Les sous-chemins et l'auth proxy n'existent que si NETWATCH_PUBLIC_URL
+    est renseignée (${VAR:+…}) : le labo (variable vide) reste strictement inchangé."""
+    text = (ROOT / name).read_text(encoding="utf-8")
+    for token in expected:
+        assert token in text, f"{name} : {token} absent"
+
+
 def test_zeek_logs_are_json():
     zeek_scripts = list((ROOT / "zeek").rglob("*.zeek"))
     assert any("LogAscii::use_json" in p.read_text(encoding="utf-8") and "= T" in p.read_text(encoding="utf-8")
