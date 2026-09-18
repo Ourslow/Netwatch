@@ -41,7 +41,8 @@ jobs:
         run: |
           printf 'COMPOSE_PROFILES=proxy,ia\nNETWATCH_PUBLIC_URL=https://sonde.example\nARKIME_WEB_BASE_PATH=/arkime/\n' >> .env
           docker compose -f docker-compose.yml config --quiet
-          docker compose -f docker-compose.yml config | grep -q 'GF_SERVER_ROOT_URL=https://sonde.example/grafana/'
+          # `config` rend l'environnement en mapping YAML (CLÉ: valeur), pas en CLÉ=valeur.
+          docker compose -f docker-compose.yml config | grep -Eq 'GF_SERVER_ROOT_URL[=:] ?https://sonde\.example/grafana/'
       - name: caddy validate
         run: |
           for tls in internal admin@example.org; do
