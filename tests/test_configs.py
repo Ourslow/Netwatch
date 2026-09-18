@@ -124,6 +124,37 @@ def test_proxy_settings_are_conditional(name, expected):
         assert token in text, f"{name} : {token} absent"
 
 
+def test_version_is_semver_and_in_changelog():
+    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
+    assert f"## {version}" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+
+def test_install_generates_every_required_compose_secret():
+    """Chaque variable exigée par compose (${VAR:?}) et chaque secret du portail
+    doit être généré par install.sh — sinon l'installation en une commande casse."""
+    required = set()
+    for path in COMPOSE_FILES:
+        required |= set(re.findall(r"\$\{([A-Z_]+):\?", path.read_text(encoding="utf-8")))
+    required |= {"FLASK_SECRET_KEY", "PORTAL_PASSWORD", "AUTOBLOCK_WEBHOOK_SECRET", "KIBANA_ENCRYPTION_KEY"}
+    install = (ROOT / "install.sh").read_text(encoding="utf-8")
+    generated = set(re.findall(r"env_set (?:\.env|portal/\.env)\s+([A-Z_]+)\s+\"\$\(gen_", install))
+    assert required <= generated, f"non générés par install.sh : {sorted(required - generated)}"
+
+
+def test_es_snapshot_repository_is_wired():
+    """backup.sh/restore.sh utilisent un dépôt fs : le chemin doit être déclaré
+    en path.repo et monté sur le volume es-snapshots dans les deux compose ES."""
+    backup = (ROOT / "scripts" / "backup.sh").read_text(encoding="utf-8")
+    restore = (ROOT / "scripts" / "restore.sh").read_text(encoding="utf-8")
+    (repo_path,) = set(re.findall(r'ES_REPO_PATH="([^"]+)"', backup)) | set(re.findall(r'ES_REPO_PATH="([^"]+)"', restore))
+    for name in ("docker-compose.yml", "docker-compose.data.yml"):
+        es = _compose(ROOT / name)["services"]["elasticsearch"]
+        assert f"path.repo={repo_path}" in es["environment"], name
+        assert f"es-snapshots:{repo_path}" in es["volumes"], name
+        assert "es-snapshots" in _compose(ROOT / name)["volumes"], name
+
+
 def test_zeek_logs_are_json():
     zeek_scripts = list((ROOT / "zeek").rglob("*.zeek"))
     assert any("LogAscii::use_json" in p.read_text(encoding="utf-8") and "= T" in p.read_text(encoding="utf-8")

@@ -93,8 +93,8 @@ Trafic réseau (SPAN / PCAP)
 - [ ] Validation terrain : landing page + 10 conversations MSP/DSI + 1 pilote
 - [ ] Tests automatisés + CI (portail, health, replay PCAP)
 - [x] Reverse proxy unique TLS + auth unifiée (Caddy, profil `proxy`, `caddy/Caddyfile`, `/auth/check`) — **à valider sur la VM** (sous-chemins Grafana/Kibana/Arkime/ntopng/NetBox jamais exécutés en réel)
-- [ ] Install une commande, `upgrade` sans perte, backup/restore, ILM ES
-- [ ] Versioning semver, tags, images publiées, changelog
+- [x] Install une commande (`install.sh`), `scripts/upgrade.sh`, `scripts/backup.sh` / `restore.sh` (snapshot ES via `path.repo` + volume `es-snapshots`) — **à valider sur la VM** ; ILM ES restant à faire
+- [x] `VERSION` + `CHANGELOG.md` — reste : tags `vX.Y.Z` (`upgrade.sh` cible le dernier tag), images publiées
 - [ ] Mécanisme de licence hors ligne (clé signée)
 - [ ] Split Community / Pro (dépôt privé `netwatch-pro`, extension du portail)
 - [ ] Déploiement physique sur Shuttle Proxmox (Intel i350-T2 + SPAN)
@@ -112,6 +112,7 @@ Trafic réseau (SPAN / PCAP)
 ## FICHIERS CLES
 - `docker-compose.yml` — Orchestration 6 services
 - `caddy/Caddyfile` — Point d'entrée HTTPS unique (profil `proxy`) : sous-chemins + auth unifiée via `/auth/check`
+- `install.sh`, `scripts/backup.sh`, `scripts/restore.sh`, `scripts/upgrade.sh` — Exploitation (installation, sauvegarde, mise à jour) ; `VERSION`, `CHANGELOG.md`
 - `replay-pcap.sh` — Replay PCAP sur les 3 moteurs
 - `simulate-traffic.py` — Simulateur de trafic (injecte directement dans ES)
 - `snort/snort.lua` — Config Snort 3

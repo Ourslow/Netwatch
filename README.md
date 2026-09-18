@@ -383,9 +383,20 @@ Mécanique dans [`caddy/Caddyfile`](caddy/Caddyfile) : avant de servir un outil,
 
 ### Prérequis
 
-- VM **Ubuntu 22.04 LTS** — recommandé : 6 vCPU · 8 Go RAM · 60 Go disque
-- **Docker & Docker Compose v2**
+- VM **Ubuntu 22.04 / 24.04 LTS** — recommandé : 6 vCPU · 8 Go RAM · 60 Go disque
+- **Docker & Docker Compose v2** (installés par `install.sh` s'ils manquent)
 - Hyperviseur : Proxmox VE (recommandé) · VMware ESXi · VirtualBox
+
+### Installation en une commande
+
+```bash
+git clone https://github.com/Ourslow/netwatch.git && cd netwatch
+./install.sh                                    # édition Core, accès direct par port
+./install.sh --public-url https://192.168.1.10  # + point d'entrée HTTPS unique (profil proxy)
+./install.sh --ia                               # + assistant IA local (Ollama, 4-5 Go de RAM en plus)
+```
+
+`install.sh` installe Docker si besoin, règle `vm.max_map_count`, crée `.env` et `portal/.env` avec des **secrets générés** (jamais écrasés ensuite), détecte l'interface de capture, prépare `portal/.venv`, démarre la stack, initialise Elasticsearch / NetFlow / Kibana / Arkime, installe le portail en service systemd et lance `make health`. Il affiche les identifiants à la fin ; relançable sans risque. Les étapes manuelles ci-dessous restent valables pour comprendre ce qu'il fait.
 
 ### 1. Installer Docker
 
@@ -482,6 +493,27 @@ python3 simulate-traffic.py --hours 24 --intensity medium --attack
 # Vérifier les index créés
 curl "http://localhost:9200/_cat/indices?v&s=index"
 ```
+
+---
+
+## Exploitation : sauvegarde · restauration · mise à jour
+
+```bash
+make backup                 # archive autonome → backups/netwatch-<version>-<date>.tar.gz
+make backup-config          # configuration + état du portail seulement (à chaud, secondes)
+make restore ARCHIVE=backups/netwatch-2.1.0-20260918-1200.tar.gz
+make upgrade                # dernière version taguée (REF=v2.2.0 ou REF=origin/main pour cibler)
+make version                # version installée
+```
+
+| | Contenu | Méthode |
+|---|---|---|
+| **Sauvegarde** | `.env`, `portal/.env`, `portal/data/` (hostgroups, seuils, disposition), `reports/`, cibles Blackbox, watchlists Intel, règles locales, `caddy/certs/` ; volumes Grafana, Prometheus, n8n, CrowdSec, Arkime (config), Caddy, NetBox (media) ; base NetBox ; index Elasticsearch | fichiers copiés, volumes archivés par conteneur utilitaire, `pg_dump`, **snapshot ES** (dépôt `fs` sur le volume `es-snapshots`, `path.repo`) |
+| **Exclu** | données ES brutes (remplacées par le snapshot), modèle Ollama, cache ntopng, logs des moteurs (déjà dans ES), `arkime/raw` (PCAP — volume dédié à sauvegarder à part) | |
+| **Restauration** | dans l'ordre : configuration (anciens `.env` gardés en `.env.bak-<date>`), volumes, NetBox, index ES, puis `setup-es.sh` et redémarrage du portail | `scripts/restore.sh ARCHIVE [--yes] [--config-only]` |
+| **Mise à jour** | sauvegarde de la configuration, `git` vers la version cible, dépendances du portail, `pull`/`build`, `up -d`, initialisations idempotentes, portail, health check, liste des commits | aucune donnée touchée ; retour arrière = `git checkout <ancienne version> && docker compose up -d` |
+
+Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log 2>&1` (cron), et `make backup --out /mnt/nas/netwatch` pour un stockage externe via `scripts/backup.sh --out`.
 
 ---
 
@@ -874,6 +906,11 @@ bash update-intel.sh                                             # Mise à jour 
 curl "http://localhost:9200/_cat/indices?v&s=index"              # Index créés
 curl "http://localhost:9200/netwatch-beacons-*/_search?pretty&size=5"   # Détections beacon
 curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocages
+
+# Exploitation
+./install.sh --help                                              # Installation en une commande
+make backup && ls backups/                                       # Sauvegarde complète
+make upgrade                                                     # Mise à jour (dernière version taguée)
 
 # Qualité (sans stack ni Docker — ce que fait la CI GitHub Actions)
 pip install -r portal/requirements.txt pytest ruff

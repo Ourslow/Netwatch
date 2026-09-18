@@ -129,9 +129,12 @@ services:
       - xpack.security.enabled=false
       # Heap JVM — 2 Go par défaut (Shuttle) ; sur un poste/VM ≤ 8 Go, ES_HEAP=-Xms1g -Xmx1g dans .env
       - ES_JAVA_OPTS=${ES_HEAP:--Xms2g -Xmx2g}
+      # Dépôt de snapshots (scripts/backup.sh / restore.sh) sur le volume es-snapshots
+      - path.repo=/usr/share/elasticsearch/snapshots
     volumes:
       - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - es-data:/usr/share/elasticsearch/data
+      - es-snapshots:/usr/share/elasticsearch/snapshots
     ports:
       # Lié à localhost uniquement : ES n'a pas d'auth (xpack.security off).
       # Accès externe = via Grafana (datasource interne). Ne pas exposer sur 0.0.0.0.
@@ -596,6 +599,7 @@ services:
 volumes:
   caddy-data:
   caddy-config:
+  es-snapshots:
   ntopng-data:
   arkime-etc:
   netbox-postgres-data:

@@ -17,9 +17,14 @@ scripts/security/ioc-graph-output.json
 # Elasticsearch data
 elasticsearch/data/
 
+# Sauvegardes (scripts/backup.sh) et CA locale exportée (make proxy-ca)
+backups/
+netwatch-ca.crt
+
 # Secrets
 .env
 .env.local
+.env.bak-*
 *.key
 *.crt
 *.cert

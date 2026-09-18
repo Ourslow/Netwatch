@@ -1,4 +1,32 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup test lint check proxy-ca
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup test lint check proxy-ca backup backup-config restore upgrade version
+
+# ============================================================
+# Exploitation — installation, sauvegarde, restauration, mise à jour
+# ============================================================
+
+# Installation complète en une commande (Docker, .env, venv, stack, systemd) — ./install.sh --help
+install:
+	@./install.sh
+
+version:
+	@cat VERSION
+
+# Sauvegarde complète (config, volumes, NetBox, snapshot ES) → backups/ ; KEEP=n pour ne garder que n archives
+backup:
+	@bash scripts/backup.sh $(if $(KEEP),--keep $(KEEP),)
+
+# Configuration + état du portail seulement (à chaud, quelques secondes)
+backup-config:
+	@bash scripts/backup.sh --config-only $(if $(KEEP),--keep $(KEEP),)
+
+# make restore ARCHIVE=backups/netwatch-2.1.0-20260918-1200.tar.gz
+restore:
+	@test -n "$(ARCHIVE)" || { echo "Usage : make restore ARCHIVE=backups/<archive>.tar.gz"; exit 2; }
+	@bash scripts/restore.sh "$(ARCHIVE)"
+
+# Mise à jour vers la dernière version taguée (ou REF=v2.2.0 / REF=origin/main)
+upgrade:
+	@bash scripts/upgrade.sh $(REF)
 
 # ============================================================
 # Point d'entrée HTTPS unique (Caddy, profil « proxy ») — voir caddy/Caddyfile
@@ -80,7 +108,9 @@ SVC    ?=
 # Installation système (à lancer une seule fois sur la VM)
 # ============================================================
 
-install:
+# Service systemd du portail seul (chemins de systemd/netwatch-portal.service) —
+# install.sh l'installe déjà, adapté au répertoire et à l'utilisateur courants.
+install-service:
 	@echo "=== Installation service systemd netwatch-portal ==="
 	cp systemd/netwatch-portal.service /etc/systemd/system/
 	systemctl daemon-reload
@@ -104,7 +134,7 @@ setup-netflow:
 portal:
 	@mkdir -p logs
 	@echo "Démarrage portail Flask en arrière-plan..."
-	@cd portal && nohup python3 app.py >> ../logs/portal.log 2>&1 & echo $$! > ../logs/portal.pid
+	@cd portal && nohup $$( [ -x .venv/bin/python3 ] && echo .venv/bin/python3 || echo python3 ) app.py >> ../logs/portal.log 2>&1 & echo $$! > ../logs/portal.pid
 	@sleep 2
 	@curl -sf http://localhost:5050/login > /dev/null && echo "Portail OK → http://localhost:5050" || echo "WARN: portail non joignable, voir logs/portal.log"
 
@@ -274,6 +304,12 @@ help:
 	@echo ""
 	@echo "  make build           Rebuild tous les services"
 	@echo "  make build SVC=snort Rebuild un service"
+	@echo ""
+	@echo "  make install         Installation complète en une commande (./install.sh --help)"
+	@echo "  make backup          Sauvegarde complète → backups/ (make backup-config : config seule)"
+	@echo "  make restore ARCHIVE=backups/<archive>.tar.gz"
+	@echo "  make upgrade         Mise à jour vers la dernière version taguée (REF=… pour cibler)"
+	@echo "  make version         Version installée (VERSION)"
 	@echo ""
 	@echo "  make test            Tests portail + conventions (pytest)"
 	@echo "  make lint            ruff + bash -n"

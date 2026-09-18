@@ -72,6 +72,12 @@ sudo apt-get update && sudo apt-get install -y \
 
 ## 2. Déploiement rapide
 
+> **Raccourci** : `./install.sh` enchaîne toutes les étapes ci-dessous (Docker, `.env` avec
+> secrets générés, venv du portail, stack, `setup-es.sh`, NetFlow, Kibana, Arkime, service
+> systemd, health check). Options : `--public-url https://<IP>` (point d'entrée HTTPS unique),
+> `--ia`, `--iface`, `--no-start`. Ensuite : `make backup`, `make upgrade` (README
+> « Exploitation »).
+
 ### Étape 1 — Cloner le dépôt
 
 ```bash

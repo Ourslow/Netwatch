@@ -10,9 +10,12 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - ES_JAVA_OPTS=${ES_HEAP:--Xms2g -Xmx2g}
+      # Dépôt de snapshots (scripts/backup.sh / restore.sh) sur le volume es-snapshots
+      - path.repo=/usr/share/elasticsearch/snapshots
     volumes:
       - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - es-data:/usr/share/elasticsearch/data
+      - es-snapshots:/usr/share/elasticsearch/snapshots
     ports:
       # Lié à l'IP LAN de la VM Data : accessible depuis la VM Sensors
       # (filebeat/beacon-detect/autoblock), pas exposé au-delà de ce réseau.
@@ -287,6 +290,7 @@ volumes:
   caddy-data:
   caddy-config:
   es-data:
+  es-snapshots:
   grafana-data:
   prometheus-data:
   ollama-data:
