@@ -4,8 +4,16 @@
 - Projet : NetWatch v2 — Stack d'observabilité réseau multi-moteurs open-source
 - Auteur : Nicolas Malok, analyste observabilité NPM @ Axians / Vinci Energies — France
 - École : École 2600 (cyber), promotion 2024-2027
-- Catégorie : SideQuest MVP (S2 2025-2026)
+- Origine : SideQuest MVP (S2 2025-2026) — **depuis le 2026-09-18, projet personnel visant un produit commercialisable**
 - Repo : https://github.com/Ourslow/netwatch
+
+## CAP PRODUIT (2026-09-18)
+Référence : `docs/positionnement-produit.md`. Résumé :
+- Sonde NPM + NDR self-hosted pour PME 50-500 postes et MSP francophones. Pas de SaaS hébergé en phase 1.
+- Édition **Community** (AGPL v3, ce dépôt, complète pour une sonde utile) + édition **Pro** (abonnement, clé de licence, dépôt privé `netwatch-pro` chargé comme extension). Jamais payant : doc, moteurs, dashboards Grafana, install, health.
+- Ordre : validation terrain (6 semaines) → tests/CI → reverse proxy/TLS/auth unifiée → install/upgrade/backup → licence → split Pro (en dernier).
+- Aucune fonctionnalité retirée ni bridée avant la fin de la validation.
+- Prérequis avant le premier euro : clarification écrite de la PI vis-à-vis d'Axians (§ 9 du doc).
 
 ## CONCEPT
 Stack d'observabilité réseau open-source qui reproduit les fonctionnalités clés d'un outil NPM commercial (type Netscout nGeniusONE) avec des briques 100% open-source. Le projet intègre 3 moteurs d'analyse en parallèle sur le même trafic.
@@ -81,11 +89,16 @@ Trafic réseau (SPAN / PCAP)
 - [x] .env.example propre (SNORT_MONITORED_SERVER, DRY_RUN=true)
 - [ ] Tester le build complet sur la VM physique
 
-### v3 (PLANIFIE)
+### v3 — produit (PLANIFIE, voir docs/positionnement-produit.md § 7)
+- [ ] Validation terrain : landing page + 10 conversations MSP/DSI + 1 pilote
+- [ ] Tests automatisés + CI (portail, health, replay PCAP)
+- [ ] Reverse proxy unique TLS + auth unifiée devant portail/Grafana/Kibana/Arkime
+- [ ] Install une commande, `upgrade` sans perte, backup/restore, ILM ES
+- [ ] Versioning semver, tags, images publiées, changelog
+- [ ] Mécanisme de licence hors ligne (clé signée)
+- [ ] Split Community / Pro (dépôt privé `netwatch-pro`, extension du portail)
 - [ ] Déploiement physique sur Shuttle Proxmox (Intel i350-T2 + SPAN)
-- [ ] Portail web custom (Flask/FastAPI + API Proxmox) pour gérer les VMs
-- [ ] Templates VM pour outils commerciaux (Netscout, Gigamon, Riverbed)
-- [ ] Mode comparaison côte à côte open-source vs commercial
+- Héritage lab (gestion VMs Proxmox/ESXi, templates outils commerciaux, comparaison côte à côte) : à trancher, § 10 du doc
 
 ## CONVENTIONS
 - Fichiers de config en français (commentaires)

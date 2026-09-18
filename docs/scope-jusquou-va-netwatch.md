@@ -1,5 +1,9 @@
 # Jusqu'où va NetWatch ? — Doc de scope
 
+> **Remplacé le 2026-09-18** par [`positionnement-produit.md`](positionnement-produit.md)
+> comme référence de cap. Conservé pour le contexte Axians (usage interne
+> formation / avant-vente), qui reste valable et distinct du produit.
+
 Question posée par Jerem en réunion du 2026-07-10 : à quel moment doit-on
 basculer sur un autre outil (commercial) plutôt que de pousser NetWatch
 plus loin ? Ce document fixe une ligne claire — à challenger au point du
