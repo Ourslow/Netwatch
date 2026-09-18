@@ -901,7 +901,7 @@ def _write_output(topology: dict, output_path: str) -> None:
 def _print_summary(topology: dict) -> None:
     """Print a human-readable summary to stdout."""
     stats = topology.get("stats", {})
-    print(f"\n=== NetWatch Topology Discovery ===")
+    print("\n=== NetWatch Topology Discovery ===")
     print(f"  Devices   : {stats.get('devices', 0)}")
     print(f"  Links     : {stats.get('links', 0)}")
     print(f"  Source    : {stats.get('source', 'unknown')}")

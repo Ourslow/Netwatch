@@ -846,6 +846,10 @@ bash update-intel.sh                                             # Mise à jour 
 curl "http://localhost:9200/_cat/indices?v&s=index"              # Index créés
 curl "http://localhost:9200/netwatch-beacons-*/_search?pretty&size=5"   # Détections beacon
 curl "http://localhost:9200/netwatch-autoblock-*/_search?pretty&size=5" # Blocages
+
+# Qualité (sans stack ni Docker — ce que fait la CI GitHub Actions)
+pip install -r portal/requirements.txt pytest ruff
+make check                                                       # ruff + pytest (portail, conventions)
 ```
 
 </details>

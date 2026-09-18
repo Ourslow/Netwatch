@@ -786,7 +786,7 @@ def query_netflow_by_port(es_url: str, days: int, verbose: bool) -> list[dict]:
     Aggregate netflow-* by dst_port.
     Returns list of {port, app_name, category, bytes, flows}.
     """
-    url = f"/netflow-*/_search"
+    url = "/netflow-*/_search"
     body = {
         "size": 0,
         "query": {"range": {"@timestamp": {"gte": f"now-{days}d"}}},
@@ -968,7 +968,7 @@ def bulk_update_netflow(es_url: str, days: int, top_ports: list[dict],
                 }
             },
         }
-        resp = es_request(es_url, "POST", f"/netflow-*/_update_by_query?conflicts=proceed", body, verbose)
+        resp = es_request(es_url, "POST", "/netflow-*/_update_by_query?conflicts=proceed", body, verbose)
         if "error" not in resp:
             n = resp.get("updated", 0)
             if verbose and n:
@@ -1087,7 +1087,7 @@ def main():
     # ------------------------------------------------------------------
     # [3/3] Build output
     # ------------------------------------------------------------------
-    print(f"\n[3/3] Génération app-flows-today.json")
+    print("\n[3/3] Génération app-flows-today.json")
     merged    = merge_results(netflow_results, zeek_results)
     top_apps  = merged[:10]
     by_cat    = build_by_category(merged)
@@ -1101,14 +1101,14 @@ def main():
     }
 
     # Summary
-    print(f"  Top applications :")
+    print("  Top applications :")
     for i, a in enumerate(top_apps[:5], 1):
         mb = a["bytes"] / (1024 * 1024)
         print(f"    {i:2d}. {a['name']:20s} [{a['category']:15s}] "
               f"{mb:8.1f} MB  {a['flows']:6d} flux")
 
     if args.dry_run:
-        print(f"\n  [DRY-RUN] sortie JSON non écrite — aperçu :")
+        print("\n  [DRY-RUN] sortie JSON non écrite — aperçu :")
         print(json.dumps(output, indent=2)[:500])
         return
 

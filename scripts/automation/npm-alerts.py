@@ -365,7 +365,7 @@ def action_create_ticket(metric: str, severity: str, value: float, description: 
     if dry_run:
         print(f"  [DRY-RUN] create-ticket: {description} (severity={severity})")
         if verbose:
-            print(f"  [DRY-RUN] json payload ready")
+            print("  [DRY-RUN] json payload ready")
         return True
 
     try:

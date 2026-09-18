@@ -1,0 +1,15 @@
+# Lint minimal : erreurs de syntaxe, noms non définis, imports inutilisés.
+# Le style (longueur de ligne, alignement des `=`) n'est volontairement pas
+# vérifié — le code existant aligne les affectations à la main.
+line-length = 140
+target-version = "py311"
+
+[lint]
+select = ["E9", "F"]
+ignore = ["F401", "F841"]
+
+[lint.per-file-ignores]
+"portal/tests/*" = ["F811"]
+# Table de ports avec des clés répétées (la dernière gagne) — à dédoublonner
+# quand la classification applicative sera revue, pas un chantier de lint.
+"scripts/automation/app-classifier.py" = ["F601"]

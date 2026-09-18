@@ -462,7 +462,7 @@ def main():
             print(f"ECHEC: {tid} — synchronisation impossible", file=sys.stderr)
 
     # Final summary
-    print(f"\n=== Résumé ===")
+    print("\n=== Résumé ===")
     print(f"  Créés   : {len(created)}")
     print(f"  Echecs  : {len(failed)}")
     print(f"  Skippés : {len(skipped_dup)} (déjà synchro)")

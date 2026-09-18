@@ -449,7 +449,7 @@ def main():
     # ------------------------------------------------------------------
     # [1/3] Interface speeds
     # ------------------------------------------------------------------
-    print(f"\n[1/3] Récupération vitesses nominales (ifHighSpeed)")
+    print("\n[1/3] Récupération vitesses nominales (ifHighSpeed)")
     speeds = get_iface_speeds(args.prometheus_url, args.verbose)
     if speeds is None:
         print("  INFO: Prometheus non joignable — arrêt gracieux")

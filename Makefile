@@ -1,4 +1,18 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup test lint check
+
+# ============================================================
+# Qualité — mêmes commandes que la CI (.github/workflows/ci.yml)
+#   pip install -r portal/requirements.txt pytest ruff
+# ============================================================
+
+test:
+	@python3 -m pytest
+
+lint:
+	@python3 -m ruff check portal scripts simulate-traffic.py
+	@find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 bash -n && echo "bash -n : OK"
+
+check: lint test
 
 # ============================================================
 # Services d'observabilité complémentaires
@@ -250,6 +264,10 @@ help:
 	@echo ""
 	@echo "  make build           Rebuild tous les services"
 	@echo "  make build SVC=snort Rebuild un service"
+	@echo ""
+	@echo "  make test            Tests portail + conventions (pytest)"
+	@echo "  make lint            ruff + bash -n"
+	@echo "  make check           lint + test (ce que fait la CI)"
 	@echo ""
 	@echo "  make demo            Démonstration complète (6h de trafic)"
 	@echo "  make demo-fast       Démonstration rapide (1h, intensité high)"

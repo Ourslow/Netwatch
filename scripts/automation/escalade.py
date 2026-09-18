@@ -359,7 +359,7 @@ def action_create_ticket(ip: str, score: int, reason: str, dry_run: bool, verbos
     })
 
     if dry_run:
-        print(f"  [DRY-RUN] echo '<json>' | python3 create-ticket.py")
+        print("  [DRY-RUN] echo '<json>' | python3 create-ticket.py")
         if verbose:
             print(f"  [DRY-RUN] json={alert_json}")
         return True

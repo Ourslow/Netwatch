@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  portal:
+    name: Portail — lint + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: portal/requirements.txt
+      - run: pip install -r portal/requirements.txt pytest ruff
+      - name: Lint (ruff)
+        run: ruff check portal scripts simulate-traffic.py
+      - name: Tests portail + conventions
+        run: pytest
+
+  stack:
+    name: Stack — compose, Prometheus, shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config
+        run: |
+          # .env.example laisse les secrets vides ; compose exige ceux marqués ${VAR:?}.
+          cp .env.example .env
+          for v in $(grep -ohE '\$\{[A-Z_]+:\?' docker-compose*.yml | tr -d '${:?' | sort -u); do
+            echo "$v=ci-placeholder-$(printf 'x%.0s' $(seq 1 50))" >> .env
+          done
+          for f in docker-compose.yml docker-compose.data.yml docker-compose.sensors.yml; do
+            echo "== $f"; docker compose -f "$f" config --quiet
+          done
+      - name: promtool check
+        run: |
+          docker run --rm -v "$PWD/prometheus:/cfg:ro" --entrypoint promtool prom/prometheus:v2.51.0 \
+            check rules /cfg/rules/*.yml
+          docker run --rm -v "$PWD/prometheus:/cfg:ro" --entrypoint promtool prom/prometheus:v2.51.0 \
+            check config /cfg/prometheus.yml
+      - name: shellcheck
+        run: |
+          sudo apt-get install -y -qq shellcheck >/dev/null
+          find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 bash -n
+          find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 shellcheck -S error

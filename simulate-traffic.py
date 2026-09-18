@@ -745,7 +745,7 @@ def bulk_index(es_url, docs, index_name):
         resp = urlopen(req)
         result = json.loads(resp.read())
         if result.get("errors"):
-            print(f"  [!] Quelques erreurs dans le batch")
+            print("  [!] Quelques erreurs dans le batch")
         return len(docs)
     except URLError as e:
         print(f"  [ERREUR] {e}")
