@@ -39,6 +39,9 @@ DEFAULT_ES_URL = os.environ.get("ES_URL", "http://localhost:9200")
 # PORT → (app_name, category) — 400+ entrées
 # Catégories : web | remote-access | file-share | email | database
 #              collaboration | streaming | infrastructure | security | unknown
+# Un port = une seule entrée : en cas d'usages concurrents, on garde le plus
+# générique / probable en PME (443 → HTTPS, pas un produit) et on cite les
+# autres en commentaire. Garde-fous : ruff F601 + tests/test_app_classifier.py.
 # ---------------------------------------------------------------------------
 PORT_APP_MAP: dict[int, tuple[str, str]] = {
     # ── Web ──────────────────────────────────────────────────────────────────
@@ -51,7 +54,7 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     4200:  ("Angular-DevServer", "web"),
     4243:  ("Docker-HTTP",       "web"),
     4443:  ("HTTPS-Alt",         "web"),
-    5000:  ("Flask-HTTP",        "web"),
+    5000:  ("Flask-HTTP",        "web"),  # aussi Docker-Registry, Synology DSM
     5001:  ("Web-Dev2",          "web"),
     6060:  ("HTTP-Pprof",        "web"),
     6080:  ("HTTP-GW",           "web"),
@@ -60,7 +63,7 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     7070:  ("HTTP-Alt",          "web"),
     7080:  ("HTTP-GW2",          "web"),
     7443:  ("HTTPS-GW",          "web"),
-    8000:  ("HTTP-Dev",          "web"),
+    8000:  ("HTTP-Dev",          "web"),  # aussi Splunk-Web, NetBox
     8001:  ("HTTP-Dev2",         "web"),
     8002:  ("HTTP-Dev3",         "web"),
     8003:  ("HTTP-Dev4",         "web"),
@@ -71,43 +74,43 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     8008:  ("HTTP-Alt2",         "web"),
     8009:  ("AJP-Tomcat",        "web"),
     8010:  ("HTTP-Dev8",         "web"),
-    8080:  ("HTTP-Proxy",        "web"),
-    8081:  ("HTTP-Alt3",         "web"),
-    8082:  ("HTTP-Alt4",         "web"),
-    8083:  ("HTTP-Alt5",         "web"),
+    8080:  ("HTTP-Proxy",        "web"),  # aussi Traefik, Spark, Trino, Nginx-Unit
+    8081:  ("HTTP-Alt3",         "web"),  # aussi Schema-Registry, Flink-UI
+    8082:  ("HTTP-Alt4",         "web"),  # aussi InfluxDB-UDP, Druid
+    8083:  ("HTTP-Alt5",         "web"),  # aussi Kafka-Connect, Druid
     8084:  ("HTTP-Alt6",         "web"),
     8085:  ("HTTP-Alt7",         "web"),
-    8087:  ("HTTP-Alt8",         "web"),
+    8087:  ("HTTP-Alt8",         "web"),  # aussi InfluxDB-Alt
     8088:  ("HTTP-Alt9",         "web"),
-    8089:  ("Splunk-Web",        "web"),
-    8090:  ("HTTP-Alt10",        "web"),
+    8089:  ("Splunk-Mgmt",       "infrastructure"),  # REST splunkd (Splunk-Web = 8000)
+    8090:  ("HTTP-Alt10",        "web"),  # aussi Presto, Confluence
     8091:  ("Couchbase-Web",     "web"),
     8095:  ("HTTP-Alt11",        "web"),
     8118:  ("Privoxy-HTTP",      "web"),
     8180:  ("HTTP-Alt12",        "web"),
     8181:  ("HTTPS-Tomcat",      "web"),
     8280:  ("HTTP-Alt13",        "web"),
-    8443:  ("HTTPS-Alt2",        "web"),
+    8443:  ("HTTPS-Alt2",        "web"),  # aussi Cisco-ASDM
     8480:  ("HTTP-Alt14",        "web"),
     8543:  ("HTTPS-Alt3",        "web"),
     8800:  ("HTTP-Alt15",        "web"),
     8880:  ("HTTP-Alt16",        "web"),
-    8888:  ("Jupyter-HTTP",      "web"),
+    8888:  ("HTTP-Alt24",        "web"),  # Jupyter, API-GW, Druid…
     8900:  ("HTTP-Alt17",        "web"),
     8983:  ("Solr-HTTP",         "web"),
-    9000:  ("HTTP-Alt18",        "web"),
-    9001:  ("HTTP-Alt19",        "web"),
+    9000:  ("HTTP-Alt18",        "web"),  # aussi ClickHouse, MinIO-S3, Portainer
+    9001:  ("HTTP-Alt19",        "web"),  # aussi MinIO-Console, Tor-OR
     9080:  ("HTTP-Alt20",        "web"),
     9081:  ("HTTP-Alt21",        "web"),
     9082:  ("HTTP-Alt22",        "web"),
-    9083:  ("HTTP-Alt23",        "web"),
-    9090:  ("Prometheus-UI",     "web"),
+    9083:  ("HTTP-Alt23",        "web"),  # aussi Hive-Metastore
+    9090:  ("Prometheus-UI",     "web"),  # aussi Thrift, PRTG
     9091:  ("Prometheus-Alt",    "web"),
-    9100:  ("Prometheus-Exp",    "web"),
-    9200:  ("Elasticsearch-HTTP","web"),
+    9100:  ("JetDirect/Node-Exporter","infrastructure"),  # impression RAW et node-exporter, tous deux courants
+    9200:  ("Elasticsearch",     "database"),
     9201:  ("ES-HTTP-Alt",       "web"),
-    9300:  ("ES-Cluster",        "web"),
-    9443:  ("HTTPS-Alt4",        "web"),
+    9300:  ("Elasticsearch-Transport","database"),
+    9443:  ("HTTPS-Alt4",        "web"),  # aussi Zscaler, vCenter
     10080: ("HTTP-Alt21",        "web"),
     11371: ("HKP-Keyserver",     "web"),
     # ── Remote Access ────────────────────────────────────────────────────────
@@ -122,7 +125,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     3389:  ("RDP",               "remote-access"),
     3390:  ("RDP-Alt",           "remote-access"),
     3391:  ("RDP-Alt2",          "remote-access"),
-    4444:  ("NC-Bind",           "remote-access"),
     4899:  ("RAdmin",            "remote-access"),
     5900:  ("VNC",               "remote-access"),
     5901:  ("VNC-2",             "remote-access"),
@@ -134,8 +136,7 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     6543:  ("RDP-Alt3",          "remote-access"),
     8291:  ("Mikrotik-Winbox",   "remote-access"),
     9922:  ("SSH-Alt6",          "remote-access"),
-    10000: ("Webmin-HTTP",       "remote-access"),
-    20000: ("Usermin-HTTP",      "remote-access"),
+    10000: ("Webmin-HTTP",       "remote-access"),  # aussi HiveServer2, NDMP
     # ── File Share ───────────────────────────────────────────────────────────
     20:    ("FTP-Data",          "file-share"),
     21:    ("FTP",               "file-share"),
@@ -188,7 +189,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     7474:  ("Neo4j-HTTP",        "database"),
     7687:  ("Neo4j-Bolt",        "database"),
     8086:  ("InfluxDB-HTTP",     "database"),
-    8087:  ("InfluxDB-Alt",      "database"),
     8098:  ("Riak-HTTP",         "database"),
     8099:  ("Riak-PB",           "database"),
     9042:  ("Cassandra",         "database"),
@@ -237,7 +237,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     1234:  ("RTSP-VLC",          "streaming"),
     1755:  ("MMS",               "streaming"),
     1935:  ("RTMP",              "streaming"),
-    1936:  ("RTMPS",             "streaming"),
     4747:  ("Streamr",           "streaming"),
     5004:  ("RTP",               "streaming"),
     5005:  ("RTCP",              "streaming"),
@@ -253,7 +252,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     67:    ("DHCP-Server",       "infrastructure"),
     68:    ("DHCP-Client",       "infrastructure"),
     88:    ("Kerberos",          "infrastructure"),
-    102:   ("ISO-TSAP",          "infrastructure"),
     119:   ("NNTP",              "infrastructure"),
     123:   ("NTP",               "infrastructure"),
     135:   ("MS-RPC",            "infrastructure"),
@@ -262,10 +260,9 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     179:   ("BGP",               "infrastructure"),
     194:   ("IRC",               "infrastructure"),
     389:   ("LDAP",              "infrastructure"),
-    443:   ("HTTPS",             "web"),           # skipped duplicate
     464:   ("Kerberos-Chpwd",    "infrastructure"),
     500:   ("IKEv2",             "security"),
-    514:   ("Syslog-UDP",        "infrastructure"),
+    514:   ("Syslog",            "infrastructure"),  # TCP + UDP
     515:   ("LPD-Print",         "infrastructure"),
     520:   ("RIPv1",             "infrastructure"),
     521:   ("RIPng",             "infrastructure"),
@@ -295,7 +292,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     2379:  ("etcd-Client",       "infrastructure"),
     2380:  ("etcd-Peer",         "infrastructure"),
     2382:  ("MS-OLAP-HTTP",      "infrastructure"),
-    3000:  ("Grafana-HTTP",      "web"),           # already web - will be skipped below
     4500:  ("IPsec-NAT-T",       "security"),
     4789:  ("VXLAN",             "infrastructure"),
     5353:  ("mDNS",              "infrastructure"),
@@ -306,20 +302,17 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     8125:  ("StatsD-UDP",        "infrastructure"),
     8126:  ("StatsD-TCP",        "infrastructure"),
     8300:  ("Consul-RPC",        "infrastructure"),
-    8301:  ("Consul-LAN",        "infrastructure"),
-    8302:  ("Consul-WAN",        "infrastructure"),
+    8301:  ("Consul-Serf-LAN",   "infrastructure"),
+    8302:  ("Consul-Serf-WAN",   "infrastructure"),
     8400:  ("Consul-CLI",        "infrastructure"),
     8500:  ("Consul-HTTP",       "infrastructure"),
     8600:  ("Consul-DNS",        "infrastructure"),
     9092:  ("Kafka-Broker",      "infrastructure"),
-    9093:  ("Kafka-TLS",         "infrastructure"),
     9094:  ("Kafka-SASL",        "infrastructure"),
     9309:  ("ES-Cluster-Alt",    "infrastructure"),
     10250: ("Kubelet-API",       "infrastructure"),
     10255: ("Kubelet-RO",        "infrastructure"),
     10256: ("kube-proxy",        "infrastructure"),
-    10443: ("Kubernetes-Mgmt",   "infrastructure"),
-    2181:  ("ZooKeeper",         "infrastructure"),
     # Monitoring & Observability
     4317:  ("OTLP-gRPC",         "infrastructure"),
     4318:  ("OTLP-HTTP",         "infrastructure"),
@@ -336,7 +329,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     # CI/CD & DevOps
     2224:  ("GitLab-SSH",        "infrastructure"),
     8929:  ("GitLab-Pages",      "infrastructure"),
-    8888:  ("Jupyter-HTTP",      "web"),           # duplicate skip
     # Service Mesh & Network
     15001: ("Istio-Envoy",       "infrastructure"),
     15006: ("Istio-Envoy-Out",   "infrastructure"),
@@ -350,36 +342,27 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     # PKI / Certificate
     8200:  ("HashiCorp-Vault",   "security"),
     8201:  ("Vault-Cluster",     "security"),
-    9090:  ("Prometheus-UI",     "web"),           # duplicate skip
     # Time Series & Metrics
     2003:  ("Graphite-Carbon",   "infrastructure"),
     2004:  ("Graphite-Pickle",   "infrastructure"),
-    8082:  ("InfluxDB-UDP",      "database"),      # duplicate skip
     # Network Management
-    69:    ("TFTP",              "file-share"),    # duplicate
     5632:  ("PCAnywhere",        "remote-access"),
-    161:   ("SNMP",              "infrastructure"),# duplicate
-    162:   ("SNMP-Trap",         "infrastructure"),# duplicate
     # Router / Switch management
-    22:    ("SSH",               "remote-access"), # duplicate
-    23:    ("Telnet",            "remote-access"), # duplicate
     830:   ("NETCONF-SSH",       "infrastructure"),
     831:   ("NETCONF-BeepSec",   "infrastructure"),
     6513:  ("NETCONF-TLS",       "infrastructure"),
     8022:  ("Ansible-SSH",       "infrastructure"),
-    8888:  ("API-GW",            "web"),           # duplicate
     # DNS variants
     784:   ("DNS-over-QUIC",     "infrastructure"),
     8853:  ("DNS-over-HTTPS-Alt","infrastructure"),
     # SNMP versions
-    161:   ("SNMP",              "infrastructure"), # duplicate
     10161: ("SNMP-Alt",          "infrastructure"),
     10162: ("SNMP-Trap-Alt",     "infrastructure"),
     # Industrial / IoT
-    102:   ("S7comm",            "infrastructure"), # duplicate
+    102:   ("S7comm",            "infrastructure"),  # S7comm (Siemens) sur ISO-TSAP
     502:   ("Modbus-TCP",        "infrastructure"),
     503:   ("Modbus-TLS",        "infrastructure"),
-    20000: ("DNP3-TCP",          "infrastructure"),  # duplicate - override Usermin
+    20000: ("DNP3-TCP",          "infrastructure"),  # aussi Usermin
     44818: ("EtherNet-IP",       "infrastructure"),
     47808: ("BACnet",            "infrastructure"),
     1911:  ("Niagara-Fox",       "infrastructure"),
@@ -392,16 +375,9 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     12489: ("Nagios-NRPE",       "infrastructure"),
     5666:  ("NRPE",              "infrastructure"),
     # Puppet / Chef / Ansible
-    8140:  ("Puppet-Master",     "infrastructure"),
     9418:  ("Git-Protocol",      "infrastructure"),
-    # Container Registry
-    5000:  ("Docker-Registry",   "infrastructure"),  # duplicate - Flask
-    # Vault / Secrets
-    8200:  ("Vault-HTTP",        "security"),     # duplicate
     # Networking protocols
-    179:   ("BGP",               "infrastructure"),  # duplicate
     646:   ("LDP-MPLS",          "infrastructure"),
-    4789:  ("VXLAN",             "infrastructure"),  # duplicate
     6633:  ("OpenFlow",          "infrastructure"),
     6634:  ("OpenFlow-Alt",      "infrastructure"),
     6653:  ("OpenFlow-1.3",      "infrastructure"),
@@ -415,25 +391,19 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     1702:  ("L2TP-Alt",          "security"),
     # Zscaler / proxy
     9480:  ("Zscaler-HTTP",      "security"),
-    9443:  ("Zscaler-HTTPS",     "security"),  # duplicate
     # ── Security ─────────────────────────────────────────────────────────────
-    500:   ("IKEv2",             "security"),    # duplicate
     1194:  ("OpenVPN",           "security"),
     1195:  ("OpenVPN-Alt",       "security"),
     1196:  ("OpenVPN-Alt2",      "security"),
     1197:  ("OpenVPN-Alt3",      "security"),
     1198:  ("OpenVPN-Alt4",      "security"),
     1199:  ("OpenVPN-Alt5",      "security"),
-    4500:  ("IPsec-NAT-T",       "security"),  # duplicate
     51820: ("WireGuard",         "security"),
     51821: ("WireGuard-Alt",     "security"),
-    1194:  ("OpenVPN-UDP",       "security"),  # duplicate
     943:   ("OpenVPN-AS-Web",    "security"),
     945:   ("OpenVPN-AS-Web2",   "security"),
-    8443:  ("Cisco-ASDM",        "web"),       # duplicate
-    10443: ("FortiGate-Admin",   "security"),
-    4444:  ("Meterpreter",       "security"),  # duplicate as remote-access
-    9001:  ("Tor-OR",            "security"),
+    10443: ("FortiGate-SSLVPN",  "security"),  # SSL-VPN Fortinet (défaut) ; aussi K8s
+    4444:  ("Meterpreter",       "security"),  # handler Metasploit par défaut / nc bind
     9030:  ("Tor-Dir",           "security"),
     9050:  ("Tor-SOCKS",         "security"),
     9051:  ("Tor-Control",       "security"),
@@ -443,31 +413,15 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     7054:  ("OpenDaylight",      "security"),
     # Splunk
     9997:  ("Splunk-Forward",    "infrastructure"),
-    8000:  ("Splunk-Web",        "web"),        # duplicate
-    8089:  ("Splunk-Mgmt",       "web"),        # duplicate
-    514:   ("Splunk-Syslog",     "infrastructure"),  # duplicate
-    # HashiCorp
-    8500:  ("Consul-HTTP",       "infrastructure"),  # duplicate
-    8300:  ("Consul-RPC",        "infrastructure"),  # duplicate
-    8301:  ("Consul-Serf",       "infrastructure"),  # duplicate
-    8302:  ("Consul-Serf-WAN",   "infrastructure"),  # duplicate
     # Kubernetes
-    6443:  ("K8s-API",           "infrastructure"),  # duplicate
-    10250: ("Kubelet",           "infrastructure"),  # duplicate
     30000: ("K8s-NodePort-Min",  "infrastructure"),
     32767: ("K8s-NodePort-Max",  "infrastructure"),
     # Redis Sentinel / Cluster
     26379: ("Redis-Sentinel",    "database"),
-    # Elasticsearch
-    9200:  ("ES-HTTP",           "web"),        # duplicate
-    9300:  ("ES-Transport",      "web"),        # duplicate
     # Graylog
     12201: ("Graylog-GELF-UDP",  "infrastructure"),
     12202: ("Graylog-GELF-TCP",  "infrastructure"),
     12900: ("Graylog-API",       "infrastructure"),
-    # Kafka Connect / Schema Registry
-    8083:  ("Kafka-Connect",     "infrastructure"),  # duplicate
-    8081:  ("Schema-Registry",   "infrastructure"),  # duplicate
     # NSQ
     4150:  ("NSQ-TCP",           "infrastructure"),
     4151:  ("NSQ-HTTP",          "infrastructure"),
@@ -478,27 +432,19 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     6222:  ("NATS-Route",        "infrastructure"),
     8222:  ("NATS-Monitor",      "infrastructure"),
     # Thrift / gRPC
-    9090:  ("Thrift-HTTP",       "web"),  # duplicate
     50051: ("gRPC",              "infrastructure"),
     # CockroachDB cluster
     26258: ("CockroachDB-CLI",   "database"),
     # Prometheus Alertmanager
-    9093:  ("Alertmanager",      "infrastructure"),  # duplicate
+    9093:  ("Alertmanager",      "infrastructure"),  # aussi Kafka-TLS
     # ClickHouse
     8123:  ("ClickHouse-HTTP",   "database"),
-    9000:  ("ClickHouse-Native", "database"),  # duplicate
     9440:  ("ClickHouse-HTTPS",  "database"),
     # TimescaleDB (PostgreSQL)
     5435:  ("TimescaleDB",       "database"),
-    # Druid
-    8082:  ("Druid-Broker",      "database"),  # duplicate
-    8083:  ("Druid-Coord",       "database"),  # duplicate
-    8084:  ("Druid-Router",      "database"),  # duplicate
-    8888:  ("Druid-Router2",     "database"),  # duplicate
     # Flink
     6123:  ("Flink-RPC",         "infrastructure"),
     6124:  ("Flink-Blob",        "infrastructure"),
-    8081:  ("Flink-UI",          "web"),       # duplicate
     # Hadoop
     8020:  ("HDFS-NameNode",     "infrastructure"),
     9870:  ("HDFS-Web",          "infrastructure"),
@@ -506,7 +452,6 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     # Spark
     4040:  ("Spark-UI",          "infrastructure"),
     7077:  ("Spark-Master",      "infrastructure"),
-    8080:  ("Spark-UI2",         "web"),       # duplicate
     # ELK Stack
     5601:  ("Kibana-HTTP",       "web"),
     5044:  ("Logstash-Beats",    "infrastructure"),
@@ -523,27 +468,12 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     6801:  ("Ceph-OSD-Alt",      "infrastructure"),
     6802:  ("Ceph-OSD-Alt2",     "infrastructure"),
     6803:  ("Ceph-OSD-Alt3",     "infrastructure"),
-    # MinIO
-    9000:  ("MinIO-S3",          "infrastructure"),  # duplicate
-    9001:  ("MinIO-Console",     "infrastructure"),  # duplicate
-    # Vault
-    8200:  ("Vault-API",         "security"),  # duplicate
-    8201:  ("Vault-Cluster",     "security"),  # duplicate
     # Zipkin
     9411:  ("Zipkin-HTTP",       "infrastructure"),
-    # CoreDNS
-    53:    ("CoreDNS",           "infrastructure"),  # duplicate
     # FreeRADIUS
-    1812:  ("RADIUS-Auth",       "security"),  # duplicate
-    1813:  ("RADIUS-Acct",       "security"),  # duplicate
     1814:  ("RADIUS-Dyn-Auth",   "security"),
-    # Samba DC
-    88:    ("Samba-Kerberos",    "infrastructure"),  # duplicate
-    464:   ("Samba-Kerberos-Pwd","infrastructure"),  # duplicate
-    636:   ("Samba-LDAPS",       "infrastructure"),  # duplicate
     # Network printing
     631:   ("IPP",               "infrastructure"),
-    9100:  ("RAW-Print",         "infrastructure"),  # duplicate
     # Citrix
     1494:  ("Citrix-ICA",        "remote-access"),
     2598:  ("Citrix-CGP",        "remote-access"),
@@ -551,44 +481,27 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     6000:  ("X11",               "remote-access"),
     6001:  ("X11-Alt",           "remote-access"),
     6002:  ("X11-Alt2",          "remote-access"),
-    # Nginx Unit
-    8080:  ("Nginx-Unit",        "web"),  # duplicate
     # Caddy
     2020:  ("Caddy-API",         "infrastructure"),
-    # Traefik
-    8080:  ("Traefik-Dashboard", "web"),  # duplicate
     # HAProxy
-    1936:  ("HAProxy-Stats",     "web"),    # also streaming
+    1936:  ("HAProxy-Stats",     "web"),  # aussi RTMPS (rare)
     # Keepalived / VRRP
     112:   ("VRRP",              "infrastructure"),
     # HSRP uses multicast - 224.0.0.2:1985
-    # SNMP over UDP
-    161:   ("SNMP-UDP",          "infrastructure"),  # duplicate
     # OSPF uses protocol 89, no port
     # EIGRP uses protocol 88, no port
-    # Wireshark dissects these as TCP/UDP port 0 sometimes
-    # Syslog TLS
-    6514:  ("Syslog-TLS",        "infrastructure"),  # duplicate
     # SolarWinds
     17778: ("SolarWinds-HTTPS",  "infrastructure"),
     17777: ("SolarWinds-HTTP",   "infrastructure"),
-    # PRTG
-    9090:  ("PRTG-Web",          "web"),    # duplicate
-    # Nagios
-    5666:  ("Nagios-NRPE",       "infrastructure"),  # duplicate
     # Ansible AWX/Tower
     8052:  ("AWX-WebSocket",     "infrastructure"),
     # Checkmk
     6556:  ("Checkmk-Agent",     "infrastructure"),
     # Puppet
-    8140:  ("Puppet-Server",     "infrastructure"),  # duplicate
+    8140:  ("Puppet-Server",     "infrastructure"),
     # Salt
     4505:  ("SaltStack-Pub",     "infrastructure"),
     4506:  ("SaltStack-RPC",     "infrastructure"),
-    # WireGuard alternate
-    51820: ("WireGuard",         "security"),  # duplicate
-    # NFS v4
-    2049:  ("NFSv4",             "file-share"),  # duplicate
     # DRBD replication
     7788:  ("DRBD",              "infrastructure"),
     # Kubernetes etcd backup
@@ -605,18 +518,15 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     9312:  ("Sphinx-Search",     "database"),
     9308:  ("ES-Tribe",          "database"),
     # Windows cluster
-    135:   ("DCOM",              "infrastructure"),  # duplicate
     3343:  ("MS-Cluster",        "infrastructure"),
     # Hyper-V
     2179:  ("Hyper-V",           "remote-access"),
     # VMware
-    443:   ("VMware-HTTPS",      "web"),     # duplicate
     902:   ("VMware-ESXi",       "infrastructure"),
     903:   ("VMware-Console",    "remote-access"),
     907:   ("VMware-RDT",        "remote-access"),
     # vSphere
     5480:  ("vCenter-Appliance", "infrastructure"),
-    9443:  ("vCenter-HTTPS",     "web"),  # duplicate
     # iDRAC / ILO
     623:   ("IPMI-RMCP",         "infrastructure"),
     664:   ("IPMI-RMCP-TLS",     "infrastructure"),
@@ -630,16 +540,9 @@ PORT_APP_MAP: dict[int, tuple[str, str]] = {
     70:    ("Gopher",            "web"),
     79:    ("Finger",            "infrastructure"),
     104:   ("DICOM",             "infrastructure"),
-    143:   ("IMAP",              "email"),    # duplicate
     220:   ("IMAPv3",            "email"),
-    389:   ("LDAP",              "infrastructure"),  # duplicate
-    443:   ("HTTPS",             "web"),     # duplicate
     # Extra database ports
     5050:  ("Trino-HTTP",        "database"),
-    8080:  ("Trino-HTTPS",       "web"),    # duplicate
-    8090:  ("Presto-HTTP",       "database"),  # duplicate
-    9083:  ("Hive-Metastore",    "database"),  # duplicate
-    10000: ("HiveServer2",       "database"),  # already remote-access
     10002: ("HiveServer2-HTTP",  "database"),
 }
 
@@ -709,15 +612,6 @@ ZEEK_SERVICE_MAP: dict[str, tuple[str, str]] = {
     "ospf":          ("OSPF",           "infrastructure"),
     "eigrp":         ("EIGRP",          "infrastructure"),
 }
-
-# Build deduplicated PORT_APP_MAP (first definition wins, ignoring duplicates)
-_seen_ports: set[int] = set()
-_PORT_APP_MAP_CLEAN: dict[int, tuple[str, str]] = {}
-for _port, _info in PORT_APP_MAP.items():
-    if _port not in _seen_ports:
-        _seen_ports.add(_port)
-        _PORT_APP_MAP_CLEAN[_port] = _info
-PORT_APP_MAP = _PORT_APP_MAP_CLEAN
 
 
 # ---------------------------------------------------------------------------

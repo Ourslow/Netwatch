@@ -10,6 +10,3 @@ ignore = ["F401", "F841"]
 
 [lint.per-file-ignores]
 "portal/tests/*" = ["F811"]
-# Table de ports avec des clés répétées (la dernière gagne) — à dédoublonner
-# quand la classification applicative sera revue, pas un chantier de lint.
-"scripts/automation/app-classifier.py" = ["F601"]
