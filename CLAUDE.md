@@ -13,7 +13,7 @@ Référence : `docs/positionnement-produit.md`. Résumé :
 - Édition **Community** (AGPL v3, ce dépôt, complète pour une sonde utile) + édition **Pro** (abonnement, clé de licence, dépôt privé `netwatch-pro` chargé comme extension). Jamais payant : doc, moteurs, dashboards Grafana, install, health.
 - Ordre : validation terrain (6 semaines) → tests/CI → reverse proxy/TLS/auth unifiée → install/upgrade/backup → licence → split Pro (en dernier).
 - Aucune fonctionnalité retirée ni bridée avant la fin de la validation.
-- **Prochaine étape (19/09)** : dérouler `docs/validation-vm.md` sur la VM (proxy, install.sh, backup/restore, upgrade n'ont jamais tourné en réel) et corriger ce qui remonte, avant la licence hors ligne.
+- **Prochaine étape (19/09)** : dérouler `docs/validation-vm.md` (proxy, install.sh, backup/restore, upgrade n'ont jamais tourné en réel) et corriger ce qui remonte, avant la licence hors ligne. Décidé le 18/09 au soir : commencer par le § 5 (installation à blanc) sur une **distribution WSL neuve** — `wsl --shutdown`, `.wslconfig memory=12GB`, `wsl --install -d Ubuntu-24.04` (ou `--name netwatch-test`), dans Ubuntu vérifier `systemctl is-system-running`, puis `git clone … && ./install.sh --public-url https://localhost` (WSL en NAT → localhost depuis le navigateur Windows). Le labo existant reste sur son WSL, arrêté pendant le test (RAM partagée). Rien n'a encore été exécuté.
 - Prérequis avant le premier euro : clarification écrite de la PI vis-à-vis d'Axians (§ 9 du doc).
 
 ## CONCEPT
