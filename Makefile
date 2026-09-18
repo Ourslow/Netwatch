@@ -1,4 +1,14 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup test lint check
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup test lint check proxy-ca
+
+# ============================================================
+# Point d'entrée HTTPS unique (Caddy, profil « proxy ») — voir caddy/Caddyfile
+# ============================================================
+
+# Exporte la CA locale générée par Caddy (NETWATCH_TLS=internal) : à importer
+# dans le navigateur / le magasin de certificats des postes pour éviter l'avertissement.
+proxy-ca:
+	@docker cp netwatch-caddy:/data/caddy/pki/authorities/local/root.crt ./netwatch-ca.crt \
+		&& echo "→ netwatch-ca.crt exporté (importer comme autorité de confiance sur les postes)"
 
 # ============================================================
 # Qualité — mêmes commandes que la CI (.github/workflows/ci.yml)
@@ -276,6 +286,7 @@ help:
 	@echo "  make arkime-init     Arkime : créer les index ES (premier lancement)"
 	@echo "  make arkime-reset    Arkime : repartir de zéro (index + templates)"
 	@echo "  make kibana-setup    Kibana : data views des index NetWatch (Discover)"
+	@echo "  make proxy-ca        Profil proxy : exporter la CA locale Caddy (netwatch-ca.crt)"
 	@echo "  make demo-netbox     Données de démo NetBox (site, préfixes, IP nommées)"
 	@echo "  make sim             Simuler 6h de trafic avec attaques"
 	@echo "  make sim-fast        Simuler 1h de trafic rapide"

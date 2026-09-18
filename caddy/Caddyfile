@@ -1,0 +1,85 @@
+# caddy/Caddyfile — point d'entrée HTTPS unique de NetWatch (profil compose « proxy »)
+#
+# Un seul port (443) devant le portail et les outils, chacun sous son préfixe :
+#   /            portail Flask      /grafana/   Grafana      /kibana/   Kibana
+#   /arkime/     Arkime             /ntopng/    ntopng       /netbox/   NetBox
+#
+# Authentification unifiée : avant de transmettre une requête à un outil, Caddy
+# interroge le portail (/auth/check). Session portail valide → la requête passe
+# (Grafana connecte l'utilisateur via l'en-tête X-Webauth-User) ; sinon →
+# redirection vers la page de connexion du portail. Les outils gardent leur
+# mode « sans login » du labo : ils ne sont joignables QUE par ici (ports liés
+# à 127.0.0.1, Caddy en network_mode host).
+#
+# Variables (docker-compose.yml ← .env) :
+#   NETWATCH_PUBLIC_URL   https://sonde.pme.lan ou https://192.168.1.10 — telle que tapée
+#                         dans le navigateur (défaut https://localhost : accès depuis la VM)
+#   NETWATCH_TLS          internal (défaut, CA locale générée par Caddy — `make proxy-ca`)
+#                         | admin@pme.fr (Let's Encrypt, nom DNS public requis)
+#                         | /certs/cert.pem /certs/key.pem (certificat fourni, dans caddy/certs/)
+#   NETWATCH_UPSTREAM_*   hôte:port de chaque service (défaut localhost ; en 2 VMs,
+#                         Arkime/ntopng sont sur la VM Sensors)
+
+{
+	admin off
+}
+
+(portal_auth) {
+	forward_auth {$NETWATCH_UPSTREAM_PORTAL:localhost:5050} {
+		uri /auth/check
+		copy_headers X-Webauth-User
+	}
+}
+
+{$NETWATCH_PUBLIC_URL:https://localhost} {
+	tls {$NETWATCH_TLS:internal}
+	encode gzip
+
+	# Le portail pose ses propres en-têtes ; ceux-ci couvrent les outils.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	redir /grafana /grafana/ permanent
+	redir /kibana /kibana/ permanent
+	redir /arkime /arkime/ permanent
+	redir /ntopng /ntopng/ permanent
+	redir /netbox /netbox/ permanent
+
+	# Grafana : GF_SERVER_ROOT_URL=<public>/grafana/ et serve_from_sub_path=false
+	# → il génère ses liens avec le préfixe, et attend des requêtes sans (retiré ici).
+	handle_path /grafana/* {
+		import portal_auth
+		reverse_proxy {$NETWATCH_UPSTREAM_GRAFANA:localhost:3000}
+	}
+
+	# Kibana : server.basePath=/kibana, rewriteBasePath=false → même principe.
+	handle_path /kibana/* {
+		import portal_auth
+		reverse_proxy {$NETWATCH_UPSTREAM_KIBANA:localhost:5601}
+	}
+
+	# Arkime (webBasePath), ntopng (--http-prefix), NetBox (BASE_PATH) servent
+	# eux-mêmes sous leur préfixe → transmis tel quel.
+	handle /arkime/* {
+		import portal_auth
+		reverse_proxy {$NETWATCH_UPSTREAM_ARKIME:localhost:8005}
+	}
+
+	handle /ntopng/* {
+		import portal_auth
+		reverse_proxy {$NETWATCH_UPSTREAM_NTOPNG:localhost:3001}
+	}
+
+	handle /netbox/* {
+		import portal_auth
+		reverse_proxy {$NETWATCH_UPSTREAM_NETBOX:localhost:8000}
+	}
+
+	# Tout le reste : le portail, qui gère sa propre authentification.
+	handle {
+		reverse_proxy {$NETWATCH_UPSTREAM_PORTAL:localhost:5050}
+	}
+}

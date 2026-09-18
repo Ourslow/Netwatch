@@ -348,6 +348,13 @@ app.config.update(
     SESSION_COOKIE_SECURE=config.SESSION_COOKIE_SECURE,
 )
 
+# Derrière Caddy : scheme/host/IP client lus dans les X-Forwarded-* (un seul
+# proxy de confiance) — sinon les redirections et `next` pointeraient sur
+# localhost:5050. Jamais actif en accès direct : ces en-têtes seraient forgeables.
+if config.PROXY_MODE:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 # ============================================================
 # Authentification (Flask-Login)
 # ============================================================
@@ -507,11 +514,36 @@ def fmt_uptime(seconds):
 app.jinja_env.filters["fmt_uptime"] = fmt_uptime
 
 
+def _proxy_paths():
+    """Service interne (URL de config) → préfixe public servi par Caddy."""
+    return [
+        (config.NETWATCH_GRAFANA_URL, "/grafana"),
+        (config.NETWATCH_KIBANA_URL,  "/kibana"),
+        (config.NETWATCH_ARKIME_URL,  "/arkime"),
+        (config.NETWATCH_NTOPNG_URL,  "/ntopng"),
+        (config.NETWATCH_NETBOX_URL,  "/netbox"),
+    ]
+
+
 def browser_url(url):
-    """Réécrit localhost/127.0.0.1 vers l'hôte depuis lequel l'utilisateur navigue.
-    Les URLs de config (health checks) ciblent localhost = la VM côté serveur ;
-    pour qu'un lien soit cliquable depuis un poste distant, on substitue le host
-    de la requête courante (ex. 172.31.20.90). Le port est conservé."""
+    """URL d'un service telle que le navigateur doit l'ouvrir.
+
+    Derrière Caddy (config.PROXY_MODE) : l'URL interne d'un outil devient son
+    préfixe public (http://localhost:3000/d/x → /grafana/d/x) — même origine,
+    même session. Un service non proxifié garde son URL interne.
+
+    Sinon : réécrit localhost/127.0.0.1 vers l'hôte depuis lequel l'utilisateur
+    navigue. Les URLs de config (health checks) ciblent localhost = la VM côté
+    serveur ; pour qu'un lien soit cliquable depuis un poste distant, on
+    substitue le host de la requête courante (ex. 172.31.20.90). Le port est
+    conservé."""
+    if config.PROXY_MODE:
+        for base, prefix in _proxy_paths():
+            base = (base or "").rstrip("/")
+            if base and (url == base or url.startswith(base + "/") or url.startswith(base + "?")
+                         or url.startswith(base + "#")):
+                return prefix + url[len(base):]
+        return url
     try:
         parts = urlsplit(url)
         if parts.hostname not in ("localhost", "127.0.0.1"):
@@ -652,6 +684,21 @@ def logout():
     logout_user()
     flash("Déconnecté.", "info")
     return redirect(url_for("login"))
+
+
+@app.route("/auth/check")
+def auth_check():
+    """Sous-requête d'authentification de Caddy (forward_auth) pour les outils
+    servis sous /grafana/, /kibana/… : 2xx = session portail valide, la requête
+    passe (Grafana reçoit l'utilisateur dans X-Webauth-User) ; sinon la
+    réponse est renvoyée telle quelle au navigateur → page de connexion, puis
+    retour à l'URL demandée (X-Forwarded-Uri, validée comme tout `next`)."""
+    if current_user.is_authenticated:
+        resp = make_response("", 204)
+        resp.headers["X-Webauth-User"] = config.PORTAL_USERNAME
+        return resp
+    wanted = request.headers.get("X-Forwarded-Uri") or "/"
+    return redirect(url_for("login", next=wanted))
 
 
 # ============================================================

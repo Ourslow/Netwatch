@@ -38,8 +38,18 @@ FLASK_SECRET_KEY = _secret
 FLASK_DEBUG      = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 PORT             = int(os.getenv("PORT", 5050))
 
-# Cookie de session en HTTPS uniquement (mettre true derrière un reverse-proxy TLS)
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+# Point d'entrée HTTPS unique (Caddy, profil « proxy ») : URL publique du portail
+# telle que tapée dans le navigateur. Vide = accès direct par port (labo).
+# Renseignée = le portail est derrière Caddy : en-têtes X-Forwarded-* de
+# confiance, cookie Secure si https, liens vers les outils réécrits en
+# /grafana/, /kibana/… (cf. app.browser_url), /auth/check pour Caddy.
+PUBLIC_URL = os.getenv("NETWATCH_PUBLIC_URL", "").strip().rstrip("/")
+PROXY_MODE = bool(PUBLIC_URL)
+
+# Cookie de session en HTTPS uniquement — automatique derrière Caddy en https,
+# sinon SESSION_COOKIE_SECURE=true pour tout autre reverse-proxy TLS.
+SESSION_COOKIE_SECURE = (os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+                         or PUBLIC_URL.startswith("https://"))
 
 # Credentials du portail (authentification)
 PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")

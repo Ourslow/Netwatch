@@ -213,8 +213,8 @@ impressionne d'un produit qu'un client paie et sur lequel il compte.
 | **Installation en une commande** sur Ubuntu 22.04/24.04 (script + ISO/OVA plus tard) | `make install` existe, dépend de docker déjà présent et d'un `.env` à la main | Pilote 1 |
 | **Mise à jour sans perte** (`netwatch upgrade`, migration des index, changelog) | Aucun chemin de mise à jour | Pilote 1 |
 | **Sauvegarde / restauration** (config, hostgroups, seuils, rapports, index ES) | Aucun | Pilote 1 |
-| **TLS partout, reverse proxy unique** (un seul port 443 devant portail/Grafana/Kibana/Arkime) | Portail en HTTP, 8 ports exposés | Pilote 1 |
-| **Auth unifiée** (le portail authentifie, Grafana/Kibana derrière lui) | Login portail seul ; Grafana/Kibana/Arkime chacun leur auth | Pilote 1 |
+| **TLS partout, reverse proxy unique** (un seul port 443 devant portail/Grafana/Kibana/Arkime) | Fait le 18/09 : Caddy, profil `proxy` (`caddy/Caddyfile`) — à valider sur la VM | Pilote 1 |
+| **Auth unifiée** (le portail authentifie, Grafana/Kibana derrière lui) | Fait le 18/09 : `forward_auth` → `/auth/check`, Grafana en auth proxy — à valider sur la VM | Pilote 1 |
 | **Mécanisme de licence** (clé signée hors ligne, pas de « phone home » obligatoire — argument souveraineté) | Aucun | Première vente |
 | **Versioning et releases** (semver, tags, images publiées, changelog) | Pas de tag, images construites localement | Pilote 1 |
 | **Tests automatisés** minimum (portail, health, replay PCAP en CI) | Pas de CI | Avant le split |

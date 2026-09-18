@@ -66,6 +66,12 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD manquant dans .env}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_UNIFIED_ALERTING_ENABLED=true
+      # Profil proxy : voir docker-compose.yml (sous-chemin /grafana/ + auth proxy)
+      - GF_SERVER_ROOT_URL=${NETWATCH_PUBLIC_URL:-http://192.168.100.12:3000}${NETWATCH_PUBLIC_URL:+/grafana/}
+      - GF_AUTH_PROXY_ENABLED=${NETWATCH_PUBLIC_URL:+true}
+      - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
+      - GF_AUTH_PROXY_HEADER_PROPERTY=username
+      - GF_AUTH_PROXY_AUTO_SIGN_UP=false
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-http://localhost/slack-not-configured}
       - AUTOBLOCK_WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
       # AutoBlock tourne sur la VM Sensors en 2-VMs, plus sur le même hôte que Grafana.
@@ -145,6 +151,9 @@ services:
     container_name: netwatch-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      # Profil proxy : voir docker-compose.yml (sous-chemin /kibana)
+      - SERVER_PUBLICBASEURL=${NETWATCH_PUBLIC_URL:-http://192.168.100.12:5601}${NETWATCH_PUBLIC_URL:+/kibana}
+      - SERVER_BASEPATH=${NETWATCH_PUBLIC_URL:+/kibana}
       - XPACK_SECURITY_ENABLED=false
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-netwatch-kibana-encryption-key-32chars}
       - TELEMETRY_ENABLED=false
@@ -202,6 +211,9 @@ services:
       - SECRET_KEY=${NETBOX_SECRET_KEY:?NETBOX_SECRET_KEY manquant dans .env (50 caractères min)}
       - ALLOWED_HOSTS=*
       - CORS_ORIGIN_ALLOW_ALL=True
+      # Profil proxy : voir docker-compose.yml (sous-chemin /netbox/)
+      - BASE_PATH=${NETWATCH_PUBLIC_URL:+netbox/}
+      - CSRF_TRUSTED_ORIGINS=${NETWATCH_PUBLIC_URL:-http://192.168.100.12:8000}
       - SKIP_SUPERUSER=false
       - SUPERUSER_NAME=${NETBOX_SUPERUSER_NAME:-admin}
       - SUPERUSER_EMAIL=${NETBOX_SUPERUSER_EMAIL:-admin@netwatch.local}
@@ -247,7 +259,33 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # Point d'entrée HTTPS unique — profil « proxy » (voir docker-compose.yml et
+  # caddy/Caddyfile). En 2 VMs, Caddy tourne ici (VM Data, avec le portail) et
+  # joint Arkime / ntopng sur la VM Sensors via NETWATCH_UPSTREAM_*.
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: netwatch-caddy
+    profiles: ["proxy"]
+    network_mode: host
+    environment:
+      - NETWATCH_PUBLIC_URL=${NETWATCH_PUBLIC_URL:-https://localhost}
+      - NETWATCH_TLS=${NETWATCH_TLS:-internal}
+      - NETWATCH_UPSTREAM_PORTAL=${NETWATCH_UPSTREAM_PORTAL:-localhost:5050}
+      - NETWATCH_UPSTREAM_GRAFANA=${NETWATCH_UPSTREAM_GRAFANA:-192.168.100.12:3000}
+      - NETWATCH_UPSTREAM_KIBANA=${NETWATCH_UPSTREAM_KIBANA:-192.168.100.12:5601}
+      - NETWATCH_UPSTREAM_ARKIME=${NETWATCH_UPSTREAM_ARKIME:-192.168.100.11:8005}
+      - NETWATCH_UPSTREAM_NTOPNG=${NETWATCH_UPSTREAM_NTOPNG:-192.168.100.11:3001}
+      - NETWATCH_UPSTREAM_NETBOX=${NETWATCH_UPSTREAM_NETBOX:-192.168.100.12:8000}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/certs:/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
+  caddy-data:
+  caddy-config:
   es-data:
   grafana-data:
   prometheus-data:
