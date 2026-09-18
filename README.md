@@ -91,6 +91,8 @@
 - [Portail web](#portail-web)
 - [Quickstart](#quickstart)
 - [Parcours de démo (10 min)](docs/demo-parcours.md)
+- [Exploitation : sauvegarde · mise à jour](#exploitation--sauvegarde--restauration--mise-à-jour)
+- [Checklist de validation VM](docs/validation-vm.md)
 - [Détection](#détection)
 - [Dashboards Grafana](#dashboards-grafana)
 

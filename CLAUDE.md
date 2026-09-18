@@ -13,6 +13,7 @@ Référence : `docs/positionnement-produit.md`. Résumé :
 - Édition **Community** (AGPL v3, ce dépôt, complète pour une sonde utile) + édition **Pro** (abonnement, clé de licence, dépôt privé `netwatch-pro` chargé comme extension). Jamais payant : doc, moteurs, dashboards Grafana, install, health.
 - Ordre : validation terrain (6 semaines) → tests/CI → reverse proxy/TLS/auth unifiée → install/upgrade/backup → licence → split Pro (en dernier).
 - Aucune fonctionnalité retirée ni bridée avant la fin de la validation.
+- **Prochaine étape (19/09)** : dérouler `docs/validation-vm.md` sur la VM (proxy, install.sh, backup/restore, upgrade n'ont jamais tourné en réel) et corriger ce qui remonte, avant la licence hors ligne.
 - Prérequis avant le premier euro : clarification écrite de la PI vis-à-vis d'Axians (§ 9 du doc).
 
 ## CONCEPT
