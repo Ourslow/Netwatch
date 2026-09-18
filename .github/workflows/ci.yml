@@ -37,12 +37,27 @@ jobs:
           for f in docker-compose.yml docker-compose.data.yml docker-compose.sensors.yml; do
             echo "== $f"; docker compose -f "$f" config --quiet
           done
-      - name: promtool check
+      - name: docker compose config (profil proxy)
         run: |
-          docker run --rm -v "$PWD/prometheus:/cfg:ro" --entrypoint promtool prom/prometheus:v2.51.0 \
-            check rules /cfg/rules/*.yml
-          docker run --rm -v "$PWD/prometheus:/cfg:ro" --entrypoint promtool prom/prometheus:v2.51.0 \
-            check config /cfg/prometheus.yml
+          printf 'COMPOSE_PROFILES=proxy,ia\nNETWATCH_PUBLIC_URL=https://sonde.example\nARKIME_WEB_BASE_PATH=/arkime/\n' >> .env
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml config | grep -q 'GF_SERVER_ROOT_URL=https://sonde.example/grafana/'
+      - name: caddy validate
+        run: |
+          for tls in internal admin@example.org; do
+            docker run --rm -v "$PWD/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+              -e NETWATCH_PUBLIC_URL=https://sonde.example -e NETWATCH_TLS="$tls" \
+              caddy:2.8-alpine caddy validate --config /etc/caddy/Caddyfile
+          done
+      - name: promtool check
+        # Monté à l'emplacement réel (/etc/prometheus) pour que rule_files et
+        # file_sd de prometheus.yml se résolvent ; pas de glob : il ne serait pas
+        # développé dans le conteneur.
+        run: |
+          promtool() { docker run --rm -v "$PWD/prometheus:/etc/prometheus:ro" --entrypoint promtool prom/prometheus:v2.51.0 "$@"; }
+          for f in prometheus/rules/*.yml; do promtool check rules "/etc/prometheus/rules/$(basename "$f")"; done
+          promtool check config /etc/prometheus/prometheus.yml
+          promtool check config /etc/prometheus/prometheus.data.yml
       - name: shellcheck
         run: |
           sudo apt-get install -y -qq shellcheck >/dev/null
