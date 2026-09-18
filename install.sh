@@ -72,8 +72,15 @@ if [ "$RUN_USER" != "root" ] && ! id -nG "$RUN_USER" | tr ' ' '\n' | grep -qx do
   $SUDO usermod -aG docker "$RUN_USER"
   warn "$RUN_USER ajouté au groupe docker — effectif à la prochaine connexion (make/docker sans sudo)"
 fi
+HAS_SYSTEMD=false; [ -d /run/systemd/system ] && HAS_SYSTEMD=true
 DOCKER="docker"
 docker info >/dev/null 2>&1 || DOCKER="$SUDO docker"
+if ! $DOCKER info >/dev/null 2>&1; then
+  # WSL / conteneur sans systemd : le démon n'est pas lancé après l'installation
+  $HAS_SYSTEMD && $SUDO systemctl start docker || $SUDO service docker start
+  sleep 3
+  $DOCKER info >/dev/null 2>&1 || die "le démon Docker ne répond pas (sudo service docker start ; sous WSL : systemd=true dans /etc/wsl.conf puis wsl --shutdown)"
+fi
 
 # ── 2. Prérequis système ─────────────────────────────────────────────────────
 step "2/6 Prérequis système"
@@ -231,7 +238,7 @@ ok "stack démarrée"
 
 # ── 6. Service systemd du portail ────────────────────────────────────────────
 step "6/6 Portail"
-if $OPT_SERVICE && command -v systemctl >/dev/null; then
+if $OPT_SERVICE && $HAS_SYSTEMD; then
   sed -e "s#/home/netwatch/netwatch#$ROOT#g" \
       -e "s#^User=.*#User=$RUN_USER#" \
       -e "s#^Group=.*#Group=$RUN_GROUP#" \
@@ -244,6 +251,7 @@ if $OPT_SERVICE && command -v systemctl >/dev/null; then
   sleep 3
   systemctl is-active -q netwatch-portal && ok "service netwatch-portal actif" || warn "service netwatch-portal inactif : journalctl -u netwatch-portal"
 else
+  $HAS_SYSTEMD || warn "pas de systemd (WSL ?) : portail lancé avec make portal, à relancer après chaque redémarrage"
   make portal
 fi
 
