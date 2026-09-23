@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup test lint check proxy-ca backup backup-config restore upgrade version
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
 
 # ============================================================
 # Exploitation — installation, sauvegarde, restauration, mise à jour
@@ -75,6 +75,17 @@ kibana-setup:
 # Données de démo dans NetBox (site, préfixes, IP nommées) → /ip/<ip> et import hostgroups parlants
 demo-netbox:
 	bash scripts/demo/netbox-seed.sh
+
+# Jeu de données de démo « site sain » : 7 jours de Zeek (RTT, ART HTTP/TLS, DNS, SNI) + 24 h de NetFlow,
+# cohérents avec l'inventaire NetBox de démo. Index zeek-<date>-sim / netflow-<date>-sim (à supprimer : make demo-data-clean).
+demo-data:
+	python3 scripts/demo/sim-perf.py 7
+	python3 scripts/demo/sim-netflow.py 24
+	@curl -s -XPUT "$(ES)/_all/_settings" -H 'Content-Type: application/json' -d '{"index":{"number_of_replicas":0}}' >/dev/null && echo "réplicas à 0 (nœud unique)"
+
+demo-data-clean:
+	@for i in $$(curl -s "$(ES)/_cat/indices/*-sim?h=index"); do curl -s -o /dev/null -w "  $$i supprimé (%{http_code})
+" -XDELETE "$(ES)/$$i"; done
 
 # Premier lancement d'Arkime : création des index ES (arkime_*). L'utilisateur
 # admin/admin est créé au démarrage du service (--add-admin) — changer le mot de
@@ -324,6 +335,7 @@ help:
 	@echo "  make kibana-setup    Kibana : data views des index NetWatch (Discover)"
 	@echo "  make proxy-ca        Profil proxy : exporter la CA locale Caddy (netwatch-ca.crt)"
 	@echo "  make demo-netbox     Données de démo NetBox (site, préfixes, IP nommées)"
+	@echo "  make demo-data       Jeu de données « site sain » 7 j (Zeek + NetFlow simulés)"
 	@echo "  make sim             Simuler 6h de trafic avec attaques"
 	@echo "  make sim-fast        Simuler 1h de trafic rapide"
 	@echo ""
