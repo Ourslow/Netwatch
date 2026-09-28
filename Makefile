@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-ilm arkime-expire setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-ilm arkime-expire brand-sync setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
 
 # ============================================================
 # Exploitation — installation, sauvegarde, restauration, mise à jour
@@ -137,6 +137,12 @@ setup-es:
 
 setup-ilm:
 	bash scripts/setup-ilm.sh
+
+# Identité visuelle : brand/ est la référence, le portail et le site en portent une copie
+brand-sync:
+	cp brand/logo-mark.svg brand/logo.svg brand/favicon.svg portal/static/img/
+	cp brand/logo-mark.svg brand/logo.svg brand/favicon.svg site/assets/img/
+	@echo "  logos copiés (portal/static/img, site/assets/img)"
 
 # Arkime gère ses propres index de sessions : purge des sessions de plus de DAYS jours
 # (cron conseillé : 0 3 * * * cd /opt/netwatch && make arkime-expire DAYS=30)
@@ -362,6 +368,7 @@ help:
 	@echo "  make install         Installer le portail comme service systemd (root requis)"
 	@echo "  make setup-es        Configurer ES (réplicas 0, rétention ILM, templates)"
 	@echo "  make setup-ilm       Rétention ES : (ré)appliquer ES_RETENTION_*_DAYS du .env"
+	@echo "  make brand-sync      Recopier les logos de brand/ vers le portail et le site"
 	@echo "  make arkime-expire   Purger les sessions Arkime de plus de DAYS jours (DAYS=30)"
 	@echo "  make setup-netflow   Créer template ES netflow-* (rétention : setup-ilm)"
 	@echo "  make netflow-test    Envoyer des paquets NetFlow de test (softflowd ou Python)"

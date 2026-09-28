@@ -16,6 +16,10 @@ La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commit
   violations reçues sur `POST /csp-report` (journal). `NETWATCH_CSP=enforce` (défaut) | `report-only`
   (rodage) | `off`. Test de convention : tout `<script>` inline sans nonce ou gestionnaire inline fait
   échouer `make test`.
+- Identité produit : logo et charte (`brand/`, `make brand-sync`), favicon en fichier, nom / version /
+  licence centralisés (`portal/config.py`, global Jinja `product`) et affichés partout de la même façon
+  (« NetWatch 2.2.0 », plus de « Portal v2/v3 »). Dépôt neutre : aucune mention d'employeur, d'école,
+  de client ni de ticket (`tests/test_neutrality.py`) ; documents internes hors dépôt (`private/`).
 - Rétention Elasticsearch (ILM) pour tous les index NetWatch : `scripts/setup-ilm.sh` (appelé par
   `setup-es.sh`, `install.sh`, `upgrade.sh`, `make setup-ilm`) — `netwatch-events` (zeek/snort/suricata,
   `ES_RETENTION_DAYS` 30 j, lecture seule + forcemerge à 2 j), `netwatch-netflow`

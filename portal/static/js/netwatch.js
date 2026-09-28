@@ -1,5 +1,5 @@
 /* ============================================================
-   NetWatch Portal — helpers UI « live »
+   NetWatch — helpers UI « live »
    Compteurs animés, sparklines (Chart.js), horloge relative,
    toasts, surlignage des nouvelles lignes. Vanilla + Chart.js.
    ============================================================ */
@@ -148,7 +148,7 @@
       "dash_catalog":      "Catalogue",
       "dash_oss_link":     "Outils open-source",
       "dash_com_link":     "Outils commerciaux",
-      "dash_deploy_nw":    "Déployer NetWatch v2",
+      "dash_deploy_nw":    "Déployer NetWatch",
       "dash_deploy_so":    "Déployer Security Onion",
       "dash_no_alerts":    "Aucune alerte — Elasticsearch vide ou non joignable",
       "dash_no_vms":       "Aucune VM — Proxmox non connecté ou nœud vide",
@@ -298,7 +298,7 @@
       "dash_catalog":      "Catalog",
       "dash_oss_link":     "Open-source tools",
       "dash_com_link":     "Commercial tools",
-      "dash_deploy_nw":    "Deploy NetWatch v2",
+      "dash_deploy_nw":    "Deploy NetWatch",
       "dash_deploy_so":    "Deploy Security Onion",
       "dash_no_alerts":    "No alerts — Elasticsearch empty or unreachable",
       "dash_no_vms":       "No VMs — Proxmox not connected or empty node",

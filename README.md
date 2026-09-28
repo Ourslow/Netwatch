@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🔭 NetWatch v2
+<img src="brand/logo.svg" alt="NetWatch" width="330">
 
-**Stack d'observabilité réseau open-source multi-moteurs**
+**Observabilité réseau et détection, sur site.**
 
-*Reproduire les fonctionnalités clés d'un outil NPM commercial avec des briques 100% open-source*
+*Sonde NPM + NDR open-source : flux, temps de réponse, santé TCP, SLA, trois moteurs de détection et une IA locale, dans un seul portail, sur votre réseau.*
 
 ---
 
@@ -652,7 +652,7 @@ Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log
 
 ## Comparaison open-source vs commercial
 
-| Fonctionnalité | NetWatch v2 | Outils commerciaux |
+| Fonctionnalité | NetWatch | Outils commerciaux |
 |----------------|-------------|---------------------|
 | Capture & analyse réseau | Zeek (analyse proto) | Corelight · nGenius Probe |
 | IDS signatures | Snort 3 + Suricata 7 (ET Open) | Suricata OEM · Snort Enterprise |

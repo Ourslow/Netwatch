@@ -42,7 +42,7 @@ from netwatch import netbox as nw_netbox
 # ============================================================
 
 TOOL_COLS = [
-    {"id": "netwatch",        "name": "NetWatch v2",          "type": "open-source", "logo": "🔭"},
+    {"id": "netwatch",        "name": "NetWatch",             "type": "open-source", "logo": "🔭"},
     {"id": "security-onion",  "name": "Security Onion",       "type": "open-source", "logo": "🧅"},
     {"id": "wazuh",           "name": "Wazuh",                "type": "open-source", "logo": "🛡️"},
     {"id": "netscout",        "name": "Netscout nGeniusONE",  "type": "commercial",  "logo": "📡"},
