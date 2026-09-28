@@ -53,7 +53,7 @@ marqué ✅ a été vérifié sur ce PC (labo WSL, 23 conteneurs) le 28/09.
 | **Comptes nominatifs / rôles** | un seul compte `admin` ; attendu dès le premier pilote avec plusieurs exploitants | 2-3 j (édition Pro) |
 | **Licence hors ligne signée** | prérequis de l'édition Pro, argument souveraineté (« pas de phone home ») | 2 j |
 | **Télémétrie opt-in** (versions, santé) | phase 2, jamais de données réseau | 1 j |
-| Validation VM à blanc (`docs/validation-vm.md`) | `install.sh`, proxy, backup/restore, upgrade n'ont pas encore tourné sur une VM neuve | ½ j |
+| ~~Validation VM à blanc~~ **faite le 28/09** (§ 5 de `docs/validation-vm.md`) : 3 bugs corrigés (`1fba6bd`) ; reste backup/restore et upgrade sur machine neuve | `install.sh` et le proxy HTTPS sont validés sur Ubuntu 24.04 neuf | ¼ j restant |
 
 ## 5. Mesures utiles (labo 28/09)
 

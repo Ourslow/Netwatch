@@ -171,6 +171,21 @@ avec nesting, ou une distribution WSL fraîche (`wsl --install -d Ubuntu-24.04`)
       `make restore` d'une archive de la **première** VM prouverait une migration
       complète (bonus, si le temps le permet).
 
+### Résultat — 28/09/2026, distribution WSL neuve (Ubuntu 24.04.5, systemd, 12 Go / 6 vCPU)
+
+| Point | Résultat |
+|---|---|
+| `git clone` + `./install.sh --public-url https://localhost` | ✅ exit 0 en **11 min** (compilation des moteurs comprise), 23 conteneurs, étapes 1/6 → 6/6 dans l'ordre attendu |
+| Point d'entrée HTTPS unique | ✅ `https://localhost/` → 302 `/login` (Caddy, CA locale), `/grafana/` 302, ports directs non exposés côté Windows |
+| Service `netwatch-portal` | ✅ actif (systemd) |
+| `.env` sans `changeme` | ❌ puis ✅ — 2 placeholders ITSM restaient (`SNOW_PASSWORD`, `JIRA_TOKEN`) → vidés par `install.sh` (`1fba6bd`) |
+| Interface de capture | ❌ puis ✅ — **bug bloquant** : `IFACE=ens18` de l'exemple conservé sur un `.env` neuf, Zeek et Snort en boucle « No such device » → `.env.example` laisse `IFACE` vide, `install.sh` force la valeur détectée (`1fba6bd`) |
+| Health de fin d'installation | ⚠ attendu : NetBox / ntopng pas encore prêts (2-3 min), Grafana « dégradé » à tort (JSON indenté, corrigé `1fba6bd`) ; conseil ajouté en fin d'installation |
+| 2ᵉ passage `./install.sh … --iface eth0` | ✅ exit 0 en 84 s, **secrets `.env` et `portal/.env` inchangés**, « existe » partout, Zeek / Snort / Suricata `running`, Filebeat ingère, `make health` 18/19 (NetBox en cours de démarrage) |
+| Observation à creuser | toute la stack a redémarré ~3 min après la fin du 1ᵉʳ passage (démon Docker ?) — sans conséquence visible |
+
+Non déroulé ce jour : § 2 (backup/restore sur cette machine), reconnexion utilisateur non-root (installation faite en root — `install.sh` accepte les deux).
+
 ## 6. Nettoyage
 
 - [ ] Sur la VM de labo : `.env` remis comme avant (`diff .env ../env.avant-validation`),
