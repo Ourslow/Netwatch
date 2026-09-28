@@ -219,6 +219,8 @@ fi
 # ── 5. Stack ─────────────────────────────────────────────────────────────────
 step "5/6 Démarrage de la stack"
 echo "  (premier lancement : la compilation de Snort prend 10-15 min)"
+# Images des moteurs publiées sur GHCR : tirées si possible, sinon construites en local (10-15 min)
+if $DOCKER compose pull -q >/dev/null 2>&1; then ok "images des moteurs tirées (ghcr.io/ourslow/netwatch-*)"; else warn "images GHCR non disponibles — construction locale des moteurs (10-15 min)"; fi
 $DOCKER compose up -d --remove-orphans
 # Image utilitaire de backup/restore (tar des volumes) : présente d'emblée, utilisable hors ligne ensuite
 $DOCKER pull -q alpine:3.20 >/dev/null 2>&1 && ok "image alpine:3.20 (sauvegarde / restauration)" || warn "alpine:3.20 non téléchargée — make backup la tirera"

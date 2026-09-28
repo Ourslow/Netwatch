@@ -348,7 +348,7 @@ make health
 
 > **Machine ≤ 8 Go** : la stack complète (ES + Kibana + NetBox + Arkime) est serrée — mettre `ES_HEAP=-Xms1g -Xmx1g` dans `.env` avant `make start`.
 
-> **Labo isolé (sans internet)** : exporter les images depuis un poste connecté — `docker save prom/blackbox-exporter:v0.25.0 docker.elastic.co/kibana/kibana:8.13.0 ntop/ntopng:latest redis:7-alpine ghcr.io/arkime/arkime/arkime:v6-latest netboxcommunity/netbox:v4.7-5.1.1 postgres:16-alpine | gzip > netwatch-observability.tar.gz` puis `docker load` sur la VM. Arkime télécharge ses fichiers OUI/GeoIP au démarrage (`--update-geo`) : en air-gap, copier `oui.txt` et `ipv4-address-space.csv` dans le volume `arkime-etc`.
+> **Labo isolé (sans internet)** : exporter les images depuis un poste connecté — `docker save ghcr.io/ourslow/netwatch-{zeek,snort,suricata,beacon-detect,autoblock}:2.2.0 prom/blackbox-exporter:v0.25.0 docker.elastic.co/kibana/kibana:8.13.0 ntop/ntopng:latest redis:7-alpine ghcr.io/arkime/arkime/arkime:v6-latest netboxcommunity/netbox:v4.7-5.1.1 postgres:16-alpine | gzip > netwatch-observability.tar.gz` puis `docker load` sur la VM. Arkime télécharge ses fichiers OUI/GeoIP au démarrage (`--update-geo`) : en air-gap, copier `oui.txt` et `ipv4-address-space.csv` dans le volume `arkime-etc`.
 
 > **Étape suivante (architecture)** : quand la stack aura une dizaine de sources, un **OpenTelemetry Collector** comme point d'entrée unique (receivers syslog/SNMP/NetFlow → processors d'enrichissement hostgroup/site → exporters ES/Prometheus) évitera de dupliquer parsing et enrichissement dans chaque pipeline. Ce n'est pas un prérequis pour les services ci-dessus.
 
@@ -397,6 +397,8 @@ git clone https://github.com/Ourslow/netwatch.git && cd netwatch
 ./install.sh --public-url https://192.168.1.10  # + point d'entrée HTTPS unique (profil proxy)
 ./install.sh --ia                               # + assistant IA local (Ollama, 4-5 Go de RAM en plus)
 ```
+
+Les cinq images construites par le projet (Zeek, Snort, Suricata, beacon-detect, AutoBlock) sont publiées sur GHCR (`ghcr.io/ourslow/netwatch-<service>:<version>`) : l'installation les tire au lieu de les compiler (≈ 3 min au lieu de 10-15) ; sans accès à GHCR, elle les reconstruit en local. `NETWATCH_IMAGE_TAG` dans `.env` fixe la version.
 
 `install.sh` installe Docker si besoin, règle `vm.max_map_count`, crée `.env` et `portal/.env` avec des **secrets générés** (jamais écrasés ensuite), détecte l'interface de capture, prépare `portal/.venv`, démarre la stack, initialise Elasticsearch / NetFlow / Kibana / Arkime, installe le portail en service systemd et lance `make health`. Il affiche les identifiants à la fin ; relançable sans risque. Les étapes manuelles ci-dessous restent valables pour comprendre ce qu'il fait.
 

@@ -62,9 +62,13 @@ ok "code : $OLD_VERSION → $NEW_VERSION"
 if [ -x portal/.venv/bin/pip ]; then
   portal/.venv/bin/pip install -q -r portal/requirements.txt && ok "dépendances du portail"
 fi
-docker compose pull -q --ignore-buildable 2>/dev/null || docker compose pull -q 2>/dev/null || warn "pull partiel (hors ligne ?)"
-docker compose build -q --pull >/dev/null 2>&1 || docker compose build -q || warn "build en échec — voir docker compose build"
-ok "images à jour"
+# Images publiées (GHCR) tirées, y compris celles des moteurs ; construction locale seulement si le pull échoue
+if docker compose pull -q >/dev/null 2>&1; then
+  ok "images tirées"
+else
+  warn "pull incomplet (hors ligne ou GHCR indisponible) — construction locale des moteurs"
+  docker compose build -q >/dev/null 2>&1 || docker compose build -q || warn "build en échec — voir docker compose build"
+fi
 
 # ── 4. Stack ─────────────────────────────────────────────────────────────────
 docker compose up -d --remove-orphans

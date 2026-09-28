@@ -4,6 +4,7 @@ services:
   # ============================================================
 
   zeek:
+    image: ghcr.io/ourslow/netwatch-zeek:${NETWATCH_IMAGE_TAG:-2.2.0}
     build: ./zeek
     container_name: netwatch-zeek
     network_mode: host
@@ -26,6 +27,7 @@ services:
     restart: unless-stopped
 
   snort:
+    image: ghcr.io/ourslow/netwatch-snort:${NETWATCH_IMAGE_TAG:-2.2.0}
     build: ./snort
     container_name: netwatch-snort
     network_mode: host
@@ -48,6 +50,7 @@ services:
     restart: unless-stopped
 
   suricata:
+    image: ghcr.io/ourslow/netwatch-suricata:${NETWATCH_IMAGE_TAG:-2.2.0}
     build: ./suricata
     container_name: netwatch-suricata
     network_mode: host
@@ -218,6 +221,7 @@ services:
   # ============================================================
 
   beacon-detect:
+    image: ghcr.io/ourslow/netwatch-beacon-detect:${NETWATCH_IMAGE_TAG:-2.2.0}
     build: ./beacon-detect
     container_name: netwatch-beacon-detect
     environment:
@@ -236,6 +240,7 @@ services:
   # ============================================================
 
   autoblock:
+    image: ghcr.io/ourslow/netwatch-autoblock:${NETWATCH_IMAGE_TAG:-2.2.0}
     build: ./autoblock
     container_name: netwatch-autoblock
     network_mode: host

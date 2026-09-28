@@ -3,6 +3,15 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), versions [SemVer](https://semver.org/lang/fr/).
 La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commits entre deux versions.
 
+## 2.2.0 — en cours
+
+### Ajouté
+- Images des cinq moteurs construits par le projet (Zeek, Snort, Suricata, beacon-detect, AutoBlock)
+  publiées sur GHCR (`ghcr.io/ourslow/netwatch-<service>:<version>`, workflow `images.yml`, tags
+  `<version>`, `latest`, `sha-<commit>`). `install.sh` et `scripts/upgrade.sh` les tirent au lieu de
+  les compiler (≈ 3 min au lieu de 10-15) et reconstruisent en local si GHCR est inaccessible.
+  `NETWATCH_IMAGE_TAG` dans `.env` fixe la version.
+
 ## 2.1.0 — 2026-09-28
 
 Passage de « labo / SideQuest » à produit : voir `docs/positionnement-produit.md`.
