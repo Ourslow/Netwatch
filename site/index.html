@@ -94,7 +94,7 @@
       <div class="card rv">
         <div class="num">3</div>
         <h3>Je peux le montrer à ma direction</h3>
-        <p>Rapport exécutif PDF, conformité SLA en heures ouvrées, matrices NIS2 / ISO 27001 / ANSSI / NIST CSF — ce qu'un RSSI ou un DSI attend d'un outil qu'il paie.</p>
+        <p>Rapport exécutif PDF, SLA en heures ouvrées, matrices NIS2 / ISO 27001 / ANSSI / NIST CSF (édition Pro) — ce qu'un RSSI ou un DSI attend d'un outil qu'il paie.</p>
       </div>
     </div>
   </div>
@@ -106,7 +106,7 @@
     <div class="center rv">
       <div class="eyebrow">Un seul portail</div>
       <h2>Une question d'exploitant, une page qui répond</h2>
-      <p class="lead">Le portail parle le vocabulaire des outils NPM commerciaux — ART, santé TCP, SLA, flux — sans la licence qui va avec.</p>
+      <p class="lead">Le portail parle le vocabulaire des exploitants réseau — ART, santé TCP, SLA, flux — dans une seule interface.</p>
     </div>
     <div class="tabs rv" role="tablist" aria-label="Pages du portail" style="margin-top:2rem">
       <button role="tab" aria-selected="true" aria-controls="p-home">Accueil</button>
@@ -151,18 +151,18 @@
     <div class="center rv">
       <div class="eyebrow">NPM + NDR dans une seule boîte</div>
       <h2>Ce que la sonde fait</h2>
-      <p class="lead">Les gratuits sont sécurité-only ; les commerciaux sont hors budget. NetWatch fait les deux, avec des briques open-source éprouvées.</p>
+      <p class="lead">Supervision de la performance et détection des menaces dans la même sonde, avec des briques open-source éprouvées.</p>
     </div>
     <div class="grid g3" style="margin-top:2.5rem">
       <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l5-6 4 4 5-8 4 5"/></svg></div><h3>Flux réseau</h3><p>NetFlow v5/v9, IPFIX, sFlow collectés par GoFlow2 ; repli automatique sur Zeek si vos équipements n'exportent pas. Top talkers, top ports, volume, dictionnaire applicatif SNI / domaine.</p></div>
-      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Temps de réponse &amp; santé TCP</h3><p>Application Response Time p50 / p95 / p99 par service (HTTP, DNS, TLS), RTT, retransmissions, ratio zero-window par hôte — le triage « réseau ou application ? » des outils commerciaux.</p></div>
+      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Temps de réponse &amp; santé TCP</h3><p>Application Response Time p50 / p95 / p99 par service (HTTP, DNS, TLS), RTT, retransmissions, ratio zero-window par hôte — pour trancher « réseau ou application ? ».</p></div>
       <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg></div><h3>SLA passif + sondes actives</h3><p>Conformité p95 par heure, heures ouvrées vs nuits et week-ends, timeline par jour. Sondes HTTP, ICMP, TCP, DNS (Blackbox) déclarées dans un fichier rechargé à chaud.</p></div>
       <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><path d="M10 6.5h4v7.5"/></svg></div><h3>Topologie, SNMP, capacité</h3><p>Carte L2/L3 découverte par LLDP et ARP, interfaces SNMP (débit, saturation), capacity planning : nombre de jours avant saturation, par interface.</p></div>
       <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Détection : trois moteurs</h3><p>Zeek, Snort 3 et Suricata 7 sur le même trafic, corrélés par Community ID ; beaconing C2, connexions longues, DNS tunneling ; MITRE ATT&amp;CK, threat intel, fingerprinting JA3 / HASSH.</p></div>
       <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="2"/></svg></div><h3>La preuve, quand il la faut</h3><p>Full packet capture indexée (Arkime), recherche dans les logs (Kibana), classification nDPI (ntopng), analyse d'une conversation TCP — ouverts depuis le portail, avec le bon filtre.</p></div>
       <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div><h3>Inventaire au centre</h3><p>NetBox (IPAM) comme source de vérité : une adresse devient un serveur, un site, un VLAN. Les groupes d'hôtes viennent des préfixes — pas d'un tableur.</p></div>
-      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M5 17l.8 2 2 .8-2 .8L5 22l-.8-1.4-2-.8 2-.8z"/></svg></div><h3>IA locale, optionnelle</h3><p>Explication d'une alerte, narration d'une conversation TCP, résumé exécutif — par un modèle qui tourne sur la sonde (Ollama). Édition IA : deux lignes de configuration, aucune donnée sortante.</p></div>
-      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><h3>Rapports &amp; conformité</h3><p>Rapport exécutif HTML / PDF à la demande, historique, matrices NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001, escalade n8n vers ServiceNow ou JIRA.</p></div>
+      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M5 17l.8 2 2 .8-2 .8L5 22l-.8-1.4-2-.8 2-.8z"/></svg></div><h3>IA locale <small class="muted" style="font-size:.75em;font-weight:500">· Pro</small></h3><p>Explication d'une alerte, narration d'une conversation TCP, résumé exécutif — par un modèle qui tourne sur la sonde (Ollama). Aucune donnée sortante ; activable en deux lignes de configuration.</p></div>
+      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><h3>Rapports &amp; conformité <small class="muted" style="font-size:.75em;font-weight:500">· Pro</small></h3><p>Rapport exécutif HTML / PDF à la demande et planifié, matrices NIS2 · NIST CSF 2.0 · ANSSI · ISO 27001, intégrations ITSM et messagerie.</p></div>
     </div>
   </div>
 </section>
@@ -244,71 +244,73 @@
     <div class="plans rv" style="margin-top:2.5rem">
       <div class="plan">
         <div class="tag">Community</div>
-        <div class="price">0 € <small>· AGPL v3</small></div>
-        <p class="muted" style="margin:.5rem 0 0">La sonde complète, telle qu'elle est dans le dépôt.</p>
+        <div class="price">0 € <small>· AGPL v3, sans limite de durée ni de volume</small></div>
+        <p class="muted" style="margin:.5rem 0 0">Tout ce qu'il faut pour une sonde complète et utile en production.</p>
         <ul>
-          <li>Trois moteurs de détection, flux, SNMP, topologie, SLA</li>
-          <li>Portail 22 pages, 13 dashboards Grafana, rapports PDF</li>
-          <li>Arkime, Kibana, ntopng, NetBox, sondes actives</li>
-          <li>install.sh, HTTPS unique, sauvegarde / restauration, mise à jour</li>
-          <li>Tests, CI, documentation, GitHub issues</li>
+          <li>Trois moteurs de détection, comportemental, threat intel publique, AutoBlock</li>
+          <li>Flux NetFlow/IPFIX/sFlow, SNMP, topologie, capacity planning, VoIP, zero-window</li>
+          <li>Portail (alertes, flux, top talkers, pivot IP, SLA brut, seuils, hostgroups), 13 dashboards Grafana</li>
+          <li>Kibana, Arkime, ntopng, NetBox intégrés ; sondes actives ; dictionnaire applicatif de base</li>
+          <li>install.sh, HTTPS unique, sauvegarde / restauration, mise à jour, health check, documentation</li>
         </ul>
         <a class="btn btn-ghost" href="#install">Installer</a>
       </div>
       <div class="plan hl">
         <div class="tag">Pro</div>
-        <div class="price">Abonnement <small>· par sonde</small></div>
-        <p class="muted" style="margin:.5rem 0 0">Pour celui qui exploite la sonde au quotidien — ou qui la revend.</p>
+        <div class="price">99–149 € <small>/ mois / sonde · engagement annuel · hypothèse à valider</small></div>
+        <p class="muted" style="margin:.5rem 0 0">Ce qui fait gagner du temps ou rassure celui qui paie — et l'humain derrière.</p>
         <ul>
-          <li>Support par Axians, mises à jour de sécurité prioritaires</li>
-          <li class="soon">Multi-utilisateurs, rôles, comptes nominatifs</li>
-          <li class="soon">Consolidation multi-sites / multi-clients (MSP)</li>
-          <li class="soon">Licence hors ligne signée — aucun « phone home »</li>
-          <li class="soon">Rapports et alertes avancés, intégrations ITSM étendues</li>
+          <li>IA locale : explication d'alerte, résumé exécutif, narration PCAP</li>
+          <li>Rapports PDF planifiés, rapport hebdomadaire direction, matrices de conformité mises à jour</li>
+          <li>SLA heures ouvrées / hors heures, engagements par service</li>
+          <li>Intégrations ITSM (ServiceNow, JIRA), workflows n8n packagés, Teams / Slack, enrichissement IOC</li>
+          <li>Dictionnaire applicatif étendu et feed d'intel curé, maintenus chaque mois</li>
+          <li class="soon">Comptes nominatifs, rôles, SSO (OIDC / LDAP)</li>
+          <li class="soon">Multi-sites, console centrale (MSP)</li>
+          <li>Support e-mail J+1, mises à jour prioritaires, versions LTS</li>
         </ul>
-        <a class="btn btn-primary" href="https://github.com/Ourslow/Netwatch/issues" rel="noopener">Nous contacter</a>
-        <div class="note">Les fonctions marquées en orange sont en cours de développement — un pilote se fait en Community.</div>
+        <a class="btn btn-primary" href="https://github.com/Ourslow/Netwatch/discussions" rel="noopener">Rejoindre la bêta Pro</a>
+        <div class="note">En orange : en cours de développement. Le découpage Community / Pro arrive avec la licence ; d'ici là, tout le code est dans le dépôt.</div>
       </div>
       <div class="plan">
-        <div class="tag">Module IA</div>
-        <div class="price">Inclus <small>· Core ou IA</small></div>
-        <p class="muted" style="margin:.5rem 0 0">L'assistant est une option de configuration, pas un autre produit.</p>
+        <div class="tag">Pilote</div>
+        <div class="price">Gratuit <small>· 3 semaines</small></div>
+        <p class="muted" style="margin:.5rem 0 0">Une sonde chez vous, sur un périmètre que vous n'instrumentez pas aujourd'hui.</p>
         <ul>
-          <li>Explication d'une alerte en langage clair</li>
-          <li>Narration d'une conversation TCP</li>
-          <li>Résumé exécutif du rapport</li>
-          <li>Modèle local (Ollama / Mistral) : rien ne sort</li>
-          <li>Activation : <code>./install.sh --ia</code> — + 4-5 Go de RAM</li>
+          <li>Une VM, un port SPAN, une commande — édition Community</li>
+          <li>Critères de succès fixés avant d'installer</li>
+          <li>Un point d'étape par semaine, un retour écrit à la fin</li>
+          <li>Aucune donnée ne nous est transmise : vous exploitez, nous accompagnons</li>
+          <li>Pour les MSP : un client, puis on parle console centrale</li>
         </ul>
-        <a class="btn btn-ghost" href="#faq">Comment ça marche ?</a>
+        <a class="btn btn-ghost" href="https://github.com/Ourslow/Netwatch/discussions" rel="noopener">Demander un pilote</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══ Comparaison ═══ -->
+<!-- ═══ Positionnement ═══ -->
 <section id="comparer">
   <div class="wrap">
     <div class="rv">
       <div class="eyebrow">Se situer</div>
-      <h2>Ni un Security Onion, ni un Netscout — l'espace entre les deux</h2>
-      <p class="lead">Les gratuits sont sécurité-only et sans support ; les commerciaux sont hors budget PME ; les souverains visent les OIV. NetWatch est le seul à réunir NPM + NDR + IA locale, en français, au prix d'une PME.</p>
+      <h2>Entre les outils gratuits et les plateformes grand compte</h2>
+      <p class="lead">Trois familles existent aujourd'hui ; NetWatch occupe l'espace qu'elles laissent aux PME et aux MSP.</p>
     </div>
     <div class="tbl rv" style="margin-top:2rem">
       <table>
-        <thead><tr><th>Solution</th><th>NPM (flux, ART, SLA)</th><th>NDR (détection)</th><th>IA locale</th><th>100 % sur site</th><th>Prix PME</th><th>Support FR</th></tr></thead>
+        <thead><tr><th>Famille</th><th>NPM (flux, ART, SLA)</th><th>NDR (détection)</th><th>IA locale</th><th>100 % sur site</th><th>Budget PME</th><th>Langue / support</th></tr></thead>
         <tbody>
-          <tr class="me"><td>NetWatch</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui</td></tr>
-          <tr><td>Security Onion</td><td class="n">—</td><td class="y">oui</td><td class="n">—</td><td class="y">oui</td><td class="y">gratuit</td><td class="n">EN</td></tr>
-          <tr><td>Malcolm (CISA)</td><td class="n">—</td><td class="y">oui</td><td class="n">—</td><td class="y">oui</td><td class="y">gratuit</td><td class="n">EN, sans support</td></tr>
-          <tr><td>Clear NDR / Stamus</td><td class="n">—</td><td class="y">oui</td><td class="n">—</td><td class="y">oui</td><td class="p">open-core, grand compte</td><td class="p">FR/US</td></tr>
-          <tr><td>Netscout · Riverbed</td><td class="y">oui</td><td class="p">partiel</td><td class="n">—</td><td class="y">oui</td><td class="n">10-100 k€ / an</td><td class="y">intégrateurs</td></tr>
-          <tr><td>Darktrace · Vectra</td><td class="n">—</td><td class="y">oui</td><td class="n">cloud</td><td class="n">non</td><td class="n">5-6 chiffres</td><td class="p">via partenaires</td></tr>
-          <tr><td>Centreon · Zabbix · PRTG</td><td class="p">SNMP seulement</td><td class="n">—</td><td class="n">—</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui</td></tr>
+          <tr class="me"><td>NetWatch</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui (Pro)</td><td class="y">oui</td><td class="y">oui</td><td class="y">français, support Pro</td></tr>
+          <tr><td>Suites de sécurité réseau open-source</td><td class="n">—</td><td class="y">oui</td><td class="n">—</td><td class="y">oui</td><td class="y">gratuit</td><td class="n">anglais, communautaire</td></tr>
+          <tr><td>NPM commerciaux de référence</td><td class="y">oui</td><td class="p">partiel</td><td class="n">—</td><td class="y">oui</td><td class="n">5 à 6 chiffres / an</td><td class="y">intégrateurs</td></tr>
+          <tr><td>NDR cloud à base d'IA</td><td class="n">—</td><td class="y">oui</td><td class="n">dans le cloud</td><td class="n">non</td><td class="n">5 à 6 chiffres / an</td><td class="p">via partenaires</td></tr>
+          <tr><td>NDR souverains qualifiés</td><td class="n">—</td><td class="y">oui</td><td class="p">selon l'offre</td><td class="y">oui</td><td class="n">grands comptes, OIV</td><td class="y">français</td></tr>
+          <tr><td>Supervision par métriques / SNMP</td><td class="p">SNMP seulement</td><td class="n">—</td><td class="n">—</td><td class="y">oui</td><td class="y">oui</td><td class="y">oui</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="small muted" style="margin-top:.8rem;font-size:.85rem">Positionnement au 28/09/2026, tel que documenté dans le dépôt (docs/positionnement-produit.md). NetWatch reproduit 70-80 % des fonctions NPM commerciales, sans DPI propriétaire.</p>
+    <p class="muted" style="margin-top:.8rem;font-size:.85rem">NetWatch reproduit les fonctions NPM essentielles (flux, temps de réponse, santé TCP, SLA) sans DPI propriétaire, et ne vise pas les réseaux à plusieurs dizaines de Gb/s ni la qualification ANSSI — voir les limites ci-dessous.</p>
   </div>
 </section>
 
@@ -336,7 +338,7 @@
         <li>Pas de DPI propriétaire (SNI + nDPI : 70-80 % des cas)</li>
         <li>Pas de qualification ANSSI ni de Critères Communs</li>
         <li>Pas de SaaS multi-tenant hébergé (phase 1)</li>
-        <li>Une sonde ≈ un site ; consolidation en cours</li>
+        <li>Une sonde ≈ un site ; console multi-sites en cours (Pro)</li>
         <li>Zero-window compté, pas mesuré en durée</li>
         <li>v2.1 : validée en labo et sur Proxmox, premier pilote client à faire</li>
       </ul>
@@ -383,12 +385,12 @@ make health   <span class="c"># exit 0 = tout va bien</span></code></pre>
   <div class="wrap" style="max-width:860px">
     <div class="center rv"><div class="eyebrow">Questions fréquentes</div><h2>Avant de nous écrire</h2></div>
     <div class="rv" style="margin-top:2rem">
-      <details><summary>Est-ce que NetWatch remplace mon NPM commercial ?</summary><p>Non, et ce n'est pas le but. Sur un grand SI, NetWatch couvre les périmètres que le NPM commercial ne couvre pas — agences, sites secondaires, labs, hors-prod — avec le même vocabulaire (ART, santé TCP, SLA, flux). Sur une PME sans NPM, c'est souvent le premier et le seul.</p></details>
+      <details><summary>J'ai déjà un outil de supervision réseau. Est-ce que NetWatch le remplace ?</summary><p>Pas nécessairement. Sur un grand SI, NetWatch couvre les périmètres que l'outil en place ne couvre pas — agences, sites secondaires, labs, hors-production — avec le même vocabulaire (ART, santé TCP, SLA, flux). Sur une PME sans supervision de flux, c'est souvent le premier et le seul.</p></details>
       <details><summary>Pour quelle taille de réseau ?</summary><p>La cible : 50 à 500 postes, un à trois sites. Une sonde par site, autonome. Validé sur du trafic de PME et de laboratoire, pas en multi-Tbps — nous le disons clairement plutôt que de le découvrir en pilote.</p></details>
       <details><summary>Où vont mes données ?</summary><p>Nulle part. Capture, analyse, stockage et IA tournent sur la sonde, chez vous. Il n'y a ni télémétrie ni appel sortant obligatoire ; les mises à jour de threat intel et de GeoIP sont des fichiers que vous décidez de rafraîchir.</p></details>
-      <details><summary>Combien ça coûte ?</summary><p>L'édition Community est gratuite (AGPL v3) et complète pour une sonde qui fonctionne. L'édition Pro est un abonnement par sonde qui finance le support et les fonctions d'exploitation avancées. Un pilote se fait toujours en Community.</p></details>
-      <details><summary>Et l'IA, concrètement ?</summary><p>Un modèle de langage local (Ollama, Mistral par défaut) lit une alerte, une conversation TCP ou les KPIs du jour et les explique en langage clair. Il ne décide rien, ne bloque rien, et ne voit que ce que vous lui montrez. Désactivable en deux lignes.</p></details>
-      <details><summary>Qui est derrière ?</summary><p>NetWatch est né chez Axians (Vinci Energies) d'un besoin d'équipe : comprendre, démontrer et qualifier l'observabilité réseau sans licence. Le code est public depuis le premier jour ; le produit est en cours de structuration (éditions, support, nom commercial).</p></details>
+      <details><summary>Combien ça coûte ?</summary><p>L'édition Community est gratuite (AGPL v3) et complète pour une sonde qui fonctionne. L'édition Pro est un abonnement par sonde — hypothèse 99 à 149 € par mois, engagement annuel — qui finance l'IA, les rapports, les intégrations et le support. Un pilote se fait toujours en Community.</p></details>
+      <details><summary>Et l'IA, concrètement ?</summary><p>Un modèle de langage local (Ollama, Mistral par défaut) lit une alerte, une conversation TCP ou les KPIs du jour et les explique en langage clair. Il ne décide rien, ne bloque rien, et ne voit que ce que vous lui montrez. Il demande 4 à 5 Go de RAM en plus sur la sonde ; un modèle plus léger est à l'étude pour les petites machines.</p></details>
+      <details><summary>Qui est derrière ?</summary><p>Un projet open-source français, développé en public depuis le premier jour sous licence AGPL v3. Le produit est en cours de structuration (éditions, support, nom commercial) ; les échanges se font sur GitHub, et les premiers pilotes servent à décider de la suite avec ceux qui l'utilisent.</p></details>
     </div>
   </div>
 </section>
@@ -409,7 +411,7 @@ make health   <span class="c"># exit 0 = tout va bien</span></code></pre>
 
 <footer>
   <div class="wrap">
-    <div>© 2026 NetWatch · licence AGPL v3 · conçu en France chez Axians (Vinci Energies)</div>
+    <div>© 2026 NetWatch · licence AGPL v3 · projet open-source français</div>
     <nav>
       <a href="https://github.com/Ourslow/Netwatch" rel="noopener">GitHub</a>
       <a href="https://github.com/Ourslow/Netwatch/blob/main/README.md" rel="noopener">Documentation</a>
