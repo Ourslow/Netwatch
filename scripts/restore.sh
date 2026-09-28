@@ -62,6 +62,9 @@ command -v docker >/dev/null && docker info >/dev/null 2>&1 && HAVE_DOCKER=true
 # ── 1. Configuration ─────────────────────────────────────────────────────────
 stamp="$(date +%Y%m%d-%H%M%S)"
 for f in .env portal/.env; do [ -f "$f" ] && cp -a "$f" "$f.bak-$stamp"; done
+# L'état du portail (hostgroups, seuils, disposition) est celui de l'archive : un fichier
+# absent de l'archive ne doit pas survivre (sinon un hostgroup créé après la sauvegarde reste).
+[ -d "$WORK/config/portal/data" ] && rm -f "$ROOT"/portal/data/*.json
 cp -a "$WORK/config/." "$ROOT/"
 chmod 600 .env portal/.env 2>/dev/null || true
 ok "configuration et état du portail (anciens .env → *.bak-$stamp)"
@@ -69,6 +72,7 @@ ok "configuration et état du portail (anciens .env → *.bak-$stamp)"
 if ! $CONFIG_ONLY; then
   $HAVE_DOCKER || { echo "docker requis pour restaurer volumes, NetBox et Elasticsearch" >&2; exit 1; }
   PROJECT="$(project)"
+  trap 'echo "  ! erreur pendant la restauration — redémarrage de la stack" >&2; docker compose up -d --remove-orphans >/dev/null 2>&1 || true' ERR
   echo "  arrêt de la stack"
   docker compose down --remove-orphans >/dev/null 2>&1 || true
 
@@ -102,14 +106,24 @@ if ! $CONFIG_ONLY; then
       sh -c "find /dst -mindepth 1 -delete && tar xzf /src/es-snapshots.tar.gz -C /dst && chown -R 1000:0 /dst"
     docker compose up -d elasticsearch >/dev/null
     wait_es || { echo "Elasticsearch ne répond pas" >&2; exit 1; }
-    curl -s -X PUT "$ES/_snapshot/netwatch" -H 'Content-Type: application/json' \
-      -d "{\"type\":\"fs\",\"settings\":{\"location\":\"$ES_REPO_PATH\",\"compress\":true}}" >/dev/null
-    indices="$(curl -s "$ES/_snapshot/netwatch/$snap" | python3 -c 'import json,sys; print(",".join(json.load(sys.stdin)["snapshots"][0]["indices"]))')"
-    [ -n "$indices" ] && curl -s -X DELETE "$ES/$indices?ignore_unavailable=true" >/dev/null
-    res="$(curl -s -X POST "$ES/_snapshot/netwatch/$snap/_restore?wait_for_completion=true" -H 'Content-Type: application/json' \
-           -d '{"indices":"*,-.*","include_global_state":false}')"
-    echo "$res" | grep -q '"failed":0' && ok "Elasticsearch (snapshot $snap)" || warn "restauration ES incomplète : ${res:0:200}"
-    curl -s -X DELETE "$ES/_snapshot/netwatch/$snap" >/dev/null
+    # Un dépôt déjà enregistré dont le contenu a changé sous lui est désactivé par ES
+    # (« disabled to prevent data corruption ») : on le supprime et on le ré-enregistre à neuf.
+    curl -s -X DELETE "$ES/_snapshot/netwatch" >/dev/null 2>&1 || true
+    reg="$(curl -s -X PUT "$ES/_snapshot/netwatch" -H 'Content-Type: application/json' \
+      -d "{\"type\":\"fs\",\"settings\":{\"location\":\"$ES_REPO_PATH\",\"compress\":true}}")"
+    echo "$reg" | grep -q '"acknowledged":true' || warn "dépôt de snapshots non enregistré : ${reg:0:160}"
+    snapinfo="$(curl -s "$ES/_snapshot/netwatch/$snap")"
+    indices="$(echo "$snapinfo" | python3 -c 'import json,sys
+d = json.load(sys.stdin); print(",".join(d["snapshots"][0]["indices"]) if d.get("snapshots") else "")' 2>/dev/null || true)"
+    if [ -z "$indices" ]; then
+      warn "snapshot $snap introuvable dans le dépôt — index Elasticsearch non restaurés : ${snapinfo:0:160}"
+    else
+      curl -s -X DELETE "$ES/$indices?ignore_unavailable=true" >/dev/null
+      res="$(curl -s -X POST "$ES/_snapshot/netwatch/$snap/_restore?wait_for_completion=true" -H 'Content-Type: application/json' \
+             -d '{"indices":"*,-.*","include_global_state":false}')"
+      echo "$res" | grep -q '"failed":0' && ok "Elasticsearch (snapshot $snap, $(echo "$indices" | tr ',' '\n' | wc -l) index)" || warn "restauration ES incomplète : ${res:0:200}"
+      curl -s -X DELETE "$ES/_snapshot/netwatch/$snap" >/dev/null
+    fi
   fi
 
   # ── 5. Redémarrage ─────────────────────────────────────────────────────────
