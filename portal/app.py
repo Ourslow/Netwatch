@@ -388,6 +388,41 @@ def _check_credentials(username: str, password: str) -> bool:
     return ok_u and ok_p
 
 
+# Anti-force-brute sur /login : échecs consécutifs comptés par adresse source,
+# verrou de LOGIN_LOCK_SECONDS après LOGIN_MAX_FAILURES échecs. État en mémoire
+# (un seul processus portail), journalisé en WARNING pour la supervision.
+LOGIN_MAX_FAILURES = 5
+LOGIN_LOCK_SECONDS = 60
+_LOGIN_ATTEMPTS: dict = {}   # ip → [échecs consécutifs, verrouillé jusqu'à (monotonic)]
+
+
+def _login_client_ip() -> str:
+    """Adresse source ; derrière Caddy (profil proxy) c'est X-Forwarded-For qui la porte."""
+    if config.PROXY_MODE:
+        fwd = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        if fwd:
+            return fwd
+    return request.remote_addr or "?"
+
+
+def _login_lock_remaining(ip: str) -> int:
+    st = _LOGIN_ATTEMPTS.get(ip)
+    return max(0, int(st[1] - _time_mod.monotonic())) if st else 0
+
+
+def _login_failed(ip: str) -> None:
+    st = _LOGIN_ATTEMPTS.setdefault(ip, [0, 0.0])
+    st[0] += 1
+    if st[0] >= LOGIN_MAX_FAILURES:
+        st[0] = 0
+        st[1] = _time_mod.monotonic() + LOGIN_LOCK_SECONDS
+        app.logger.warning("login : %s verrouillé %s s après %s échecs", ip, LOGIN_LOCK_SECONDS, LOGIN_MAX_FAILURES)
+
+
+def _login_succeeded(ip: str) -> None:
+    _LOGIN_ATTEMPTS.pop(ip, None)
+
+
 # ============================================================
 # Helpers
 # ============================================================
@@ -662,9 +697,15 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
     if request.method == "POST":
+        ip = _login_client_ip()
+        wait = _login_lock_remaining(ip)
+        if wait:
+            flash(f"Trop de tentatives — réessayez dans {wait} s.", "danger")
+            return render_template("login.html"), 429
         username = request.form.get("username", "")
         password = request.form.get("password", "")
         if _check_credentials(username, password):
+            _login_succeeded(ip)
             login_user(_SINGLE_USER, remember=bool(request.form.get("remember")))
             next_page = request.args.get("next")
             if next_page:
@@ -674,6 +715,7 @@ def login():
                 if parsed.scheme not in ("http", "https") or parsed.netloc != host.netloc:
                     next_page = None
             return redirect(next_page or url_for("dashboard"))
+        _login_failed(ip)
         flash("Identifiants incorrects.", "danger")
     return render_template("login.html")
 

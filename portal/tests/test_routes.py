@@ -76,6 +76,22 @@ def test_login_wrong_password(client):
     assert "Identifiants incorrects" in resp.get_data(as_text=True)
 
 
+def test_login_locked_after_repeated_failures(client, app_module):
+    """5 échecs consécutifs depuis la même adresse → verrou 429, même avec le bon mot de passe."""
+    app_module._LOGIN_ATTEMPTS.clear()
+    for _ in range(app_module.LOGIN_MAX_FAILURES):
+        resp = client.post("/login", data={"username": "admin", "password": "wrong"})
+        assert resp.status_code == 200
+    resp = client.post("/login", data={"username": "admin", "password": "test-password"})
+    assert resp.status_code == 429
+    assert "Trop de tentatives" in resp.get_data(as_text=True)
+    # levée du verrou → connexion normale
+    app_module._LOGIN_ATTEMPTS.clear()
+    resp = client.post("/login", data={"username": "admin", "password": "test-password"})
+    assert resp.status_code == 302
+    client.get("/logout")
+
+
 def test_login_refused_when_no_password_configured(client, monkeypatch):
     import config
     monkeypatch.setattr(config, "PORTAL_PASSWORD", "")
