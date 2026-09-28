@@ -3,7 +3,7 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), versions [SemVer](https://semver.org/lang/fr/).
 La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commits entre deux versions.
 
-## 2.1.0 — 2026-09-18 (en cours)
+## 2.1.0 — 2026-09-28
 
 Passage de « labo / SideQuest » à produit : voir `docs/positionnement-produit.md`.
 
@@ -23,6 +23,16 @@ Passage de « labo / SideQuest » à produit : voir `docs/positionnement-produit
 - Mise à jour (`scripts/upgrade.sh`) : sauvegarde de la configuration, `git` vers la dernière
   version, `pull`/`build`, initialisations idempotentes, redémarrage du portail, health check.
 - `VERSION` et ce changelog.
+- Observabilité complémentaire (Blackbox, Kibana, ntopng, Arkime, NetBox) intégrée au portail
+  (sondes actives, data views, full PCAP, contexte IPAM), éditions Core / IA (`COMPOSE_PROFILES=ia`),
+  déploiement 2 VM (`docker-compose.sensors.yml` / `data.yml`).
+- Jeu de données de démonstration reproductible (`make demo-netbox`, `make demo-data`) et parcours
+  de démo (`docs/demo-parcours.md`).
+- Site produit statique (`site/`) publié sur GitHub Pages ; deck de présentation (`docs/presentation/`).
+- Portail : anti-force-brute sur `/login` (5 échecs → 60 s), sonde Proxmox asynchrone (plus de
+  page bloquée par un hôte injoignable).
+- Validation sur machine neuve (`docs/validation-vm.md`) : installation 11 min, sauvegarde 11 s,
+  restauration complète 61 s, mise à jour 13 s.
 
 ### Modifié
 - Elasticsearch : `path.repo` + volume `es-snapshots` (prérequis des snapshots).
@@ -32,6 +42,16 @@ Passage de « labo / SideQuest » à produit : voir `docs/positionnement-produit
 
 ### Corrigé
 - 11 f-strings sans placeholder dans les scripts d'automatisation.
+- Installation neuve : la valeur d'exemple `IFACE=ens18` survivait à la détection (aucune
+  capture), placeholders ITSM restants, Grafana « dégradé » à tort dans `health-check.sh`.
+- Sauvegarde : snapshot Elasticsearch impossible (volume `es-snapshots` root:root vs uid 1000) ;
+  `alpine:3.20` pré-tirée pour fonctionner hors ligne.
+- Restauration : dépôt de snapshots ré-enregistré à neuf (sinon désactivé par ES), stack relancée
+  en cas d'erreur, état du portail remplacé par celui de l'archive.
+- Mise à jour : seuls les tags `vX.Y.Z` sont candidats ; attente du portail avant le health.
+- `Makefile` : recette `demo-data-clean` invalide (`make` inutilisable) — contrôle `make -n` en CI.
+- Portail : sondes Blackbox absentes de `/status`, `.env` du stack non lu par le portail,
+  `app-classifier` en échec sur `HEAD netflow-*`.
 
 ## 2.0.0 — 2026-09-14
 
