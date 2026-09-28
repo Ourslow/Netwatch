@@ -37,7 +37,8 @@ from netwatch import probes as nw_probes
 from netwatch import netbox as nw_netbox
 
 # ============================================================
-# Données de comparaison (matrice feature × outil)
+# Données de comparaison (matrice feature × outil) — alignées sur
+# docs/comparatif-editeurs.md (documentation publique des éditeurs, 28/09/2026).
 # Valeurs : "full" | "partial" | "none" | str littéral
 # ============================================================
 
@@ -65,7 +66,7 @@ COMPARE_MATRIX = [
              "netwatch": "full", "security-onion": "full", "wazuh": "none",
              "netscout": "partial", "gigamon": "none", "riverbed": "none"},
             {"feature": "Analyse NetFlow / IPFIX / sFlow",
-             "netwatch": "none", "security-onion": "partial", "wazuh": "none",
+             "netwatch": "full", "security-onion": "partial", "wazuh": "none",
              "netscout": "full", "gigamon": "full", "riverbed": "full"},
         ],
     },
@@ -104,7 +105,7 @@ COMPARE_MATRIX = [
              "netwatch": "full", "security-onion": "partial", "wazuh": "full",
              "netscout": "full", "gigamon": "partial", "riverbed": "partial"},
             {"feature": "Gestion d'incidents (ticketing)",
-             "netwatch": "none", "security-onion": "full", "wazuh": "partial",
+             "netwatch": "partial", "security-onion": "full", "wazuh": "partial",
              "netscout": "full", "gigamon": "partial", "riverbed": "full"},
         ],
     },
@@ -119,7 +120,7 @@ COMPARE_MATRIX = [
              "netwatch": "full", "security-onion": "partial", "wazuh": "partial",
              "netscout": "full", "gigamon": "partial", "riverbed": "partial"},
             {"feature": "Reporting exécutif PDF",
-             "netwatch": "none", "security-onion": "partial", "wazuh": "partial",
+             "netwatch": "full", "security-onion": "partial", "wazuh": "partial",
              "netscout": "full", "gigamon": "full", "riverbed": "full"},
             {"feature": "GeoIP & Top Talkers",
              "netwatch": "full", "security-onion": "full", "wazuh": "partial",
@@ -140,7 +141,7 @@ COMPARE_MATRIX = [
              "netwatch": "none", "security-onion": "partial", "wazuh": "full",
              "netscout": "full", "gigamon": "full", "riverbed": "full"},
             {"feature": "Support commercial garanti (SLA)",
-             "netwatch": "none", "security-onion": "none", "wazuh": "partial",
+             "netwatch": "partial", "security-onion": "none", "wazuh": "partial",
              "netscout": "full", "gigamon": "full", "riverbed": "full"},
         ],
     },
@@ -149,11 +150,11 @@ COMPARE_MATRIX = [
         "icon": "bi-currency-euro",
         "rows": [
             {"feature": "Licence",
-             "netwatch": "AGPL v3", "security-onion": "GPL v2", "wazuh": "GPL v2",
-             "netscout": "Commercial", "gigamon": "Commercial", "riverbed": "Commercial"},
-            {"feature": "Coût estimé (annuel)",
-             "netwatch": "0 €", "security-onion": "0 €", "wazuh": "0 € / 50 k€+",
-             "netscout": "100 k€+", "gigamon": "150 k€+", "riverbed": "80 k€+"},
+             "netwatch": "AGPL v3 + Pro", "security-onion": "Elastic License 2.0", "wazuh": "GPL v2",
+             "netscout": "Propriétaire", "gigamon": "Propriétaire", "riverbed": "Propriétaire"},
+            {"feature": "Modèle tarifaire public",
+             "netwatch": "Community gratuite · Pro abonnement", "security-onion": "Gratuit · support payant",
+             "wazuh": "Gratuit · cloud payant", "netscout": "Sur devis", "gigamon": "Sur devis", "riverbed": "Sur devis"},
             {"feature": "Complexité déploiement",
              "netwatch": "Faible", "security-onion": "Moyenne", "wazuh": "Moyenne",
              "netscout": "Élevée", "gigamon": "Élevée", "riverbed": "Élevée"},

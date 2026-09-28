@@ -652,6 +652,8 @@ Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log
 
 ## Comparaison open-source vs commercial
 
+Équivalences fonctionnelles indicatives (documentation publique des éditeurs). Matrice complète par solution, familles, sources et limites : [`docs/comparatif-editeurs.md`](docs/comparatif-editeurs.md).
+
 | Fonctionnalité | NetWatch | Outils commerciaux |
 |----------------|-------------|---------------------|
 | Capture & analyse réseau | Zeek (analyse proto) | Corelight · nGenius Probe |
