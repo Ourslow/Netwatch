@@ -46,7 +46,7 @@ marqué ✅ a été vérifié sur ce PC (labo WSL, 23 conteneurs) le 28/09.
 | Chantier | Pourquoi | Effort |
 |---|---|---|
 | **Activer GitHub Pages** (Settings → Pages → Source : GitHub Actions) | le workflow échoue sur `configure-pages` tant que Pages n'est pas activé — action manuelle sur le dépôt | 1 min |
-| **Nom du produit** sur le site et le portail | « NetWatch » est un nom de code ; candidat retenu le 28/09 : Packhawk (à vérifier INPI / TMview avant tout usage public) | 1 h après vérification |
+| **Nom du produit** sur le site et le portail | « NetWatch » est un nom de code ; candidat retenu : NetPiquet (remplace Packhawk, trop proche du PacketHawk de NEOX Networks ; à vérifier INPI / TMview avant tout usage public) | 1 h après vérification |
 | **Content-Security-Policy** | les templates embarquent des `<script>` inline ; passer par des nonces (Flask) puis `script-src 'nonce-…'` | ½ j |
 | **Tags de version et images publiées** | `VERSION` = 2.1.0 mais aucun tag git ni image sur un registre : `upgrade.sh` ne peut pas cibler une version | ½ j |
 | **ILM Elasticsearch documenté** pour tous les index (`zeek-*`, `suricata-*`, `snort-*`, `arkime_*`) | rétention = argument de dimensionnement et de conformité | ½ j |
