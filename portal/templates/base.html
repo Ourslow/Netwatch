@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>
+  <script nonce="{{ csp_nonce }}">
     /* Applique le thème sauvegardé avant le rendu CSS — évite un flash du
        mauvais thème (sombre par défaut si aucune préférence enregistrée). */
     (function () {
@@ -279,10 +279,10 @@
           <i class="bi bi-search"></i>
           <span class="cmd-trigger-hint">Ctrl+K</span>
         </button>
-        <button class="btn btn-sm btn-outline-secondary d-none d-lg-inline-flex" onclick="NW.showShortcuts()" title="Raccourcis clavier (?)">
+        <button class="btn btn-sm btn-outline-secondary d-none d-lg-inline-flex" data-action="shortcuts" title="Raccourcis clavier (?)">
           <i class="bi bi-keyboard"></i>
         </button>
-        <button id="lang-toggle" onclick="NW.switchLang()"
+        <button id="lang-toggle" data-action="lang"
                 class="btn btn-sm btn-outline-secondary"
                 title="Switch language / Changer la langue"
                 style="font-size:.75rem;letter-spacing:.04em;min-width:54px">
@@ -290,7 +290,7 @@
           <span class="text-muted mx-1">|</span>
           <span class="lang-other" style="opacity:.45">EN</span>
         </button>
-        <button id="theme-toggle" onclick="NW.switchTheme()"
+        <button id="theme-toggle" data-action="theme"
                 class="btn btn-sm btn-outline-secondary"
                 title="Thème clair / sombre">
           <i class="bi bi-sun-fill" id="theme-icon-light"></i>
@@ -359,7 +359,7 @@
 <script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/netwatch.js') }}"></script>
 {% block scripts %}{% endblock %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var NAV = [
     { icon: 'bi-grid-1x2',               label: 'Dashboard',                 url: '/',                 hint: 'Vue observabilité', key: 'g d' },

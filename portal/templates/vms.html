@@ -136,7 +136,7 @@
                 </form>
                 {% endif %}
                 <button class="btn btn-outline-danger"
-                        onclick="confirmDelete({{ vm.vmid }}, '{{ vm.name }}')"
+                        data-vmid="{{ vm.vmid }}" data-vmname="{{ vm.name }}"
                         title="Supprimer">
                   <i class="bi bi-trash"></i>
                 </button>
@@ -184,7 +184,12 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('click', function (e) {
+  const b = e.target.closest('[data-vmid]');
+  if (b) confirmDelete(b.dataset.vmid, b.dataset.vmname);
+});
+
 function confirmDelete(vmid, name) {
   document.getElementById('deleteVmName').textContent = name;
   document.getElementById('deleteVmId').textContent = vmid;

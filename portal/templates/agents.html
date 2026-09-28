@@ -195,7 +195,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var INTERVAL = 15;
   var timer    = document.getElementById('agents-timer');

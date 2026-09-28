@@ -53,25 +53,25 @@
       <!-- Toolbar pill buttons -->
       <div class="nw-bar">
         <span class="nw-bar-lbl">Sévérité</span>
-        <button class="nw-pill on c" id="p-crit" onclick="togSev('critical',this)">
+        <button class="nw-pill on c" id="p-crit" data-sev="critical">
           <span class="nw-dot-ind" style="background:#f85149"></span>Critique
         </button>
-        <button class="nw-pill on m" id="p-med"  onclick="togSev('medium',this)">
+        <button class="nw-pill on m" id="p-med"  data-sev="medium">
           <span class="nw-dot-ind" style="background:#e3b341"></span>Moyen
         </button>
-        <button class="nw-pill on l" id="p-low"  onclick="togSev('low',this)">
+        <button class="nw-pill on l" id="p-low"  data-sev="low">
           <span class="nw-dot-ind" style="background:#79c0ff"></span>Faible
         </button>
         <div class="nw-sep"></div>
-        <button class="nw-pill on a" id="p-arcs" onclick="togArcs(this)">
+        <button class="nw-pill on a" id="p-arcs" data-geo="arcs">
           <i class="bi bi-share" style="font-size:.7rem"></i>Arcs
         </button>
         <div class="nw-bar-push">
-          <button class="nw-pill on" id="p-theme" onclick="togTheme()">
+          <button class="nw-pill on" id="p-theme" data-geo="theme">
             <i class="bi bi-moon-stars" id="thm-ic" style="font-size:.7rem"></i>
             <span id="thm-lbl">Sombre</span>
           </button>
-          <button class="nw-pill" onclick="resetFlash()" title="Reset vue">
+          <button class="nw-pill" data-geo="reset" title="Reset vue">
             <i class="bi bi-arrows-fullscreen" style="font-size:.7rem"></i>
           </button>
         </div>
@@ -178,7 +178,7 @@
 
 <script src="{{ url_for('static', filename='geo/d3.min.js') }}"></script>
 <script src="{{ url_for('static', filename='geo/topojson.min.js') }}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 'use strict';
 // ─── SVG viewBox size & projection ────────────────────────────────────────────
 // Exact same projection as the WorldMap React component
@@ -454,7 +454,7 @@ function renderSidebar(data) {
     if (d.medium)   bgs.push(`<span class="nw-sb-bg" style="color:${CM}">⬤ ${d.medium}</span>`);
     if (d.low)      bgs.push(`<span class="nw-sb-bg" style="color:${CL}">⬤ ${d.low}</span>`);
     return `
-      <div class="nw-sb-item" onclick="highlightCountry('${d.country}')">
+      <div class="nw-sb-item" data-country="${String(d.country).replace(/"/g, '&quot;')}">
         <span class="nw-sb-flag">${flag(d.iso)}</span>
         <div class="nw-sb-info">
           <div class="nw-sb-name">${d.country}</div>
@@ -478,6 +478,21 @@ function highlightCountry(name) {
 }
 
 // ─── Controls ─────────────────────────────────────────────────────────────────
+// Boutons et liste pays : attributs data-* + délégation (pas d'onclick inline, interdit par la CSP)
+document.addEventListener('click', function (e) {
+  const sev = e.target.closest('[data-sev]');
+  if (sev) return togSev(sev.dataset.sev, sev);
+  const geo = e.target.closest('[data-geo]');
+  if (geo) {
+    if (geo.dataset.geo === 'arcs') togArcs(geo);
+    else if (geo.dataset.geo === 'theme') togTheme();
+    else if (geo.dataset.geo === 'reset') resetFlash();
+    return;
+  }
+  const c = e.target.closest('[data-country]');
+  if (c) highlightCountry(c.dataset.country);
+});
+
 function togSev(sev, btn) {
   SEV[sev] = !SEV[sev];
   btn.classList.toggle('on', SEV[sev]);

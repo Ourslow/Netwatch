@@ -6,7 +6,7 @@
 <span class="text-muted" style="font-size:.78rem">
   <i class="bi bi-clock me-1"></i>{{ generated_at }}
 </span>
-<button onclick="window.print()" class="btn btn-sm btn-outline-secondary no-print">
+<button data-action="print" class="btn btn-sm btn-outline-secondary no-print">
   <i class="bi bi-printer me-1"></i>Exporter PDF
 </button>
 {% endblock %}
@@ -245,7 +245,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var raw = {{ stats.sparkline_7d | tojson | safe }};
 

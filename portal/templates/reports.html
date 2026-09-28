@@ -67,7 +67,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var btn    = document.getElementById('reports-generate-btn');
   var status = document.getElementById('reports-status');

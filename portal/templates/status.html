@@ -285,7 +285,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 /* ---- Auto-refresh /api/status toutes les 20s ---- */
 const STATUS_LABELS = {
   up:       '<span class="badge bg-success">UP</span>',

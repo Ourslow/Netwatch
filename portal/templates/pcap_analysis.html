@@ -97,7 +97,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var tbody       = document.getElementById('pcap-tbody');
   var loading     = document.getElementById('pcap-loading');

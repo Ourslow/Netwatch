@@ -26,7 +26,7 @@ marqué ✅ a été vérifié sur ce PC (labo WSL, 23 conteneurs) le 28/09.
 | Routes | 77 routes, toutes derrière `login_required` sauf `/login` et `/auth/check` (voulu : forward-auth Caddy) | OK |
 | Sous-processus (`tshark`, scripts d'analyse) | 7 appels, tous en liste d'arguments, jamais `shell=True` ; chemin PCAP confiné à `pcap/` (`basename` + `commonpath`) | OK |
 | Templates | `\| safe` uniquement après `tojson` (exec.html) ; autoescape Jinja actif | OK |
-| En-têtes | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy` | OK — pas de CSP (§ 4) |
+| En-têtes | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, **CSP** (`default-src 'self'`, nonce par requête sur les scripts inline, `frame-ancestors 'none'`, `form-action 'self'`, rapport `/csp-report`, mode `NETWATCH_CSP=enforce|report-only|off`) | OK (CSP ajoutée le 28/09) |
 | Services internes | ES, Prometheus, Blackbox, Kibana, ntopng liés à `127.0.0.1` ; en mode proxy, un seul port 443 et une seule session | OK |
 | Secrets | générés par `install.sh`, jamais commités (`.gitignore`), `.env.example` sans valeur réelle | OK |
 | Arkime | `anonymous` en labo (viewer sur `127.0.0.1`), `form` par défaut en 2-VM et derrière le proxy | OK, documenté |
@@ -47,7 +47,7 @@ marqué ✅ a été vérifié sur ce PC (labo WSL, 23 conteneurs) le 28/09.
 |---|---|---|
 | **Activer GitHub Pages** (Settings → Pages → Source : GitHub Actions) | le workflow échoue sur `configure-pages` tant que Pages n'est pas activé — action manuelle sur le dépôt | 1 min |
 | **Nom du produit** sur le site et le portail | « NetWatch » est un nom de code ; candidat retenu : NetPiquet (remplace Packhawk, trop proche du PacketHawk de NEOX Networks ; à vérifier INPI / TMview avant tout usage public) | 1 h après vérification |
-| **Content-Security-Policy** | les templates embarquent des `<script>` inline ; passer par des nonces (Flask) puis `script-src 'nonce-…'` | ½ j |
+| **Content-Security-Policy** | ~~scripts inline sans nonce~~ → fait le 28/09 : nonce par requête sur les 21 scripts inline, 16 `onclick=` remplacés par des `data-action`, test de convention (`test_csp.py`) qui interdit tout retour en arrière. `style=` inline toléré (`style-src 'unsafe-inline'`, 322 occurrences — à réduire quand les templates seront retravaillés) | — |
 | **Tags de version et images publiées** | ~~aucun tag git ni image sur un registre~~ → fait le 28/09 : tag `v2.1.0`, images GHCR `netwatch-*` (workflow `images.yml`), `install.sh`/`upgrade.sh` tirent puis reconstruisent en repli | — |
 | **ILM Elasticsearch documenté** pour tous les index (`zeek-*`, `suricata-*`, `snort-*`, `arkime_*`) | rétention = argument de dimensionnement et de conformité | ½ j |
 | **Comptes nominatifs / rôles** | un seul compte `admin` ; attendu dès le premier pilote avec plusieurs exploitants | 2-3 j (édition Pro) |

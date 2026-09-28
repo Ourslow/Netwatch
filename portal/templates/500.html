@@ -19,7 +19,10 @@
       Vérifiez que la stack Docker est opérationnelle.
     </div>
     <a href="/" class="btn-home"><i class="bi bi-grid-1x2"></i>Dashboard</a>
-    <button onclick="history.back()" class="btn-retry"><i class="bi bi-arrow-counterclockwise"></i>Retour</button>
+    <button data-action="back" class="btn-retry"><i class="bi bi-arrow-counterclockwise"></i>Retour</button>
   </div>
+  <script nonce="{{ csp_nonce }}">
+    document.querySelector('[data-action="back"]').addEventListener('click', function () { history.back(); });
+  </script>
 </body>
 </html>

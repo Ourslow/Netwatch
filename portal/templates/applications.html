@@ -161,7 +161,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var search  = document.getElementById('app-search');
   var catSel  = document.getElementById('app-cat-filter');

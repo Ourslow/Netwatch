@@ -9,7 +9,7 @@
 <a href="/api/sla-stats?days={{ days }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="Données brutes JSON">
   <i class="bi bi-braces"></i>
 </a>
-<button class="btn btn-sm btn-outline-secondary" onclick="location.reload()" title="Rafraîchir">
+<button class="btn btn-sm btn-outline-secondary" data-action="reload" title="Rafraîchir">
   <i class="bi bi-arrow-clockwise"></i>
 </button>
 {% endblock %}
@@ -299,7 +299,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   'use strict';
 

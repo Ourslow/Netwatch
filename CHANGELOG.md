@@ -11,6 +11,11 @@ La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commit
   `<version>`, `latest`, `sha-<commit>`). `install.sh` et `scripts/upgrade.sh` les tirent au lieu de
   les compiler (≈ 3 min au lieu de 10-15) et reconstruisent en local si GHCR est inaccessible.
   `NETWATCH_IMAGE_TAG` dans `.env` fixe la version.
+- Content-Security-Policy sur le portail : `default-src 'self'`, nonce par requête sur les scripts
+  inline (plus aucun `onclick=`), `frame-ancestors 'none'`, `form-action 'self'`, `object-src 'none'`,
+  violations reçues sur `POST /csp-report` (journal). `NETWATCH_CSP=enforce` (défaut) | `report-only`
+  (rodage) | `off`. Test de convention : tout `<script>` inline sans nonce ou gestionnaire inline fait
+  échouer `make test`.
 
 ## 2.1.0 — 2026-09-28
 

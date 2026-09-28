@@ -862,5 +862,20 @@
     NW.initShortcuts();
   });
 
+  /* Actions déclaratives : <button data-action="print|reload|back|shortcuts|lang|theme">.
+     Remplace les onclick= inline, interdits par la Content-Security-Policy du portail. */
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-action]");
+    if (!el) return;
+    switch (el.dataset.action) {
+      case "print":     window.print(); break;
+      case "reload":    location.reload(); break;
+      case "back":      history.back(); break;
+      case "shortcuts": NW.showShortcuts(); break;
+      case "lang":      NW.switchLang(); break;
+      case "theme":     NW.switchTheme(); break;
+    }
+  });
+
   window.NW = NW;
 })();

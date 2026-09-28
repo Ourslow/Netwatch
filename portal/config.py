@@ -51,6 +51,11 @@ PROXY_MODE = bool(PUBLIC_URL)
 SESSION_COOKIE_SECURE = (os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
                          or PUBLIC_URL.startswith("https://"))
 
+# Content-Security-Policy du portail : « enforce » (défaut), « report-only »
+# (rodage : les violations sont journalisées via POST /csp-report, rien n'est
+# bloqué) ou « off ». Les scripts inline portent un nonce par requête.
+CSP_MODE = os.getenv("NETWATCH_CSP", "enforce").strip().lower() or "enforce"
+
 # Credentials du portail (authentification)
 PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")
 PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")   # vide = portail désactivé si pas défini

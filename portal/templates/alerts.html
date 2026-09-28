@@ -323,7 +323,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 /* ---- Auto-refresh alertes toutes les 30s ---- */
 const engine    = {{ engine | tojson }};
 const severity  = {{ severity | tojson }};

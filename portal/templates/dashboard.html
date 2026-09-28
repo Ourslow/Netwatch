@@ -234,7 +234,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   /* ── Volume 24h (Chart.js) + KPI trafic — /api/flows-stats est caché 60 s côté serveur ── */
   var wrap = document.getElementById('line-tl-wrap');

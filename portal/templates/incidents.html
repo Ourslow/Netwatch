@@ -113,7 +113,6 @@
             {% for ip in inc.src_ips[:3] %}
               <a href="{{ url_for('ip_detail', ip=ip) }}"
                  class="text-decoration-none me-1"
-                 onclick="event.stopPropagation()"
                  title="Voir tous les événements de {{ ip }}">{{ ip }}</a>
             {% endfor %}
             {% if inc.src_ips | length > 3 %}

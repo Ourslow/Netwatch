@@ -142,7 +142,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='vendor/d3/d3.min.js') }}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   'use strict';
 

@@ -51,7 +51,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var WIDGET_CATALOG = {
     alert_stats:      { title: 'Statistiques alertes',        icon: 'bi-shield-exclamation' },

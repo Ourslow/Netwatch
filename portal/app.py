@@ -4,6 +4,7 @@ import hmac
 import io
 import json
 import os
+import secrets
 import subprocess
 import threading
 import time as _time_mod
@@ -13,7 +14,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 
-from flask import Flask, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, Response
+from flask import Flask, g, make_response, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 from flask_login import (LoginManager, UserMixin,
                          login_user, logout_user,
@@ -329,13 +330,67 @@ app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
 
+# ── Content-Security-Policy ──────────────────────────────────────────────────
+# Tout est servi par le portail lui-même (Bootstrap, Chart.js, d3, polices
+# vendorisés) : default-src 'self'. Les <script> inline des templates portent
+# un nonce par requête ({{ csp_nonce }}) ; les gestionnaires onclick= inline
+# sont interdits (remplacés par des attributs data-action). Les attributs
+# style= restent tolérés ('unsafe-inline' sur style-src uniquement).
+CSP_DIRECTIVES = (
+    "default-src 'self'",
+    "script-src 'self' 'nonce-{nonce}'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "report-uri /csp-report",
+)
+
+
+def _csp_header(nonce):
+    return "; ".join(CSP_DIRECTIVES).format(nonce=nonce)
+
+
+@app.before_request
+def set_csp_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.context_processor
+def inject_csp_nonce():
+    return {"csp_nonce": g.get("csp_nonce", "")}
+
+
 @app.after_request
 def set_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    mode = config.CSP_MODE
+    if mode != "off" and g.get("csp_nonce"):
+        name = "Content-Security-Policy-Report-Only" if mode == "report-only" else "Content-Security-Policy"
+        response.headers[name] = _csp_header(g.csp_nonce)
     return response
+
+
+@app.route("/csp-report", methods=["POST"])
+def csp_report():
+    """Réception des violations CSP envoyées par le navigateur (report-uri) : journal seulement."""
+    raw = request.get_data(cache=False, as_text=True)[:4096]
+    try:
+        body = json.loads(raw) if raw else {}
+        rep = body.get("csp-report", body) if isinstance(body, dict) else {}
+        app.logger.warning("CSP violation: %s bloqué sur %s (directive %s)",
+                           rep.get("blocked-uri", "?"), rep.get("document-uri", "?"),
+                           rep.get("effective-directive") or rep.get("violated-directive", "?"))
+    except ValueError:
+        app.logger.warning("CSP violation (rapport illisible) : %s", raw[:200])
+    return "", 204
 
 
 # Durcissement des cookies de session
@@ -1431,8 +1486,8 @@ def hostgroups_export_csv():
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=["name", "description", "enabled", "host_count", "member_groups", "tags"])
     writer.writeheader()
-    for g in nw_hostgroups.list_groups():
-        writer.writerow({**g, "member_groups": ", ".join(g.get("member_groups", []))})
+    for grp in nw_hostgroups.list_groups():
+        writer.writerow({**grp, "member_groups": ", ".join(grp.get("member_groups", []))})
     filename = f"netwatch-hostgroups-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv"
     resp = make_response(out.getvalue())
     resp.headers["Content-Type"] = "text/csv; charset=utf-8"
