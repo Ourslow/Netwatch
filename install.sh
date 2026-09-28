@@ -136,7 +136,8 @@ PY
 }
 env_get() { grep -E "^$2=" "$1" | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//'; }
 
-[ -f .env ]        || { cp .env.example .env; ok ".env créé depuis .env.example"; }
+FRESH_ENV=false
+[ -f .env ]        || { cp .env.example .env; FRESH_ENV=true; ok ".env créé depuis .env.example"; }
 [ -f portal/.env ] || { cp portal/.env.example portal/.env; ok "portal/.env créé depuis portal/.env.example"; }
 chmod 600 .env portal/.env
 
@@ -144,7 +145,9 @@ chmod 600 .env portal/.env
 IFACE="${OPT_IFACE:-$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}' || true)}"
 [ -n "$IFACE" ] || IFACE="eth0"
 HOST_IP="$(ip -4 addr show "$IFACE" 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1 || true)"
-force_iface=""; [ -n "$OPT_IFACE" ] && force_iface="force"
+# .env neuf : la valeur d'exemple ne doit pas survivre à la détection (bug vu à l'installation à blanc du 28/09 :
+# IFACE=ens18 conservé → Zeek/Snort en boucle « No such device »)
+force_iface=""; { [ -n "$OPT_IFACE" ] || $FRESH_ENV; } && force_iface="force"
 env_set .env IFACE "$IFACE" "$force_iface"
 [ -n "$HOST_IP" ] && env_set .env SNORT_MONITORED_SERVER "$HOST_IP"
 ok "interface de capture : $IFACE${HOST_IP:+ ($HOST_IP)}"
@@ -164,6 +167,9 @@ env_set .env NETBOX_TOKEN               "$(gen_hex 20)"
 env_set .env KIBANA_ENCRYPTION_KEY      "$(gen_hex 32)"
 env_set portal/.env FLASK_SECRET_KEY    "$(gen_hex 32)"
 env_set portal/.env PORTAL_PASSWORD     "$(gen_pass)"
+# Placeholders ITSM (inutilisés tant que ITSM_BACKEND=none) : vidés pour qu'aucun « changeme » ne reste
+env_set .env SNOW_PASSWORD ""
+env_set .env JIRA_TOKEN ""
 ok "secrets générés (les valeurs déjà personnalisées sont conservées)"
 
 # Édition et point d'entrée — l'édition est décidée par le .env racine ; portal/.env
@@ -256,6 +262,7 @@ else
 fi
 
 bash scripts/health-check.sh --no-color || true
+echo "  (NetBox, ntopng et les moteurs mettent 2-3 min à se stabiliser : relancer 'make health' ensuite)"
 
 # ── Récapitulatif ────────────────────────────────────────────────────────────
 step "Installation terminée — NetWatch $(cat VERSION)"

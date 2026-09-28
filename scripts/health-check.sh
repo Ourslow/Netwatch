@@ -165,7 +165,7 @@ check_grafana() {
   local version
   version=$(json_extract "version" "$body" 2>/dev/null || echo "")
 
-  if echo "$body" | grep -q '"database":"ok"'; then
+  if [ "$gstate" = "ok" ]; then   # /api/health est indenté ("database": "ok") : ne pas grep la chaîne brute
     report_service "Grafana" "ok" "OK${version:+ (v${version})}"
   else
     report_service "Grafana" "warn" "dégradé — db: ${gstate:-inconnu}"
