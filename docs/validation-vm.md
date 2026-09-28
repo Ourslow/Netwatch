@@ -111,6 +111,7 @@ et `docker compose logs --tail 50 elasticsearch`.
 | `git checkout HEAD~2` puis `scripts/upgrade.sh origin/main` | ✅ **13 s** : sauvegarde config (8 Ko), code `8267e81 → 0e19720`, dépendances, images, `up -d`, setup-es / netflow / data views ✓, portail redémarré, liste des commits, commande de retour arrière |
 | Index perdus | aucun (19 avant / 19 après) |
 | Branche après mise à jour | `main` |
+| Mise à jour `v2.1.0 → 2a45827` (images GHCR) | ✅ **62 s** : les 5 moteurs recréés sur `ghcr.io/ourslow/netwatch-*:2.2.0` (digests du registre, pas de build local), 19/19 au health de fin ; les autres conteneurs non touchés |
 | Défaut | le health de fin s'exécute avant que le portail ne soit revenu (« Portail Flask HTTP 000 ») → attente ajoutée. Sans tag `vX.Y.Z`, la cible automatique est `origin/main` (le glob attrapait `v2-before-redesign`, corrigé `f315a9b`). |
 
 ## 3. Point d'entrée HTTPS unique (40 min)
