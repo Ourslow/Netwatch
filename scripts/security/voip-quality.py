@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NetWatch — VoIP Quality Analysis (T_026)
+NetWatch — VoIP Quality Analysis
 
 Interroge Elasticsearch (index zeek-*) pour évaluer la qualité VoIP :
   - Source primaire : voip.log indexé (champs directs mos_score, jitter_ms, etc.)

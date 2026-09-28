@@ -1,4 +1,4 @@
-# NetWatch — VoIP Quality Monitor : MOS E-model ITU-T G.107 (T_026)
+# NetWatch — VoIP Quality Monitor : MOS E-model ITU-T G.107
 #
 # Calcule le MOS score depuis les métriques RTP/UDP et corrèle avec SIP call_id.
 #

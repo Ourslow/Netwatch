@@ -1,8 +1,8 @@
-# Proof of Concept — IOC Knowledge Graph (T_005)
+# Proof of Concept — IOC Knowledge Graph
 
 ## Contexte
 
-Ce document documente le PoC de knowledge graph d'IOCs pour NetWatch, réalisé dans le cadre du ticket T_005.
+Ce document documente le PoC de knowledge graph d'IOCs pour NetWatch, réalisé lors de la phase de prototypage.
 
 L'objectif initial était d'évaluer la bibliothèque **Understand-Anything** pour construire un graphe de connaissance sur les IOCs détectés. Après vérification, Understand-Anything n'est pas disponible sur PyPI :
 

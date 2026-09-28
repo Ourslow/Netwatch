@@ -365,6 +365,12 @@ def inject_csp_nonce():
     return {"csp_nonce": g.get("csp_nonce", "")}
 
 
+@app.context_processor
+def inject_product():
+    return {"product": {"name": config.PRODUCT_NAME, "tagline": config.PRODUCT_TAGLINE,
+                        "version": config.VERSION, "url": config.PRODUCT_URL, "license": config.PRODUCT_LICENSE}}
+
+
 @app.after_request
 def set_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -1171,7 +1177,7 @@ def report():
         nw_audit.run_audit,
     )
 
-    # Hostgroups + analyse PCAP (points d'écoute) — T_031
+    # Hostgroups + analyse PCAP (points d'écoute)
     report_hostgroups = nw_hostgroups.list_groups()
     pcap_points, pcap_top_conversations = _pcap_overview()
 
@@ -1964,7 +1970,7 @@ def api_ioc_graph():
 
 
 # ---------------------------------------------------------------------------
-# IOC Risk Scores  (T_014)
+# IOC Risk Scores
 # ---------------------------------------------------------------------------
 
 import time as _time  # noqa: E402 — kept close to usage
@@ -2052,7 +2058,7 @@ def api_ioc_scores():
 
 
 # ---------------------------------------------------------------------------
-# Dashboard exécutif RSSI  (T_013)
+# Dashboard exécutif RSSI
 # ---------------------------------------------------------------------------
 
 @app.route("/exec")
@@ -2118,57 +2124,6 @@ def api_sla_stats():
     return jsonify(data)
 
 
-@app.route("/agents")
-@login_required
-def agents_page():
-    """Monitoring des agents IA — lit les status.yml depuis agents-deck."""
-    if not config.AI_ENABLED:   # édition Core : page sans objet (entrée de menu déjà masquée)
-        flash("Assistant IA désactivé (édition Core) — renseigner OLLAMA_URL et COMPOSE_PROFILES=ia dans .env.", "info")
-        return redirect(url_for("dashboard"))
-    _base = os.path.join(os.path.dirname(__file__), "..", "agents-deck")
-    state_file = os.path.join(_base, "team-lead", "state.yml")
-
-    # Lecture state.yml team-lead
-    team_state = {}
-    try:
-        with open(state_file, encoding="utf-8") as f:
-            team_state = yaml.safe_load(f) or {}
-    except Exception:
-        pass
-
-    # Lecture des 4 agents
-    agents_list = []
-    for agent_id in ("infra", "security", "automation", "frontend"):
-        status_path = os.path.join(_base, "agents", agent_id, "status.yml")
-        info = {
-            "id": agent_id,
-            "agent": agent_id.capitalize() + "-agent",
-            "state": "standby",
-            "current_ticket": None,
-            "last_activity": None,
-            "error": None,
-        }
-        try:
-            with open(status_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-            info["agent"]          = data.get("agent",          info["agent"])
-            info["state"]          = data.get("state",          "standby")
-            info["current_ticket"] = data.get("current_ticket") or data.get("last_ticket")
-            info["last_activity"]  = data.get("last_activity")
-        except FileNotFoundError:
-            info["error"] = f"status.yml introuvable : {status_path}"
-        except Exception as exc:
-            info["error"] = str(exc)
-        agents_list.append(info)
-
-    return render_template(
-        "agents.html",
-        agents=agents_list,
-        team_state=team_state,
-        last_update=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S UTC"),
-    )
-
-
 # ============================================================
 # API JSON (pour intégrations futures)
 # ============================================================
@@ -2202,7 +2157,7 @@ def api_catalog():
 
 
 # ---------------------------------------------------------------------------
-# Topology — T_023
+# Topology
 # ---------------------------------------------------------------------------
 
 import time as _time_topo  # noqa: E402
@@ -2398,7 +2353,7 @@ def api_snmp_interfaces():
 
 
 # ---------------------------------------------------------------------------
-# Flows — T_019
+# Flows
 # ---------------------------------------------------------------------------
 
 @app.route("/flows")
@@ -2448,7 +2403,7 @@ def api_tcp_perf():
 
 
 # ---------------------------------------------------------------------------
-# App Classification — T_024
+# App Classification
 # ---------------------------------------------------------------------------
 
 import time as _time_app  # noqa: E402
@@ -2544,7 +2499,7 @@ def api_app_flows():
 
 
 # ============================================================
-# VoIP Quality Stats  (T_026)
+# VoIP Quality Stats
 # ============================================================
 
 import time as _time_voip  # noqa: E402

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/setup-netflow.sh — Initialise ES pour NetFlow / IPFIX / sFlow (T_017)
+# scripts/setup-netflow.sh — Initialise ES pour NetFlow / IPFIX / sFlow
 #
 # Ce script :
 #   1. Politique ILM netwatch-netflow via scripts/setup-ilm.sh (ES_RETENTION_NETFLOW_DAYS, 30 j)

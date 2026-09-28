@@ -124,21 +124,21 @@
     "description": "Solution NPM enterprise de référence. Visibilité réseau et applicative de bout en bout, corrélation de services, déduplication intelligente.",
     "logo": "📡",
     "version": "6.x",
-    "license": "Commercial — Axians",
+    "license": "Commercial",
     "repo": null,
     "deployable": false,
     "template_vmid": null,
     "ram_gb": 32,
     "cpu": 8,
     "disk_gb": 500,
-    "tags": "npm,commercial,axians",
+    "tags": "npm,commercial",
     "features": [
       "InfiniStream / nGenius Probe (capture hardware)",
       "Service Triage — corrélation applicative",
       "ASI (Adaptive Service Intelligence)",
       "Reporting exécutif et conformité"
     ],
-    "contact": "Contacter l'équipe commerciale Axians"
+    "contact": "Licence et déploiement : éditeur ou intégrateur"
   },
   {
     "id": "gigamon",
@@ -148,21 +148,21 @@
     "description": "Plateforme de visibilité réseau dédiée à la distribution intelligente du trafic vers les outils de sécurité et de monitoring. Élimine les angles morts.",
     "logo": "🔬",
     "version": "GigaVUE",
-    "license": "Commercial — Axians",
+    "license": "Commercial",
     "repo": null,
     "deployable": false,
     "template_vmid": null,
     "ram_gb": null,
     "cpu": null,
     "disk_gb": null,
-    "tags": "tap,visibilite,commercial,axians",
+    "tags": "tap,visibilite,commercial",
     "features": [
       "GigaVUE — agrégation et filtrage du trafic",
       "ThreatINSIGHT — détection comportementale",
       "GigaSECURE — pipeline de sécurité",
       "Déduplication et load balancing vers les outils"
     ],
-    "contact": "Contacter l'équipe commerciale Axians"
+    "contact": "Licence et déploiement : éditeur ou intégrateur"
   },
   {
     "id": "riverbed",
@@ -172,43 +172,43 @@
     "description": "Analyse des flux réseau (NetFlow, IPFIX, sFlow) pour la visibilité applicative, la détection d'anomalies et l'optimisation WAN.",
     "logo": "🌊",
     "version": "10.x",
-    "license": "Commercial — Axians",
+    "license": "Commercial",
     "repo": null,
     "deployable": false,
     "template_vmid": null,
     "ram_gb": 16,
     "cpu": 8,
     "disk_gb": 200,
-    "tags": "npm,flux,commercial,axians",
+    "tags": "npm,flux,commercial",
     "features": [
       "Analyse NetFlow / IPFIX / sFlow",
       "Visibilité applicative WAN",
       "Détection d'anomalies comportementales",
       "SteelCentral — intégration avec SteelHead"
     ],
-    "contact": "Contacter l'équipe commerciale Axians"
+    "contact": "Licence et déploiement : éditeur ou intégrateur"
   },
   {
     "id": "allegro",
     "name": "Allegro Network Multimeter",
     "type": "commercial",
     "category": "NPM / Sécurité",
-    "description": "Sonde combinée performance réseau + sécurité (éditeur allemand, Allegro Packets). Concurrent direct identifié en réunion du 2026-07-10 : moins cher que Riverbed, déjà déployé chez un client Axians, dispose d'une fonction d'anonymisation de PCAP intégrée.",
+    "description": "Sonde combinée performance réseau + sécurité (Allegro Packets, Allemagne) : analyse temps réel, positionnement tarifaire intermédiaire, anonymisation de PCAP intégrée.",
     "logo": "🎻",
     "version": "—",
-    "license": "Commercial — Axians",
+    "license": "Commercial",
     "repo": null,
     "deployable": false,
     "template_vmid": null,
     "ram_gb": null,
     "cpu": null,
     "disk_gb": null,
-    "tags": "npm,securite,commercial,axians",
+    "tags": "npm,securite,commercial",
     "features": [
       "Analyse de trafic temps réel (perf + sécurité combinées)",
       "Anonymisation de PCAP intégrée",
-      "Positionnement le plus proche de NetWatch côté combiné sécu+NPM"
+      "Positionnement combiné performance + sécurité, proche de NetWatch"
     ],
-    "contact": "Contacter l'équipe commerciale Axians"
+    "contact": "Licence et déploiement : éditeur ou intégrateur"
   }
 ]

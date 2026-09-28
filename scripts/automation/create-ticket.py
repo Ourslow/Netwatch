@@ -2,7 +2,7 @@
 """
 create-ticket.py — NetWatch Auto-Ticket Generator
 Prend une alerte JSON (stdin ou argument) et crée un ticket YAML dans
-agents-deck/agents/security/tickets/drafts/ avec gestion anti-doublon.
+tickets/drafts/ avec gestion anti-doublon.
 
 Usage:
     echo '<json>' | python3 create-ticket.py
@@ -23,7 +23,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
-DRAFTS_DIR = REPO_ROOT / "agents-deck" / "agents" / "security" / "tickets" / "drafts"
+DRAFTS_DIR = REPO_ROOT / "tickets" / "drafts"
 PORTAL_URL = "http://localhost:5050"
 
 

@@ -59,7 +59,7 @@ filebeat.inputs:
       engine: suricata
 
   # ============================================================
-  # GOFLOW2 — NetFlow / IPFIX / sFlow (T_017)
+  # GOFLOW2 — NetFlow / IPFIX / sFlow
   # ============================================================
   - type: container
     enabled: true

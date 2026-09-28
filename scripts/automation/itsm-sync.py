@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 itsm-sync.py — NetWatch ITSM Synchronisation
-Reads all YAML draft tickets under agents-deck/agents/*/tickets/drafts/*.yml
+Reads all YAML draft tickets under tickets/drafts/*.yml
 and pushes them to the configured ITSM backend (ServiceNow or JIRA).
 
 Anti-doublon: tickets already having an `itsm_id:` field are skipped.
@@ -37,7 +37,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
-AGENTS_DIR = REPO_ROOT / "agents-deck" / "agents"
+DRAFTS_DIR = REPO_ROOT / "tickets" / "drafts"
 
 SEVERITY_MAP_SNOW = {
     "critical": "1",
@@ -345,15 +345,10 @@ def _jira_push(ticket: dict, verbose: bool, dry_run: bool) -> str | None:
 # Discover ticket drafts
 # ---------------------------------------------------------------------------
 def find_drafts() -> list[Path]:
-    """Return all *.yml files under agents-deck/agents/*/tickets/drafts/."""
-    if not AGENTS_DIR.exists():
+    """Return all *.yml files under tickets/drafts/."""
+    if not DRAFTS_DIR.is_dir():
         return []
-    drafts = []
-    for agent_dir in sorted(AGENTS_DIR.iterdir()):
-        drafts_dir = agent_dir / "tickets" / "drafts"
-        if drafts_dir.is_dir():
-            drafts.extend(sorted(drafts_dir.glob("*.yml")))
-    return drafts
+    return sorted(DRAFTS_DIR.glob("*.yml"))
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +383,7 @@ def main():
     # Discover drafts
     drafts = find_drafts()
     if not drafts:
-        print("INFO: Aucun ticket draft trouvé sous agents-deck/agents/*/tickets/drafts/")
+        print("INFO: Aucun ticket draft trouvé sous tickets/drafts/")
         sys.exit(0)
 
     if args.verbose:

@@ -190,7 +190,7 @@ docker compose logs -f n8n
 ### Vue d'ensemble
 
 Le workflow **NetWatch Auto-Tickets** crée automatiquement des tickets YAML dans
-`agents-deck/agents/security/tickets/drafts/` à chaque détection d'alerte critique
+`tickets/drafts/` à chaque détection d'alerte critique
 dans Elasticsearch. Le Security-agent peut ensuite prendre en charge ces tickets.
 
 **Pipeline** :
@@ -200,7 +200,7 @@ n8n Schedule (10 min)
   → IF (hits > 0 ?)
   → Extraire alertes (1 item par hit)
   → Execute Command : python3 create-ticket.py
-      → agents-deck/agents/security/tickets/drafts/T_auto_YYYYMMDD_HHMMSS_<slug>.yml
+      → tickets/drafts/T_auto_YYYYMMDD_HHMMSS_<slug>.yml
 ```
 
 ---
@@ -327,7 +327,7 @@ ALERT='{"@timestamp":"2026-06-30T14:25:00Z","src_ip":"10.10.1.50","dest_ip":"192
 echo "$ALERT" | python3 scripts/automation/create-ticket.py
 
 # 4. Vérifier le ticket créé
-ls agents-deck/agents/security/tickets/drafts/
+ls tickets/drafts/
 
 # 5. Exécution manuelle dans n8n UI :
 # http://localhost:5678 → Workflows → NetWatch Auto-Tickets → Execute Workflow
@@ -341,7 +341,7 @@ ls agents-deck/agents/security/tickets/drafts/
 |---------|-------------|
 | `scripts/automation/create-ticket.py` | Script Python de génération de tickets |
 | `scripts/automation/n8n-auto-tickets.json` | Export du workflow n8n Auto-Tickets |
-| `agents-deck/agents/security/tickets/drafts/` | Répertoire des tickets auto-générés |
+| `tickets/drafts/` | Répertoire des tickets auto-générés |
 
 ---
 
@@ -558,7 +558,7 @@ TEAMS_WEBHOOK_URL=https://xxx.webhook.office.com/... python3 escalade.py
 
 #### Sources de scores (ordre de priorité)
 
-1. **`ioc-score.py` subprocess** (T_014 — quand mergé) — appel `python3 ioc-score.py --threshold N --output-json`
+1. **`ioc-score.py` subprocess** — appel `python3 ioc-score.py --threshold N --output-json`
 2. **HTTP `/api/ioc-scores`** — fallback portail NetWatch
 3. **Scoring inline ES** — requête directe `suricata-*,snort-*,zeek-*` sur 30 min
 

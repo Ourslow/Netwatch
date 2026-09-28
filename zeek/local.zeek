@@ -23,7 +23,7 @@
 # Packages zkg installés : ja3, hassh
 @load packages
 
-# VoIP — SIP (T_026)
+# VoIP — SIP
 # policy/protocols/sip — absent de l'image Docker Zeek 6.2 utilisée ici (module non trouvé
 # au chargement, crash-loop du conteneur). Désactivé : voip-mos.zeek reste alimenté via les
 # fallbacks conn.log (voir voip-quality.py, 3 fallbacks).

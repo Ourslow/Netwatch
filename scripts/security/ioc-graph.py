@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NetWatch — IOC Knowledge Graph Builder
-T_005 — Proof of concept IOC knowledge graph
+Proof of concept IOC knowledge graph
 
 Connects to Elasticsearch, queries Suricata and Snort alerts,
 extracts entities (IPs, domains, rules, MITRE TTPs), builds a
@@ -577,7 +577,7 @@ def main() -> None:
     log.info("Building IOC knowledge graph from %d alerts ...", len(alerts))
     G = build_graph(alerts)
 
-    # --- Enrich IP nodes with risk scores (T_014) ---
+    # --- Enrich IP nodes with risk scores ---
     if not args.no_scores:
         _script_dir = Path(__file__).resolve().parent
         log.info("Computing IOC risk scores via ioc-score.py ...")

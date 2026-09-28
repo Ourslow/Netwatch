@@ -1,5 +1,4 @@
-# IOC Composite Risk Scoring — T_014
-
+# IOC Composite Risk Scoring
 **Script :** `scripts/security/ioc-score.py`  
 **Route API :** `GET /api/ioc-scores` (TTL cache 5 min)  
 **Intégration :** `ioc-graph.py` injecte `risk_score` dans les nœuds IP

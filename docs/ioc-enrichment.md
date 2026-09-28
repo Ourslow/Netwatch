@@ -1,6 +1,6 @@
 # IOC Enrichment — AbuseIPDB + ipinfo.io
 
-Script NetWatch T_010 — Enrichissement de réputation IP sur le graphe IOC.
+Enrichissement de réputation IP sur le graphe IOC.
 
 ## Vue d'ensemble
 
@@ -234,7 +234,7 @@ pour rester dans les limites des tiers gratuits.
 | AbuseIPDB  | 1 000 req/jour          | idem (Free tier)      |
 | ipinfo.io  | 50 000 req/mois         | 250 000 req/mois      |
 
-## Résultats sur données live (T_010)
+## Résultats sur données live
 
 Sur le graphe généré depuis ES (572 alertes, 51 nœuds, 29 nœuds IP) :
 

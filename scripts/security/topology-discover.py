@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NetWatch — Network Topology Discovery
-T_022 — Découverte topologie réseau : SNMP CDP/LLDP + ARP Zeek → topology.json
+Découverte topologie réseau : SNMP CDP/LLDP + ARP Zeek → topology.json
 
 Discovers L2/L3 topology using:
   - SNMP LLDP-MIB (via snmpwalk subprocess)

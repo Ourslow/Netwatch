@@ -10,8 +10,6 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blueviolet.svg?style=for-the-badge)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker_Compose-24_services-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
-[![École 2600](https://img.shields.io/badge/École_2600-SideQuest_MVP-22D3EE.svg?style=for-the-badge)](https://www.ecole2600.com)
-[![Axians](https://img.shields.io/badge/Axians-Vinci_Energies-E30613.svg?style=for-the-badge)](https://www.axians.fr)
 
 ---
 
@@ -127,10 +125,6 @@ La v2 passe de 4 à **24 services** avec trois moteurs d'analyse IDS en parallè
 <td align="center" width="25%">📊<br/><strong>22 pages</strong><br/><sub>portail web unifié</sub></td>
 </tr>
 </table>
-
-> Projet réalisé par **Nicolas Malok** — Analyste Observabilité NPM @ Axians / Vinci Energies — [École 2600](https://www.ecole2600.com), promo 2024-2027 — SideQuest MVP (S2 2025-2026)
-
----
 
 ## Fonctionnalités
 
@@ -310,7 +304,7 @@ Le portail Flask (`:5050`) centralise toutes les données en une interface unifi
 | `/audit` | Constats priorisés, score de posture /100, hygiène TLS/certificats, inventaire logiciel passif |
 | `/exec` | Dashboard RSSI / direction — KPIs exécutifs, score IOC composite, escalade n8n |
 | `/report` · `/reports` | Rapport exécutif HTML imprimable · génération PDF (wkhtmltopdf) à la demande + historique |
-| `/status` · `/compliance` · `/agents` | Santé des 24 services + sondes actives + LLMOps · matrices NIS2/NIST/ANSSI/ISO · monitoring des agents IA |
+| `/status` · `/compliance` | Santé des 24 services + sondes actives + LLMOps · matrices NIS2/NIST/ANSSI/ISO |
 | `✨ IA` | Explication des alertes et des conversations TCP via **Ollama/Mistral** — 100% on-prem, zéro fuite de données |
 
 > Interface disponible en **FR / EN** (switch côté client, localStorage).
@@ -436,7 +430,7 @@ AUTOBLOCK_DRY_RUN=true                         # Laisser true pour commencer
 SLACK_WEBHOOK_URL=                             # Optionnel
 ```
 
-> **Deux éditions, un seul dépôt.** *Core* : `COMPOSE_PROFILES` et `OLLAMA_URL` vides — le conteneur Ollama n'est jamais lancé, le portail masque l'explication d'alertes, la narration PCAP, le résumé exécutif et l'entrée « Agents IA ». *IA* : `COMPOSE_PROFILES=ia` + `OLLAMA_URL` + `make llm-pull` une fois (prévoir 4-5 Go de RAM de plus avec Mistral). Passer de l'une à l'autre ne touche à aucune donnée.
+> **Deux éditions, un seul dépôt.** *Core* : `COMPOSE_PROFILES` et `OLLAMA_URL` vides — le conteneur Ollama n'est jamais lancé, le portail masque l'explication d'alertes, la narration PCAP, et le résumé exécutif. *IA* : `COMPOSE_PROFILES=ia` + `OLLAMA_URL` + `make llm-pull` une fois (prévoir 4-5 Go de RAM de plus avec Mistral). Passer de l'une à l'autre ne touche à aucune donnée.
 
 ### 4. Permissions Filebeat
 
@@ -649,7 +643,6 @@ Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log
 | Automatisation alertes | n8n | 2.x |
 | Intégration ITSM | itsm-sync.py (ServiceNow + JIRA) | — |
 | Graphe IOC | NetworkX + elasticsearch-py | 3.x / 8.x |
-| Orchestration agents IA | agents-deck (Fuskerrs) | 2.0 |
 | Orchestration | Docker Compose | v2 |
 | OS cible | Ubuntu | 22.04 LTS |
 
@@ -696,7 +689,7 @@ netwatch/
 ├── replay-pcap.sh                  # Replay PCAP sur les 3 moteurs
 ├── simulate-traffic.py             # Simulateur de trafic → Elasticsearch
 ├── setup-geoip.sh                  # Pipeline ingest GeoIP
-├── setup-es.sh                     # Index templates ES + pipeline GeoIP (fix T_002)
+├── setup-es.sh                     # Index templates ES + pipeline GeoIP
 ├── update-intel.sh                 # Mise à jour watchlists Zeek Intel
 │
 ├── zeek/                           # Analyse protocolaire
@@ -895,7 +888,7 @@ NetBox ≥ 4.6 utilise des tokens API v2 : il faut **les deux** variables `NETBO
 </details>
 
 <details>
-<summary><strong>Les boutons ✨ / « Agents IA » ont disparu du portail</strong></summary>
+<summary><strong>Les boutons ✨ ont disparu du portail</strong></summary>
 
 Édition Core active : `OLLAMA_URL` vide dans `.env`. Pour l'édition IA : `COMPOSE_PROFILES=ia`, `OLLAMA_URL=http://localhost:11434`, `make start`, `make llm-pull`, redémarrer le portail.
 </details>
@@ -945,8 +938,8 @@ make check                                                       # ruff + pytest
 | Version | Statut | Contenu |
 |---------|--------|---------|
 | **v1** | ✅ Mars 2026 | Stack Docker 4 services · 4 dashboards Grafana · Scripts Zeek · Simulateur trafic |
-| **v2 Phase 1** | ✅ Juin 2026 | 12 services · CrowdSec · n8n alertes Teams · page /agents · calibrage 12 règles IDS · détection lateral movement |
-| **v2 Phase 2** | ✅ Juin 2026 | Fix Filebeat/ES data-stream · graphe IOC NetworkX · ticketing auto n8n → agents-deck · audit sécurité P0/P1/P2 |
+| **v2 Phase 1** | ✅ Juin 2026 | 12 services · CrowdSec · n8n alertes Teams · calibrage 12 règles IDS · détection lateral movement |
+| **v2 Phase 2** | ✅ Juin 2026 | Fix Filebeat/ES data-stream · graphe IOC NetworkX · ticketing auto n8n · audit sécurité P0/P1/P2 |
 | **v2 Phase 3** | ✅ Juin 2026 | Graphe IOC D3.js /graph · enrichissement IP AbuseIPDB · rapport hebdo Teams · health-check 12 services · guide déploiement Proxmox/ESXi |
 | **v2 Phase 4** | ✅ Juin 2026 | Dashboard RSSI /exec · score IOC composite · escalade n8n intelligente · demo.sh interactif |
 | **v2 Phase 5** | ✅ Juin 2026 | GoFlow2 NetFlow/IPFIX/sFlow · page /flows · ART applicatif · TCP health · npm-alerts |
@@ -958,11 +951,9 @@ make check                                                       # ruff + pytest
 
 ---
 
-## Auteur
+## Auteur et licence
 
-**Nicolas Malok**  
-Analyste Observabilité NPM @ [Axians / Vinci Energies](https://www.axians.fr) · [École 2600](https://www.ecole2600.com), promo 2024-2027  
-SideQuest MVP — S2 2025-2026
+NetWatch est conçu et maintenu par **Nicolas Malok** ([@Ourslow](https://github.com/Ourslow)). Contributions, retours et demandes de pilote : [issues GitHub](https://github.com/Ourslow/Netwatch/issues/new/choose).
 
 ---
 

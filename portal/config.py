@@ -56,6 +56,30 @@ SESSION_COOKIE_SECURE = (os.getenv("SESSION_COOKIE_SECURE", "false").lower() == 
 # bloqué) ou « off ». Les scripts inline portent un nonce par requête.
 CSP_MODE = os.getenv("NETWATCH_CSP", "enforce").strip().lower() or "enforce"
 
+# Identité produit — un seul endroit pour le nom (nom de code tant que le nom
+# commercial n'est pas vérifié), la version (fichier VERSION à la racine) et la
+# licence. Exposé aux templates via le global Jinja `product`.
+PRODUCT_NAME = os.getenv("NETWATCH_PRODUCT_NAME", "NetWatch")
+PRODUCT_TAGLINE = "Observabilité réseau et détection, sur site"
+PRODUCT_URL = "https://github.com/Ourslow/Netwatch"
+PRODUCT_LICENSE = "AGPL v3"
+
+
+def _read_version():
+    for candidate in (os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION"),
+                      os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")):
+        try:
+            with open(candidate, encoding="utf-8") as fh:
+                value = fh.read().strip()
+            if value:
+                return value
+        except OSError:
+            continue
+    return "dev"
+
+
+VERSION = _read_version()
+
 # Credentials du portail (authentification)
 PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")
 PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")   # vide = portail désactivé si pas défini
@@ -91,7 +115,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 # 120 s laisse le temps au modèle de se charger + générer. Réduire si GPU dispo.
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))
 
-# SLA targets — compliance thresholds (T_027)
+# SLA targets — compliance thresholds
 SLA_HTTP_TARGET_MS  = int(os.getenv("SLA_HTTP_TARGET_MS", "200"))
 SLA_DNS_TARGET_MS   = int(os.getenv("SLA_DNS_TARGET_MS", "50"))
 SLA_RTT_TARGET_MS   = int(os.getenv("SLA_RTT_TARGET_MS", "50"))

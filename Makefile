@@ -251,7 +251,7 @@ clean:
 	@echo "Volumes supprimés (données ES, Grafana, Prometheus effacées)"
 
 # ============================================================
-# NetFlow — simulation et test (T_017)
+# NetFlow — simulation et test
 # ============================================================
 
 netflow-test:

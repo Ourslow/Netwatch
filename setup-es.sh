@@ -6,7 +6,7 @@
 # - Crée les index-templates pour zeek-*, snort-*, suricata-* (rétention netwatch-events)
 #   Priorité 500 → prend toujours le dessus sur le template Filebeat (150)
 #
-# Fix T_002 : setup-geoip.sh est désormais intégré ici pour éviter que les
+# setup-geoip.sh est intégré ici pour éviter que les
 # templates référencent un pipeline absent (default_pipeline: netwatch-geoip).
 
 set -euo pipefail
@@ -63,7 +63,7 @@ bash "$(dirname "$0")/scripts/setup-ilm.sh"
 
 # 4. Index-templates moteur (prio 500, réplicas 0, pipeline GeoIP, rétention netwatch-events)
 #    Prio 500 > prio 150 du template Filebeat → les settings moteur priment.
-#    NB: le template Filebeat "netwatch" a pattern "netwatch-*" (fix T_002) et
+#    NB: le template Filebeat "netwatch" a pattern "netwatch-*" et
 #    ne conflit donc plus avec ces templates zeek-*/snort-*/suricata-*.
 echo "[4/5] Index-templates zeek-* / snort-* / suricata-*..."
 for engine in zeek snort suricata; do

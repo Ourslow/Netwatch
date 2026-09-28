@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NetWatch — IOC Composite Risk Scorer
-T_014 — Score de risque composite IOC par IP
+Score de risque composite IOC par IP
 
 Queries Elasticsearch for Suricata, Snort and Zeek alerts over the last N days,
 computes a 0-100 composite risk score per source IP and outputs sorted JSON.

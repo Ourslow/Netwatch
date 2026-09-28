@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NetWatch — IOC Enrichment Script
-T_010 — Enrichissement IOC : réputation IP via AbuseIPDB + ipinfo.io
+Enrichissement IOC : réputation IP via AbuseIPDB + ipinfo.io
 
 Reads ioc-graph-output.json, enriches each IP node with reputation data
 from AbuseIPDB (if ABUSEIPDB_API_KEY is set) or ipinfo.io (fallback),

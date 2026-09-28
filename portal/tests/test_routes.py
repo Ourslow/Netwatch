@@ -142,8 +142,6 @@ def test_core_edition_disables_ai_endpoints(logged_in):
     resp = logged_in.post("/api/explain", json={"signature": "ET TEST"})
     assert resp.status_code == 503
     assert "édition Core" in resp.get_json()["error"]
-    resp = logged_in.get("/agents")
-    assert resp.status_code == 302 and resp.headers["Location"].endswith("/")
 
 
 def test_ai_edition_validates_payload(logged_in, monkeypatch):

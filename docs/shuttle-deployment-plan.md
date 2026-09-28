@@ -113,7 +113,7 @@ l'IA est un **module** activé par la configuration.
 |---|---|---|
 | `.env` | `OLLAMA_URL=` (vide) | `OLLAMA_URL=http://<VM_Data_IP>:11434`, `OLLAMA_MODEL=mistral` |
 | Conteneur `ollama` | non démarré | démarré + `make llm-pull` une fois |
-| Portail | boutons ✨ masqués, `/status` sans la carte « Assistant IA », `/agents` et `/llmops` vides | explication d'alertes, narration PCAP, résumé exécutif, monitoring LLMOps |
+| Portail | boutons ✨ masqués, `/status` sans la carte « Assistant IA », `/llmops` vide | explication d'alertes, narration PCAP, résumé exécutif, monitoring LLMOps |
 | RAM VM Data | ≈ 6 Go | ≈ 6 Go au repos, 10-11 Go en génération |
 
 Passage Core → IA sur un site déjà déployé : renseigner `OLLAMA_URL`, démarrer le
@@ -192,7 +192,7 @@ conteneur, `make llm-pull`, redémarrer le portail — aucune migration de donn�
 - ✅ `profiles: ["ia"]` sur `ollama` (les 3 compose) : `COMPOSE_PROFILES=ia` dans
   `.env` ou `docker compose --profile ia up -d` ; sinon jamais lancé.
 - ✅ Portail : `OLLAMA_URL` vide → `AI_ENABLED=False` : boutons ✨, entrée
-  « Agents IA », résumé exécutif du rapport masqués ; Ollama absent de `/status` ;
+  résumé exécutif du rapport masqué ; Ollama absent de `/status` ;
   `/api/explain`, `/api/summary`, `/api/pcap-analysis/explain` → 503 explicite.
 - ✅ `.env.example` : bloc « ÉDITION » en tête (`COMPOSE_PROFILES`, `OLLAMA_URL`).
 

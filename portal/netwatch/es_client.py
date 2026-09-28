@@ -1043,7 +1043,7 @@ def get_weird_events(size=50):
 
 
 # ------------------------------------------------------------------ #
-# Flows — T_019                                                        #
+# Flows
 # ------------------------------------------------------------------ #
 
 @_ttl_cache(300)
@@ -1293,7 +1293,7 @@ def _log_src(name):
 
 def _ip_filter(ip):
     """Clause de filtre optionnelle id.orig_h/id.resp_h = ip, pour scoper une requête
-    Zeek à un device donné (dashboard par device/hostgroup, T_030)."""
+    Zeek à un device donné (dashboard par device/hostgroup)."""
     if not ip:
         return []
     return [{
@@ -1639,7 +1639,7 @@ def get_top_talkers(size=10, ip_ranges=None, hours=24):
 
 
 # ------------------------------------------------------------------ #
-# SLA Compliance — T_027                                               #
+# SLA Compliance
 # ------------------------------------------------------------------ #
 
 # Painless script source strings for time-of-day filtering

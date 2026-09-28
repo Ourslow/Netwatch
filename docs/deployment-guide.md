@@ -1,9 +1,9 @@
 # Guide de déploiement NetWatch v2
 
-> Version : 2.0 · Date : 2026-06-30 · Auteur : Infra-agent / Nicolas Malok
+> Version : 2.0 · Date : 2026-06-30 · Auteur : Nicolas Malok
 
 Guide complet pour déployer la stack NetWatch sur une VM Ubuntu 22.04,
-en environnement **Proxmox** ou **ESXi** (lab Axians).
+en environnement **Proxmox** ou **ESXi** (lab de validation).
 
 ---
 
@@ -14,7 +14,7 @@ en environnement **Proxmox** ou **ESXi** (lab Axians).
 3. [Configuration `.env`](#3-configuration-env)
 4. [Validation post-déploiement](#4-validation-post-déploiement)
 5. [Section Proxmox](#5-section-proxmox)
-6. [Section ESXi (lab Axians)](#6-section-esxi-lab-axians)
+6. [Section ESXi (lab de validation)](#6-section-esxi-lab-de-validation)
 7. [Troubleshooting — 10 erreurs fréquentes](#7-troubleshooting)
 8. [Référence des services](#8-référence-des-services)
 
@@ -377,7 +377,7 @@ docker logs netwatch-zeek --tail 20
 
 ---
 
-## 6. Section ESXi (lab Axians)
+## 6. Section ESXi (lab de validation)
 
 ### 6.1 Prérequis ESXi
 
@@ -439,7 +439,7 @@ sudo tcpdump -i eth1 -c 5
 # → doit afficher du trafic réseau
 ```
 
-### 6.4 Considérations spécifiques lab Axians
+### 6.4 Considérations spécifiques lab de validation
 
 - **VLAN** : Le trafic du lab peut être taggé VLAN. Configurer l'interface de capture
   pour recevoir les trames taguées (`ip link add link eth1 name eth1.100 type vlan id 100`)
@@ -495,7 +495,7 @@ echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
 {"type":"illegal_argument_exception","reason":"data_stream must be enabled"}
 ```
 
-**Cause :** Templates ES absents ou conflit data-stream (bug connu T_002).
+**Cause :** Templates ES absents ou conflit data-stream (voir `docs/filebeat-fix.md`).
 
 **Solution :**
 

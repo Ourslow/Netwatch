@@ -7,7 +7,7 @@ Reads IOC risk scores and triggers 3 actions for IPs with score >= threshold (de
   3. POST Teams urgent Adaptive Card (if TEAMS_WEBHOOK_URL env set)
 
 Score source priority:
-  1. scripts/automation/ioc-score.py (subprocess) — T_014 when merged
+  1. scripts/automation/ioc-score.py (subprocess) when merged
   2. GET /api/ioc-scores (HTTP, netwatch portal fallback)
   3. Inline ES scoring (minimal logic — always available)
 
@@ -479,7 +479,7 @@ def get_scores(args) -> list[dict]:
     Try score sources in priority order, return list of {"ip", "score", "reason"}.
     Each source should return IPs already filtered by threshold.
     """
-    # 1. ioc-score.py subprocess (T_014)
+    # 1. ioc-score.py subprocess
     scores = scores_from_ioc_score_py(args.threshold, args.verbose)
     if scores is not None:
         if args.verbose:

@@ -1,4 +1,4 @@
-# NetFlow / IPFIX / sFlow — Configuration et intégration (T_017)
+# NetFlow / IPFIX / sFlow — Configuration et intégration
 
 NetWatch collecte les flux réseau via **GoFlow2** et les indexe dans Elasticsearch sous le pattern `netflow-YYYY.MM.DD`.
 

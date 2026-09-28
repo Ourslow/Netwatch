@@ -1,4 +1,4 @@
-# T_002 — Fix Filebeat → Elasticsearch : data-stream bug
+# Fix Filebeat → Elasticsearch : data-stream bug
 
 ## Cause racine
 

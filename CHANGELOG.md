@@ -29,7 +29,7 @@ La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commit
 
 ## 2.1.0 — 2026-09-28
 
-Passage de « labo / SideQuest » à produit : voir `docs/positionnement-produit.md`.
+Passage de « labo » à produit.
 
 ### Ajouté
 - Positionnement produit : éditions Community (AGPL v3) / Pro, cibles PME et MSP, découpage
@@ -52,7 +52,7 @@ Passage de « labo / SideQuest » à produit : voir `docs/positionnement-produit
   déploiement 2 VM (`docker-compose.sensors.yml` / `data.yml`).
 - Jeu de données de démonstration reproductible (`make demo-netbox`, `make demo-data`) et parcours
   de démo (`docs/demo-parcours.md`).
-- Site produit statique (`site/`) publié sur GitHub Pages ; deck de présentation (`docs/presentation/`).
+- Site produit statique (`site/`) publié sur GitHub Pages.
 - Portail : anti-force-brute sur `/login` (5 échecs → 60 s), sonde Proxmox asynchrone (plus de
   page bloquée par un hôte injoignable).
 - Validation sur machine neuve (`docs/validation-vm.md`) : installation 11 min, sauvegarde 11 s,
