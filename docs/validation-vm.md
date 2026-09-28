@@ -182,7 +182,7 @@ avec nesting, ou une distribution WSL fraîche (`wsl --install -d Ubuntu-24.04`)
 | Interface de capture | ❌ puis ✅ — **bug bloquant** : `IFACE=ens18` de l'exemple conservé sur un `.env` neuf, Zeek et Snort en boucle « No such device » → `.env.example` laisse `IFACE` vide, `install.sh` force la valeur détectée (`1fba6bd`) |
 | Health de fin d'installation | ⚠ attendu : NetBox / ntopng pas encore prêts (2-3 min), Grafana « dégradé » à tort (JSON indenté, corrigé `1fba6bd`) ; conseil ajouté en fin d'installation |
 | 2ᵉ passage `./install.sh … --iface eth0` | ✅ exit 0 en 84 s, **secrets `.env` et `portal/.env` inchangés**, « existe » partout, Zeek / Snort / Suricata `running`, Filebeat ingère, `make health` 18/19 (NetBox en cours de démarrage) |
-| Observation à creuser | toute la stack a redémarré ~3 min après la fin du 1ᵉʳ passage (démon Docker ?) — sans conséquence visible |
+| Redémarrages « inexpliqués » de la stack | **Artefact WSL, pas un bug produit** : WSL arrête une distribution sans session interactive (idle) et la redémarre au prochain `wsl -d` — d'où une stack « Up 2 seconds » à chaque contrôle et NetBox jamais `healthy`. Contournement pour tester : garder un processus ouvert (`wsl -d netwatch-test -- sleep 36000`). Health final, distro maintenue en vie : **18/19**, Kibana 503 encore en démarrage (~1 min après le boot), 3 moteurs `running`, ingestion Zeek/Suricata/Snort/NetFlow effective, `https://localhost/` → 302 |
 
 Non déroulé ce jour : § 2 (backup/restore sur cette machine), reconnexion utilisateur non-root (installation faite en root — `install.sh` accepte les deux).
 
