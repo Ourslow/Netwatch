@@ -23,7 +23,7 @@ jobs:
         run: pytest
       - name: Makefile — les cibles se parsent (make -n)
         run: |
-          for t in health check demo-data demo-data-clean arkime-reset kibana-setup observability backup upgrade start; do
+          for t in health check setup-es setup-ilm arkime-expire demo-data demo-data-clean arkime-reset kibana-setup observability backup upgrade start; do
             make -n "$t" >/dev/null || { echo "make -n $t : ERREUR"; exit 1; }
           done
           echo "Makefile OK"

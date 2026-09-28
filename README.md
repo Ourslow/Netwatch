@@ -517,6 +517,21 @@ make version                # version installée
 | **Restauration** | dans l'ordre : configuration (anciens `.env` gardés en `.env.bak-<date>`), volumes, NetBox, index ES, puis `setup-es.sh` et redémarrage du portail | `scripts/restore.sh ARCHIVE [--yes] [--config-only]` |
 | **Mise à jour** | sauvegarde de la configuration, `git` vers la version cible, dépendances du portail, `pull`/`build`, `up -d`, initialisations idempotentes, portail, health check, liste des commits | aucune donnée touchée ; retour arrière = `git checkout <ancienne version> && docker compose up -d` |
 
+### Rétention des données
+
+La rétention est gérée par Elasticsearch (ILM), sans tâche externe : les index sont journaliers et supprimés à l'âge configuré. Variables dans `.env`, appliquées par `make setup-ilm` (aussi lancé par `install.sh`, `upgrade.sh` et `make setup-es`) ; `make health` affiche la ligne **Rétention ES**.
+
+| Données | Index | Variable | Défaut |
+|---|---|---|---|
+| Événements Zeek / Snort / Suricata | `zeek-*` `snort-*` `suricata-*` | `ES_RETENTION_DAYS` | 30 j (lecture seule + forcemerge à 2 j) |
+| Flux NetFlow / IPFIX / sFlow | `netflow-*` | `ES_RETENTION_NETFLOW_DAYS` | = `ES_RETENTION_DAYS` |
+| Détections beacon / blocages AutoBlock | `netwatch-beacons-*` `netwatch-autoblock-*` | `ES_RETENTION_DETECTIONS_DAYS` | 90 j |
+| Sessions Arkime | `arkime_sessions3-*` | `make arkime-expire DAYS=30` (cron) | pas de purge automatique |
+| PCAP Arkime | volume `arkime-raw` | `ARKIME_FREE_SPACE_G` | les plus anciens effacés sous 10 % d'espace libre |
+| Métriques Prometheus | TSDB | `prometheus/prometheus.yml` | 15 j |
+
+Ordre de grandeur mesuré sur le labo : ~2,5 Mo par jour pour 3 800 événements Zeek, ~12 Mo pour 4 100 alertes Suricata — dimensionner le disque avec `du` sur le volume `es-data` après une semaine réelle.
+
 Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log 2>&1` (cron), et `make backup --out /mnt/nas/netwatch` pour un stockage externe via `scripts/backup.sh --out`.
 
 ---

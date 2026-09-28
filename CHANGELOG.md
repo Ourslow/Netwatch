@@ -16,6 +16,16 @@ La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commit
   violations reçues sur `POST /csp-report` (journal). `NETWATCH_CSP=enforce` (défaut) | `report-only`
   (rodage) | `off`. Test de convention : tout `<script>` inline sans nonce ou gestionnaire inline fait
   échouer `make test`.
+- Rétention Elasticsearch (ILM) pour tous les index NetWatch : `scripts/setup-ilm.sh` (appelé par
+  `setup-es.sh`, `install.sh`, `upgrade.sh`, `make setup-ilm`) — `netwatch-events` (zeek/snort/suricata,
+  `ES_RETENTION_DAYS` 30 j, lecture seule + forcemerge à 2 j), `netwatch-netflow`
+  (`ES_RETENTION_NETFLOW_DAYS`), `netwatch-detections` (beacons/autoblock, `ES_RETENTION_DETECTIONS_DAYS`
+  90 j) ; index existants rattachés ; ligne « Rétention ES » dans `make health` ; `make arkime-expire`.
+
+### Corrigé
+- La politique ILM `netflow-*` attendait un rollover sur un alias inexistant : les index restaient
+  bloqués à `check-rollover-ready` et n'étaient jamais supprimés. Plus de rollover (index journaliers),
+  les index bloqués sont réinscrits automatiquement.
 
 ## 2.1.0 — 2026-09-28
 

@@ -49,7 +49,7 @@ marqué ✅ a été vérifié sur ce PC (labo WSL, 23 conteneurs) le 28/09.
 | **Nom du produit** sur le site et le portail | « NetWatch » est un nom de code ; candidat retenu : NetPiquet (remplace Packhawk, trop proche du PacketHawk de NEOX Networks ; à vérifier INPI / TMview avant tout usage public) | 1 h après vérification |
 | **Content-Security-Policy** | ~~scripts inline sans nonce~~ → fait le 28/09 : nonce par requête sur les 21 scripts inline, 16 `onclick=` remplacés par des `data-action`, test de convention (`test_csp.py`) qui interdit tout retour en arrière. `style=` inline toléré (`style-src 'unsafe-inline'`, 322 occurrences — à réduire quand les templates seront retravaillés) | — |
 | **Tags de version et images publiées** | ~~aucun tag git ni image sur un registre~~ → fait le 28/09 : tag `v2.1.0`, images GHCR `netwatch-*` (workflow `images.yml`), `install.sh`/`upgrade.sh` tirent puis reconstruisent en repli | — |
-| **ILM Elasticsearch documenté** pour tous les index (`zeek-*`, `suricata-*`, `snort-*`, `arkime_*`) | rétention = argument de dimensionnement et de conformité | ½ j |
+| **ILM Elasticsearch** | ~~aucune politique sur zeek/snort/suricata, netflow bloqué sur un rollover sans alias~~ → fait le 28/09 : `scripts/setup-ilm.sh` (3 politiques, variables `ES_RETENTION_*_DAYS`, index existants rattachés, ligne « Rétention ES » dans `make health`), sessions Arkime via `make arkime-expire` (cron) | — |
 | **Comptes nominatifs / rôles** | un seul compte `admin` ; attendu dès le premier pilote avec plusieurs exploitants | 2-3 j (édition Pro) |
 | **Licence hors ligne signée** | prérequis de l'édition Pro, argument souveraineté (« pas de phone home ») | 2 j |
 | **Télémétrie opt-in** (versions, santé) | phase 2, jamais de données réseau | 1 j |

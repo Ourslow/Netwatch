@@ -153,6 +153,41 @@ check_elasticsearch() {
   esac
 }
 
+check_es_retention() {
+  local body pol
+  body=$(es_query "/zeek-*,snort-*,suricata-*,netflow-*,netwatch-beacons-*,netwatch-autoblock-*/_ilm/explain?only_managed=false")
+  if [ -z "$body" ]; then
+    report_service "Rétention ES" "warn" "état ILM indisponible"
+    return
+  fi
+  pol=$(es_query "/_ilm/policy/netwatch-events")
+  local summary
+  summary=$(NW_ILM="$body" NW_POL="$pol" python3 - <<'PY'
+import json, os
+try:
+    idx = json.loads(os.environ["NW_ILM"]).get("indices", {})
+except ValueError:
+    print("warn|état ILM illisible"); raise SystemExit
+managed   = [k for k, v in idx.items() if v.get("managed")]
+unmanaged = [k for k, v in idx.items() if not v.get("managed")]
+errors    = [k for k, v in idx.items() if v.get("step") == "ERROR"]
+try:
+    days = json.loads(os.environ["NW_POL"])["netwatch-events"]["policy"]["phases"]["delete"]["min_age"]
+except (ValueError, KeyError):
+    days = ""
+if errors:
+    print(f"err|{len(errors)} index en erreur ILM : {', '.join(errors[:3])}")
+elif not days:
+    print("warn|politique netwatch-events absente — make setup-ilm")
+elif unmanaged:
+    print(f"warn|{len(unmanaged)} index sans politique ({', '.join(unmanaged[:3])}) — make setup-ilm")
+else:
+    print(f"ok|{len(managed)} index gérés, événements supprimés après {days}")
+PY
+)
+  report_service "Rétention ES" "${summary%%|*}" "${summary#*|}"
+}
+
 check_grafana() {
   local body
   body=$(http_body "${GRAFANA_URL}/api/health")
@@ -374,6 +409,7 @@ fi
 
 # --- Services HTTP / API ---
 check_elasticsearch
+check_es_retention
 check_grafana
 check_filebeat
 check_n8n

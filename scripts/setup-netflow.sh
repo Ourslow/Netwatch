@@ -2,7 +2,7 @@
 # scripts/setup-netflow.sh — Initialise ES pour NetFlow / IPFIX / sFlow (T_017)
 #
 # Ce script :
-#   1. Crée la politique ILM netwatch-netflow (30 jours de rétention)
+#   1. Politique ILM netwatch-netflow via scripts/setup-ilm.sh (ES_RETENTION_NETFLOW_DAYS, 30 j)
 #   2. Crée le composant mapping netwatch-netflow-mappings
 #   3. Crée l'index template netwatch-netflow pour le pattern netflow-*
 #
@@ -47,39 +47,14 @@ for i in $(seq 1 20); do
 done
 
 # ============================================================
-# 1. Politique ILM — 30 jours de rétention
+# 1. Politique ILM — scripts/setup-ilm.sh (rétention ES_RETENTION_NETFLOW_DAYS, 30 j par défaut).
+#    Les index netflow-* sont journaliers (Filebeat) : pas de rollover ni d'alias.
 # ============================================================
-info "Création politique ILM netwatch-netflow (30 jours)..."
-
-RESP=$(curl $CURL_OPTS -o /dev/null -w "%{http_code}" \
-  -X PUT "${ES}/_ilm/policy/netwatch-netflow" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "policy": {
-      "phases": {
-        "hot": {
-          "min_age": "0ms",
-          "actions": {
-            "rollover": {
-              "max_age": "1d",
-              "max_primary_shard_size": "5gb"
-            }
-          }
-        },
-        "delete": {
-          "min_age": "30d",
-          "actions": {
-            "delete": {}
-          }
-        }
-      }
-    }
-  }')
-
-if [ "$RESP" = "200" ] || [ "$RESP" = "201" ]; then
-  ok "Politique ILM netwatch-netflow créée (30 jours)"
+info "Politique ILM netwatch-netflow (scripts/setup-ilm.sh)..."
+if ES="$ES" bash "$(dirname "$0")/setup-ilm.sh" >/dev/null; then
+  ok "Politiques ILM en place"
 else
-  err "Echec création politique ILM (HTTP ${RESP})"
+  err "scripts/setup-ilm.sh en échec"
   exit 1
 fi
 
@@ -98,8 +73,7 @@ RESP=$(curl $CURL_OPTS -o /dev/null -w "%{http_code}" \
       "settings": {
         "number_of_shards": 1,
         "number_of_replicas": 0,
-        "index.lifecycle.name": "netwatch-netflow",
-        "index.lifecycle.rollover_alias": "netflow"
+        "index.lifecycle.name": "netwatch-netflow"
       },
       "mappings": {
         "dynamic": true,
@@ -209,7 +183,7 @@ fi
 # Résumé
 # ============================================================
 printf "\n${C_GREEN}${C_BOLD}Setup NetFlow terminé.${C_RESET}\n"
-printf "  ILM policy  : netwatch-netflow (30 jours)\n"
+printf "  ILM policy  : netwatch-netflow (ES_RETENTION_NETFLOW_DAYS, 30 j par défaut — make setup-ilm)\n"
 printf "  Template     : netwatch-netflow  (pattern: netflow-*)\n"
 printf "  Mapping     : src_addr/dst_addr(ip), bytes/packets(long),\n"
 printf "                proto(keyword), ports(integer), timestamps(date)\n"

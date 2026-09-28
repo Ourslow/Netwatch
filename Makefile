@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-ilm arkime-expire setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
 
 # ============================================================
 # Exploitation — installation, sauvegarde, restauration, mise à jour
@@ -109,6 +109,7 @@ ES     ?= http://localhost:9200
 OLLAMA ?= http://localhost:11434
 MODEL  ?= mistral
 SVC    ?=
+DAYS   ?= 30
 
 # ============================================================
 # Stack
@@ -133,6 +134,14 @@ install-service:
 
 setup-es:
 	bash setup-es.sh
+
+setup-ilm:
+	bash scripts/setup-ilm.sh
+
+# Arkime gère ses propres index de sessions : purge des sessions de plus de DAYS jours
+# (cron conseillé : 0 3 * * * cd /opt/netwatch && make arkime-expire DAYS=30)
+arkime-expire:
+	docker compose exec arkime /opt/arkime/db/db.pl http://127.0.0.1:9200 expire daily $(DAYS)
 
 setup-netflow:
 	bash scripts/setup-netflow.sh
@@ -351,7 +360,9 @@ help:
 	@echo "  make portal-log      Suivre les logs du portail"
 	@echo ""
 	@echo "  make install         Installer le portail comme service systemd (root requis)"
-	@echo "  make setup-es        Configurer ES (réplicas 0, templates)"
-	@echo "  make setup-netflow   Créer template ES netflow-* + ILM policy 30 jours"
+	@echo "  make setup-es        Configurer ES (réplicas 0, rétention ILM, templates)"
+	@echo "  make setup-ilm       Rétention ES : (ré)appliquer ES_RETENTION_*_DAYS du .env"
+	@echo "  make arkime-expire   Purger les sessions Arkime de plus de DAYS jours (DAYS=30)"
+	@echo "  make setup-netflow   Créer template ES netflow-* (rétention : setup-ilm)"
 	@echo "  make netflow-test    Envoyer des paquets NetFlow de test (softflowd ou Python)"
 	@echo ""

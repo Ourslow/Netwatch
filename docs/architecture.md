@@ -219,6 +219,8 @@ Grafana (alerte critique) → POST /webhook/alert → autoblock → iptables -I 
 
 **Prometheus** (`prometheus/prometheus.yml`) scrape `node-exporter` toutes les 15 secondes. Rétention 15 jours.
 
+**Rétention Elasticsearch (ILM, `scripts/setup-ilm.sh`)** : `netwatch-events` (zeek/snort/suricata, `ES_RETENTION_DAYS` = 30 j, warm à 2 j), `netwatch-netflow` (`ES_RETENTION_NETFLOW_DAYS`), `netwatch-detections` (beacons/autoblock, `ES_RETENTION_DETECTIONS_DAYS` = 90 j). Index journaliers, âge = création, pas de rollover.
+
 **node-exporter** expose les métriques système de la VM hôte via `/host/proc`, `/host/sys`, `/rootfs`.
 
 Métriques clés utilisées dans le dashboard `vm-health.json` :

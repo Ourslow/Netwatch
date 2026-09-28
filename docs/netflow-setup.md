@@ -232,24 +232,19 @@ curl -s "http://localhost:9200/netflow-*/_search?pretty" -H "Content-Type: appli
 
 ---
 
-## ILM — Rétention 30 jours
+## ILM — Rétention
 
-La politique ILM `netwatch-netflow` gère automatiquement la rotation et la suppression des index.
+La politique `netwatch-netflow` (créée par `scripts/setup-ilm.sh`, appelé par `setup-netflow.sh`, `setup-es.sh`, `install.sh` et `upgrade.sh`) supprime les index `netflow-*` après `ES_RETENTION_NETFLOW_DAYS` jours (défaut : `ES_RETENTION_DAYS`, 30). Les index sont journaliers (`netflow-YYYY.MM.dd`, Filebeat) : pas de rollover ni d'alias — l'âge est celui de la création de l'index.
 
 ```bash
-# Vérifier la politique ILM
+# Vérifier la politique et l'état des index
 curl "http://localhost:9200/_ilm/policy/netwatch-netflow?pretty"
-
-# Vérifier l'état ILM des index netflow-*
 curl "http://localhost:9200/netflow-*/_ilm/explain?pretty"
 ```
 
-Pour modifier la rétention (ex. 60 jours) :
-```bash
-curl -X PUT "http://localhost:9200/_ilm/policy/netwatch-netflow" \
-  -H "Content-Type: application/json" \
-  -d '{"policy":{"phases":{"hot":{"min_age":"0ms","actions":{"rollover":{"max_age":"1d","max_primary_shard_size":"5gb"}}},"delete":{"min_age":"60d","actions":{"delete":{}}}}}}'
-```
+Pour modifier la rétention (ex. 60 jours) : `ES_RETENTION_NETFLOW_DAYS=60` dans `.env` puis `make setup-ilm`.
+
+> Avant la 2.2.0, la politique comportait un rollover sur un alias `netflow` qui n'existait pas : les index restaient bloqués à l'étape `check-rollover-ready` et n'étaient jamais supprimés. `setup-ilm.sh` détecte ces index et les réinscrit.
 
 ---
 
