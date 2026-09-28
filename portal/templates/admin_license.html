@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Licence — NetWatch{% endblock %}
+{% block page_title %}Édition et licence{% endblock %}
+
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-award me-2"></i>État</div>
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="badge fs-6 {% if lic.edition == 'pro' %}bg-success{% else %}bg-secondary{% endif %}">Édition {{ lic.edition | capitalize }}</span>
+          <span class="badge {% if lic.state == 'valid' %}bg-success{% elif lic.state == 'grace' %}bg-warning text-dark{% elif lic.state in ('expired','invalid') %}bg-danger{% else %}bg-secondary{% endif %}">{{ lic.reason }}</span>
+        </div>
+        {% if lic.payload %}
+        <dl class="row small mb-0">
+          <dt class="col-4 text-muted">Client</dt><dd class="col-8">{{ lic.customer }}</dd>
+          <dt class="col-4 text-muted">Identifiant</dt><dd class="col-8 fw-mono">{{ lic.payload.id }}</dd>
+          <dt class="col-4 text-muted">Sondes</dt><dd class="col-8">{{ lic.payload.sensors or 1 }}</dd>
+          <dt class="col-4 text-muted">Émise le</dt><dd class="col-8">{{ lic.payload.issued }}</dd>
+          <dt class="col-4 text-muted">Expire le</dt><dd class="col-8">{{ lic.expires }}{% if lic.days_left is not none and lic.days_left >= 0 %} <span class="text-muted">({{ lic.days_left }} j)</span>{% endif %}</dd>
+          <dt class="col-4 text-muted">Source</dt><dd class="col-8">{{ 'fichier portal/data/license.key' if lic.source == 'fichier' else 'LICENSE_KEY (.env)' }}</dd>
+        </dl>
+        {% else %}
+        <p class="text-muted small mb-0">Aucune licence : le portail fonctionne en édition Community. Toutes les fonctions restent
+          disponibles tant que le bridage n'est pas activé (<code>LICENSE_ENFORCE=false</code>).</p>
+        {% endif %}
+        <p class="small mt-3 mb-0">
+          Bridage des fonctions Pro : {% if lic.enforce %}<span class="text-warning">actif</span>{% else %}<span class="text-success">inactif</span>{% endif %}
+          <span class="text-muted">(<code>LICENSE_ENFORCE</code> dans <code>.env</code>, redémarrage du portail)</span>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-stars me-2"></i>Fonctions de l'édition Pro</div>
+      <div class="card-body">
+        <ul class="list-unstyled small mb-0">
+          {% for key, label in pro_features.items() %}
+          <li class="d-flex align-items-center gap-2 mb-1">
+            {% if not lic.enforce or key in lic.features %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-lock text-muted"></i>{% endif %}
+            <span>{{ label }}</span><code class="text-muted ms-auto">{{ key }}</code>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-key me-2"></i>Installer ou renouveler une licence</div>
+  <div class="card-body">
+    <p class="text-muted small">Collez la licence reçue de l'éditeur (une seule ligne commençant par <code>NW1.</code>). La signature est
+      vérifiée localement, sans connexion : aucune donnée ne sort de la sonde. Une licence expirée est acceptée et affichée comme telle.</p>
+    <form method="post" action="{{ url_for('admin_license_save') }}" class="d-flex flex-column gap-2">
+      <textarea name="license" class="form-control form-control-sm fw-mono" rows="3" spellcheck="false" required
+                placeholder="NW1.2026-09.eyJ…"></textarea>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check2-circle me-1"></i>Vérifier et installer</button>
+      </div>
+    </form>
+    {% if lic.source == 'fichier' %}
+    <form method="post" action="{{ url_for('admin_license_remove') }}" class="mt-3">
+      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Retirer la licence installée</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<p class="text-muted small mb-0">Renouvellement : l'éditeur transmet une nouvelle licence avant l'échéance ; après l'expiration, une
+  tolérance de {{ grace_days }} jours maintient l'édition Pro avec un avertissement. Détails : <code>docs/licence.md</code>.</p>
+
+{% endblock %}

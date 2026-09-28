@@ -34,12 +34,14 @@ _TEST_ENV = {
     "NETBOX_TOKEN": "",
     "NETBOX_TOKEN_KEY": "",
     "THRESHOLD_WEBHOOK_URL": "",
+    "LICENSE_KEY": "",
+    "LICENSE_ENFORCE": "false",
 }
 os.environ.update(_TEST_ENV)
 
 import pytest  # noqa: E402
 
-from netwatch import hostgroups, thresholds, dashboard_layout, users  # noqa: E402
+from netwatch import hostgroups, thresholds, dashboard_layout, users, license as nw_license  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -58,6 +60,8 @@ def data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(users, "DATA_DIR", str(d))
     monkeypatch.setattr(users, "USERS_PATH", str(d / "users.json"))
     monkeypatch.setattr(users, "AUTH_LOG_PATH", str(d / "auth.log"))
+    monkeypatch.setattr(nw_license, "DATA_DIR", str(d))
+    monkeypatch.setattr(nw_license, "LICENSE_FILE", str(d / "license.key"))
     return d
 
 

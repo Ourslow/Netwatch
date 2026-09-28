@@ -21,6 +21,7 @@ from flask_login import (LoginManager, UserMixin,
 
 import config
 from netwatch import users as nw_users
+from netwatch import license as nw_license
 from proxmox import client as px_client
 from esxi   import client as esxi_client
 from netwatch import health as nw_health
@@ -470,6 +471,23 @@ def admin_required(fn):
     return wrapper
 
 
+def pro_required(feature):
+    """Fonction de l'édition Pro : bloquée (402) seulement si LICENSE_ENFORCE est vrai
+    et que la licence installée ne la couvre pas. Voir netwatch/license.py."""
+    def deco(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if nw_license.feature_enabled(feature):
+                return fn(*args, **kwargs)
+            label = nw_license.PRO_FEATURES.get(feature, feature)
+            message = f"« {label} » fait partie de l'édition Pro : licence requise (page Licence du portail)."
+            if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
+                return jsonify({"error": message, "feature": feature}), 402
+            return render_template("403.html", message=message), 402
+        return wrapper
+    return deco
+
+
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -759,8 +777,10 @@ def _inject_globals():
             "netbox": config.NETWATCH_NETBOX_URL,
         },
         "netbox_enabled": nw_netbox.configured(),
-        # Édition IA : boutons ✨, entrée « Agents IA », résumé exécutif
+        # Édition IA : boutons ✨, résumé exécutif
         "ai_enabled": config.AI_ENABLED,
+        # Licence Pro (édition, état, tolérance) : bandeau et pages Statut / Licence
+        "license": nw_license.status() if current_user.is_authenticated else None,
     }
 
 
@@ -896,6 +916,38 @@ def admin_users_update(username):
     except ValueError as exc:
         flash(str(exc), "danger")
     return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/license")
+@login_required
+@admin_required
+def admin_license():
+    return render_template("admin_license.html", lic=nw_license.status(), pro_features=nw_license.PRO_FEATURES,
+                           grace_days=nw_license.GRACE_DAYS)
+
+
+@app.route("/admin/license", methods=["POST"])
+@login_required
+@admin_required
+def admin_license_save():
+    try:
+        info = nw_license.save_key(request.form.get("license", ""))
+        nw_users.log_event("license_installed", current_user.username, _login_client_ip(),
+                           f"{info['customer']} · expire {info['expires']} · {info['state']}")
+        flash(f"Licence installée : {info['customer']}, {info['reason']}.", "success" if info["state"] == "valid" else "warning")
+    except ValueError as exc:
+        flash(f"Licence refusée : {exc}.", "danger")
+    return redirect(url_for("admin_license"))
+
+
+@app.route("/admin/license/remove", methods=["POST"])
+@login_required
+@admin_required
+def admin_license_remove():
+    if nw_license.remove_key():
+        nw_users.log_event("license_removed", current_user.username, _login_client_ip())
+        flash("Licence retirée — édition Community.", "info")
+    return redirect(url_for("admin_license"))
 
 
 # ============================================================
@@ -1244,6 +1296,7 @@ def status():
         config_prometheus_url=config.NETWATCH_PROMETHEUS_URL,
         config_autoblock_url=config.NETWATCH_AUTOBLOCK_URL,
         llmops=llmops_stats,
+        lic=nw_license.status(),
     )
 
 
@@ -1326,6 +1379,7 @@ def reports_page():
 
 @app.route("/api/reports/generate", methods=["POST"])
 @login_required
+@pro_required("reports")
 def api_reports_generate():
     """Déclenche generate-report-pdf.py à la demande (bouton portail ou n8n)."""
     netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1951,6 +2005,7 @@ _AI_DISABLED = {"error": "Assistant IA désactivé (édition Core) — renseigne
 
 @app.route("/api/explain", methods=["POST"])
 @login_required
+@pro_required("ia")
 def api_explain():
     """Explique une alerte IDS en langage naturel via l'assistant LLM local (Ollama)."""
     if not config.AI_ENABLED:
@@ -1967,6 +2022,7 @@ def api_explain():
 
 @app.route("/api/summary")
 @login_required
+@pro_required("ia")
 def api_summary():
     """Résumé exécutif IA des alertes récentes (utilisé sur /report)."""
     if not config.AI_ENABLED:
@@ -1999,6 +2055,7 @@ def audit():
 
 @app.route("/compliance")
 @login_required
+@pro_required("compliance")
 def compliance():
     def _summary(measures):
         return {
@@ -2823,6 +2880,7 @@ def pcap_analysis_export_csv():
 
 @app.route("/api/pcap-analysis/explain", methods=["POST"])
 @login_required
+@pro_required("ia")
 def api_pcap_analysis_explain():
     """Génère une analyse narrative IA d'une conversation TCP (via Ollama)."""
     if not config.AI_ENABLED:

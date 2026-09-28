@@ -20,6 +20,12 @@ La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commit
   licence centralisés (`portal/config.py`, global Jinja `product`) et affichés partout de la même façon
   (« NetWatch 2.2.0 », plus de « Portal v2/v3 »). Dépôt neutre : aucune mention d'employeur, d'école,
   de client ni de ticket (`tests/test_neutrality.py`) ; documents internes hors dépôt (`private/`).
+- Licence hors ligne de l'édition Pro : chaîne `NW1.<kid>.<payload>.<signature>` signée Ed25519,
+  vérifiée sans réseau (`portal/netwatch/license.py`, clé publique embarquée), états valide /
+  tolérance 30 j / expirée, page *Licence* (admin) et carte sur la page Statut, bandeau d'alerte,
+  `LICENSE_KEY` en repli, `LICENSE_ENFORCE=false` par défaut (aucune fonction bridée pendant la
+  validation ; à `true`, les fonctions Pro hors licence répondent 402). Outil d'émission
+  `scripts/license/netwatch-license.py` (keygen / issue / inspect), `make license-status`, `docs/licence.md`.
 - Comptes nominatifs et rôles (RBAC) : page *Comptes et rôles* (admin), rôles Lecture / Opérateur /
   Administrateur, mots de passe hachés (scrypt) dans `portal/data/users.json`, journal des connexions et
   des actions d'administration (`portal/data/auth.log`, affiché), compte d'amorçage `.env` conservé,

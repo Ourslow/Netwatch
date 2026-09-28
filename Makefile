@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-ilm arkime-expire brand-sync setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
+.PHONY: start stop restart status logs demo demo-fast demo-client sim build clean update-intel setup-geoip llm-pull install install-service portal portal-stop portal-log setup-es setup-ilm arkime-expire brand-sync license-status setup-netflow netflow-test health health-json health-no-color help arkime-init arkime-reset observability observability-stop demo-netbox kibana-setup demo-data demo-data-clean test lint check proxy-ca backup backup-config restore upgrade version
 
 # ============================================================
 # Exploitation — installation, sauvegarde, restauration, mise à jour
@@ -10,6 +10,10 @@ install:
 
 version:
 	@cat VERSION
+
+# Édition et licence Pro (docs/licence.md)
+license-status:
+	@cd portal && $$( [ -x .venv/bin/python3 ] && echo .venv/bin/python3 || echo python3 ) -c "from netwatch import license as l; print(l.describe())"
 
 # Sauvegarde complète (config, volumes, NetBox, snapshot ES) → backups/ ; KEEP=n pour ne garder que n archives
 backup:
@@ -369,6 +373,7 @@ help:
 	@echo "  make setup-es        Configurer ES (réplicas 0, rétention ILM, templates)"
 	@echo "  make setup-ilm       Rétention ES : (ré)appliquer ES_RETENTION_*_DAYS du .env"
 	@echo "  make brand-sync      Recopier les logos de brand/ vers le portail et le site"
+	@echo "  make license-status  Édition et licence Pro (docs/licence.md)"
 	@echo "  make arkime-expire   Purger les sessions Arkime de plus de DAYS jours (DAYS=30)"
 	@echo "  make setup-netflow   Créer template ES netflow-* (rétention : setup-ilm)"
 	@echo "  make netflow-test    Envoyer des paquets NetFlow de test (softflowd ou Python)"

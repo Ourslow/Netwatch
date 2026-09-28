@@ -219,6 +219,11 @@
           <i class="bi bi-people"></i> <span data-i18n="nav_users">Comptes et rôles</span>
         </a>
       </li>
+      <li class="nav-item">
+        <a href="{{ url_for('admin_license') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin_license') %}active{% endif %}">
+          <i class="bi bi-award"></i> <span data-i18n="nav_license">Licence</span>
+        </a>
+      </li>
       {% endif %}
       <li class="nav-item">
         <a href="{{ url_for('compliance') }}" class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
@@ -309,6 +314,13 @@
     </div>
 
     <div class="content-area p-4">
+      {% if license and license.state in ('grace', 'expired', 'invalid') %}
+      <div class="alert {% if license.state == 'grace' %}alert-warning{% else %}alert-danger{% endif %} d-flex align-items-center gap-2 py-2 small mb-3">
+        <i class="bi bi-award"></i>
+        <span>Licence Pro {{ license.reason }}{% if license.state == 'grace' %} — renouvelez-la avant la fin de la période de tolérance{% elif license.state == 'expired' %} — le portail est en édition Community{% endif %}.</span>
+        {% if current_user.role == 'admin' %}<a class="ms-auto" href="{{ url_for('admin_license') }}">Gérer la licence</a>{% endif %}
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </div>
   </main>

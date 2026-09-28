@@ -80,6 +80,13 @@ def _read_version():
 
 VERSION = _read_version()
 
+# Licence hors ligne (édition Pro) — voir docs/licence.md. LICENSE_KEY est une
+# solution de repli : la page « Licence » du portail enregistre la clé dans
+# portal/data/license.key, qui a priorité. LICENSE_ENFORCE=false (défaut, phase de
+# validation) : la licence est affichée, aucune fonction n'est bridée.
+LICENSE_KEY = os.getenv("LICENSE_KEY", "").strip()
+LICENSE_ENFORCE = os.getenv("LICENSE_ENFORCE", "false").strip().lower() == "true"
+
 # Credentials du portail (authentification)
 PORTAL_USERNAME = os.getenv("PORTAL_USERNAME", "admin")
 PORTAL_PASSWORD = os.getenv("PORTAL_PASSWORD", "")   # vide = portail désactivé si pas défini
