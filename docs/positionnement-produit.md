@@ -203,6 +203,63 @@ Le principe qui tranche chaque cas :
 
 ---
 
+### 6.5 SaaS ? Non pour les données, oui pour le pilotage (phase 2)
+
+Question posée le 28/09/2026 après le site et la démo BP2i. Réponse tranchée ici pour qu'elle
+ne revienne pas sous la forme « SaaS oui/non » à chaque réunion.
+
+**Ce qu'un SaaS ne peut pas être pour NetWatch**
+
+- La capture reste sur le LAN du client (port SPAN) : un SaaS ne porterait que la console, donc
+  il faudrait **remonter les données** vers notre cloud. Or la promesse n° 1 — *rien ne sort* —
+  est celle que les PME et les grands comptes (BP2i) entendent en premier. Un SaaS de données,
+  c'est devenir ce que l'on critique chez Darktrace.
+- PCAP et logs Zeek contiennent des données personnelles : nous deviendrions sous-traitant
+  RGPD (DPA, registre, notification sous 72 h) et, pour une banque, prestataire TIC au sens de
+  **DORA** (audit, résilience, plan de sortie). Pas tenable à une ou deux personnes.
+- **Elasticsearch 8.13** est sous SSPL / Elastic License 2.0 : interdiction de l'offrir en
+  service managé. Héberger pour des clients impose ES ≥ 8.16 (option AGPL) ou OpenSearch.
+- Charges fixes avant le premier euro : astreinte, sécurité d'une plateforme qui concentre le
+  trafic de tous les clients, hébergement facturé à la sonde.
+
+**Ce qui est pertinent : un « control plane » hébergé, sans données de trafic**
+
+C'est le modèle des acteurs établis (sondes on-prem + console cloud) et il ne trahit pas la
+promesse. Le SaaS **pilote** les sondes, il ne **voit** pas le réseau.
+
+| Ce qui remonte | Ce qui ne remonte jamais |
+|---|---|
+| inventaire des sondes, version, santé (`make health`), état des mises à jour et des sauvegardes | paquets, PCAP, logs Zeek / Suricata / Snort, flux NetFlow |
+| licence Pro : émission et récupération de la clé signée hors ligne | adresses IP, noms d'hôtes, SNI, identifiants |
+| pour les MSP : KPIs agrégés par client (SLA, compteurs d'alertes, disponibilité des sondes) | tout ce qui permettrait d'identifier une personne ou une machine |
+
+Conséquences : pas de DPA lourd, pas de statut de prestataire TIC critique, la souveraineté
+reste un argument vrai. Et c'est ce qui rend le modèle du § 6.2 exploitable : 20 sondes Pro se
+gèrent depuis un écran, pas en visitant 20 clients.
+
+**Ce que le control plane offrirait au MSP (ligne Pro MSP)**
+
+- une page « mes clients » : sondes, santé, versions, SLA du mois, alertes critiques en cours ;
+- mises à jour poussées, sauvegardes déclenchées, clés de licence renouvelées ;
+- marque blanche légère (logo, nom) ; jamais d'accès aux données brutes depuis le cloud —
+  le MSP se connecte à la sonde du client pour le détail (lien direct, session du portail).
+
+**Décision et prérequis**
+
+1. Phase 1 (jusqu'au premier pilote) : on-prem, Community / Pro, tel que décidé au § 1.
+   Le site produit le dit déjà.
+2. La question à poser aux 10 conversations MSP / DSI du § 8 n'est pas « voulez-vous un SaaS ? »
+   mais **« qui exploite la sonde au quotidien, et que doit-il voir depuis un seul écran ? »**.
+   Si plusieurs MSP répondent « mes N clients sur une page », c'est le control plane qui est
+   validé — pas un SaaS de données.
+3. Deux prérequis techniques à traiter quelle que soit la réponse, parce qu'ils conditionnent
+   les deux scénarios : la **licence hors ligne signée** (§ 7) et le choix **ES ≥ 8.16 / OpenSearch**.
+4. Le control plane, s'il est construit, sera lui-même **auto-hébergeable** par un MSP
+   (mêmes briques, même licence Pro) : le SaaS Axians est une commodité, pas une obligation —
+   argument de sortie et de souveraineté cohérent avec le reste.
+
+---
+
 ## 7. Ce qu'il manque pour être vendable (l'écart labo → produit)
 
 Rien de ceci n'est de la « feature ». C'est ce qui distingue une démo qui
