@@ -84,8 +84,7 @@ demo-data:
 	@curl -s -XPUT "$(ES)/_all/_settings" -H 'Content-Type: application/json' -d '{"index":{"number_of_replicas":0}}' >/dev/null && echo "réplicas à 0 (nœud unique)"
 
 demo-data-clean:
-	@for i in $$(curl -s "$(ES)/_cat/indices/*-sim?h=index"); do curl -s -o /dev/null -w "  $$i supprimé (%{http_code})
-" -XDELETE "$(ES)/$$i"; done
+	@for i in $$(curl -s "$(ES)/_cat/indices/*-sim?h=index"); do echo "  $$i : $$(curl -s -o /dev/null -w '%{http_code}' -XDELETE "$(ES)/$$i")"; done
 
 # Premier lancement d'Arkime : création des index ES (arkime_*). L'utilisateur
 # admin/admin est créé au démarrage du service (--add-admin) — changer le mot de
