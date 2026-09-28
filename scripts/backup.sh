@@ -98,6 +98,9 @@ if ! $CONFIG_ONLY; then
 
   # ── Elasticsearch : snapshot fs → volume es-snapshots → archive ────────────
   if curl -sf "$ES/_cluster/health" >/dev/null 2>&1; then
+    # Le volume es-snapshots est créé root:root par Docker (le chemin n'existe pas dans l'image)
+    # alors qu'Elasticsearch tourne en uid 1000 : sans ceci, « path is not accessible on master node ».
+    docker exec -u 0 netwatch-elasticsearch chown -R 1000:0 "$ES_REPO_PATH" 2>/dev/null || true
     reg="$(curl -s -X PUT "$ES/_snapshot/netwatch" -H 'Content-Type: application/json' \
            -d "{\"type\":\"fs\",\"settings\":{\"location\":\"$ES_REPO_PATH\",\"compress\":true}}")"
     if echo "$reg" | grep -q '"acknowledged":true'; then

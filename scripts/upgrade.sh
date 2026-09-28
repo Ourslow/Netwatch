@@ -34,7 +34,8 @@ OLD_COMMIT="$(git rev-parse HEAD)"
 echo "=== Mise à jour NetWatch (actuellement $OLD_VERSION, $(git rev-parse --short HEAD)) ==="
 git fetch -q --tags origin
 if [ -z "$TARGET" ]; then
-  TARGET="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -1)"
+  # Uniquement les tags de version vX.Y.Z (le glob 'v[0-9]*' attrapait aussi v2-before-redesign)
+  TARGET="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)"
   [ -n "$TARGET" ] || TARGET="origin/main"
 fi
 NEW_COMMIT="$(git rev-parse "$TARGET^{commit}" 2>/dev/null || die "référence introuvable : $TARGET")"

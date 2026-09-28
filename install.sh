@@ -220,6 +220,8 @@ fi
 step "5/6 Démarrage de la stack"
 echo "  (premier lancement : la compilation de Snort prend 10-15 min)"
 $DOCKER compose up -d --remove-orphans
+# Image utilitaire de backup/restore (tar des volumes) : présente d'emblée, utilisable hors ligne ensuite
+$DOCKER pull -q alpine:3.20 >/dev/null 2>&1 && ok "image alpine:3.20 (sauvegarde / restauration)" || warn "alpine:3.20 non téléchargée — make backup la tirera"
 ES="${NETWATCH_ES_URL:-http://localhost:9200}"
 printf '  attente Elasticsearch'
 for _ in $(seq 1 120); do
