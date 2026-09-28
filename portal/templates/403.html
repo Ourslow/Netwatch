@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>403 — NetWatch</title>
+  <link href="{{ url_for('static', filename='vendor/fonts/fonts.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="err-body">
+  <div class="err-wrap">
+    <div class="err-code">403</div>
+    <div class="err-icon"><i class="bi bi-shield-lock"></i></div>
+    <div class="err-title">Accès refusé</div>
+    <div class="err-sub">
+      {{ message or "Votre rôle ne permet pas cette action." }}<br>
+      Demandez à un administrateur du portail si vous en avez besoin.
+    </div>
+    <a href="/" class="btn-home">
+      <i class="bi bi-grid-1x2"></i>Dashboard
+    </a>
+  </div>
+</body>
+</html>

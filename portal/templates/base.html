@@ -213,6 +213,13 @@
           <i class="bi bi-bar-chart-steps"></i> <span data-i18n="nav_compare">Comparaison</span>
         </a>
       </li>
+      {% if current_user.is_authenticated and current_user.role == 'admin' %}
+      <li class="nav-item">
+        <a href="{{ url_for('admin_users') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin_users') %}active{% endif %}">
+          <i class="bi bi-people"></i> <span data-i18n="nav_users">Comptes et rôles</span>
+        </a>
+      </li>
+      {% endif %}
       <li class="nav-item">
         <a href="{{ url_for('compliance') }}" class="nav-link {% if request.endpoint == 'compliance' %}active{% endif %}">
           <i class="bi bi-clipboard2-check"></i> <span data-i18n="nav_compliance">Conformité</span>
@@ -289,6 +296,12 @@
           <i class="bi bi-sun-fill" id="theme-icon-light"></i>
           <i class="bi bi-moon-stars-fill" id="theme-icon-dark" style="display:none"></i>
         </button>
+        {% if current_user.is_authenticated %}
+        <span class="badge text-bg-dark border d-none d-md-inline-flex align-items-center gap-1" title="Rôle : {{ current_user.role }}">
+          <i class="bi bi-person-circle"></i>{{ current_user.username }}
+          <span class="text-muted">· {{ {'admin': 'admin', 'operator': 'opérateur', 'viewer': 'lecture'}[current_user.role] }}</span>
+        </span>
+        {% endif %}
         <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-secondary" title="Déconnexion">
           <i class="bi bi-box-arrow-right"></i>
         </a>

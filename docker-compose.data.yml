@@ -74,7 +74,8 @@ services:
       - GF_AUTH_PROXY_ENABLED=${NETWATCH_PUBLIC_URL:+true}
       - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
       - GF_AUTH_PROXY_HEADER_PROPERTY=username
-      - GF_AUTH_PROXY_AUTO_SIGN_UP=false
+      - GF_AUTH_PROXY_AUTO_SIGN_UP=true
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Viewer
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-http://localhost/slack-not-configured}
       - AUTOBLOCK_WEBHOOK_SECRET=${AUTOBLOCK_WEBHOOK_SECRET:-}
       # AutoBlock tourne sur la VM Sensors en 2-VMs, plus sur le même hôte que Grafana.

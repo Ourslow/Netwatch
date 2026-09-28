@@ -39,7 +39,7 @@ os.environ.update(_TEST_ENV)
 
 import pytest  # noqa: E402
 
-from netwatch import hostgroups, thresholds, dashboard_layout  # noqa: E402
+from netwatch import hostgroups, thresholds, dashboard_layout, users  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -55,6 +55,9 @@ def data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(thresholds, "STATE_PATH", str(d / "threshold_state.json"))
     monkeypatch.setattr(dashboard_layout, "DATA_DIR", str(d))
     monkeypatch.setattr(dashboard_layout, "LAYOUT_PATH", str(d / "dashboard_layout.json"))
+    monkeypatch.setattr(users, "DATA_DIR", str(d))
+    monkeypatch.setattr(users, "USERS_PATH", str(d / "users.json"))
+    monkeypatch.setattr(users, "AUTH_LOG_PATH", str(d / "auth.log"))
     return d
 
 

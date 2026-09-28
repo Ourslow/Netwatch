@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Comptes et rôles — NetWatch{% endblock %}
+{% block page_title %}Comptes et rôles{% endblock %}
+
+{% block content %}
+
+<p class="text-muted small mb-3">
+  Trois rôles : <strong>Lecture</strong> (toutes les pages, aucune action), <strong>Opérateur</strong>
+  (seuils, hostgroups, rapports, disposition, actions VM) et <strong>Administrateur</strong> (tout, plus cette page).
+  Le compte d'amorçage vient du fichier <code>.env</code> (<code>PORTAL_USERNAME</code> / <code>PORTAL_PASSWORD</code>) :
+  il reste administrateur tant que <code>PORTAL_PASSWORD</code> est renseigné.
+  Les comptes sont sauvegardés avec l'état du portail (<code>make backup</code>).
+</p>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-person-plus me-2"></i>Nouveau compte</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('admin_users_create') }}" class="row g-2 align-items-end" autocomplete="off">
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1" for="new-username">Identifiant</label>
+        <input id="new-username" name="username" class="form-control form-control-sm" pattern="[a-z0-9][a-z0-9._-]{1,31}"
+               placeholder="prenom.nom" required autocomplete="off">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1" for="new-password">Mot de passe ({{ min_password }} caractères min.)</label>
+        <input id="new-password" name="password" type="password" class="form-control form-control-sm" minlength="{{ min_password }}"
+               required autocomplete="new-password">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-1" for="new-role">Rôle</label>
+        <select id="new-role" name="role" class="form-select form-select-sm">
+          {% for r in roles %}<option value="{{ r }}" {% if r == 'viewer' %}selected{% endif %}>{{ role_labels[r] }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle me-1"></i>Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-people me-2"></i>Comptes ({{ users | length }})</div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0">
+      <thead><tr><th>Identifiant</th><th>Rôle</th><th>Origine</th><th>Créé</th><th>Dernière connexion</th><th>État</th><th class="text-end">Actions</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr class="{% if u.disabled %}opacity-50{% endif %}">
+          <td class="fw-mono">{{ u.username }}{% if u.username == current_user.username %} <span class="badge bg-info ms-1">vous</span>{% endif %}</td>
+          <td><span class="badge {% if u.role == 'admin' %}bg-danger{% elif u.role == 'operator' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ role_labels[u.role] }}</span></td>
+          <td class="small text-muted">{% if u.source == 'env' %}.env (amorçage){% else %}portail{% endif %}</td>
+          <td class="small text-muted">{{ u.created_at or '—' }}</td>
+          <td class="small text-muted">{{ u.last_login or '—' }}</td>
+          <td class="small">{% if u.disabled %}<span class="text-warning">désactivé</span>{% else %}<span class="text-success">actif</span>{% endif %}</td>
+          <td class="text-end">
+            {% if u.source == 'store' %}
+            <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+              <form method="post" action="{{ url_for('admin_users_update', username=u.username) }}" class="d-inline-flex gap-1">
+                <input type="hidden" name="action" value="role">
+                <select name="role" class="form-select form-select-sm" style="width:auto" aria-label="Rôle">
+                  {% for r in roles %}<option value="{{ r }}" {% if r == u.role %}selected{% endif %}>{{ role_labels[r] }}</option>{% endfor %}
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" title="Changer le rôle"><i class="bi bi-check2"></i></button>
+              </form>
+              <form method="post" action="{{ url_for('admin_users_update', username=u.username) }}" class="d-inline-flex gap-1" autocomplete="off">
+                <input type="hidden" name="action" value="password">
+                <input name="password" type="password" class="form-control form-control-sm" style="width:170px" minlength="{{ min_password }}"
+                       placeholder="nouveau mot de passe" autocomplete="new-password" required>
+                <button class="btn btn-sm btn-outline-secondary" title="Réinitialiser le mot de passe"><i class="bi bi-key"></i></button>
+              </form>
+              {% if u.username != current_user.username %}
+              <form method="post" action="{{ url_for('admin_users_update', username=u.username) }}" class="d-inline">
+                <input type="hidden" name="action" value="{{ 'enable' if u.disabled else 'disable' }}">
+                <button class="btn btn-sm btn-outline-warning" title="{{ 'Réactiver' if u.disabled else 'Désactiver' }}">
+                  <i class="bi {{ 'bi-play' if u.disabled else 'bi-pause' }}"></i>
+                </button>
+              </form>
+              <form method="post" action="{{ url_for('admin_users_update', username=u.username) }}" class="d-inline">
+                <input type="hidden" name="action" value="delete">
+                <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+              </form>
+              {% endif %}
+            </div>
+            {% else %}
+            <span class="small text-muted">défini dans .env</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><i class="bi bi-journal-text me-2"></i>Journal des connexions et des actions d'administration
+    <span class="text-muted small ms-2">{{ events | length }} derniers événements · <code>portal/data/auth.log</code></span></div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Horodatage (UTC)</th><th>Événement</th><th>Compte</th><th>Adresse</th><th>Détail</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr>
+          <td class="fw-mono small">{{ e.ts }}</td>
+          <td><span class="badge {% if e.kind in ('login_failed','login_locked','forbidden') %}bg-danger{% elif e.kind == 'login' %}bg-success{% elif e.kind == 'logout' %}bg-secondary{% else %}bg-info text-dark{% endif %}">{{ e.kind }}</span></td>
+          <td class="fw-mono small">{{ e.user }}</td>
+          <td class="fw-mono small text-muted">{{ e.ip }}</td>
+          <td class="small text-muted">{{ e.detail }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="text-muted small">Aucun événement pour l'instant.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

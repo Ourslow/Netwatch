@@ -355,7 +355,7 @@ En labo, chaque outil a son port, la plupart liés à `localhost`. Chez un clien
 | URL | Service | Authentification |
 |---|---|---|
 | `https://<sonde>/` | Portail | login du portail |
-| `https://<sonde>/grafana/` | Grafana | session portail → connecté automatiquement (auth proxy, utilisateur `admin`) |
+| `https://<sonde>/grafana/` | Grafana | session portail → connecté automatiquement (auth proxy : administrateurs NetWatch = `admin`, autres comptes créés en lecteurs) |
 | `https://<sonde>/kibana/` · `/arkime/` · `/ntopng/` | Kibana · Arkime · ntopng | session portail — les outils restent en mode « sans login », joignables uniquement par ici |
 | `https://<sonde>/netbox/` | NetBox | session portail, puis login NetBox (ses droits comptent) |
 
@@ -370,6 +370,8 @@ NETWATCH_NETBOX_URL=http://localhost:8000/netbox
 make start && make portal              # le portail lit NETWATCH_PUBLIC_URL : X-Forwarded-*, cookie Secure, liens /grafana/…
 make proxy-ca                          # exporte la CA locale (netwatch-ca.crt) à importer sur les postes
 ```
+
+**Comptes et rôles.** Le portail gère des comptes nominatifs (page *Comptes et rôles*, réservée aux administrateurs) avec trois rôles : **Lecture** (toutes les pages, aucune action), **Opérateur** (seuils, hostgroups, rapports, disposition, actions VM) et **Administrateur** (tout, plus la gestion des comptes). Le couple `PORTAL_USERNAME` / `PORTAL_PASSWORD` du `.env` reste un administrateur d'amorçage tant que `PORTAL_PASSWORD` est renseigné. Mots de passe hachés (scrypt) dans `portal/data/users.json`, journal des connexions et des actions d'administration dans `portal/data/auth.log` (affiché sur la page), les deux inclus dans `make backup`. Une session dont le compte est désactivé ou supprimé est invalidée à la requête suivante.
 
 Mécanique dans [`caddy/Caddyfile`](caddy/Caddyfile) : avant de servir un outil, Caddy interroge `/auth/check` sur le portail ; sans session, redirection vers la page de connexion puis retour à l'URL demandée. TLS `internal` = certificat signé par une CA que Caddy génère (avertissement navigateur tant qu'elle n'est pas importée) ; Let's Encrypt exige un nom DNS public joignable sur 80/443 ; un certificat d'entreprise se dépose dans `caddy/certs/`. En 2 VMs, Caddy tourne sur la VM Data (`docker-compose.data.yml`) et joint Arkime/ntopng via `NETWATCH_UPSTREAM_*`.
 

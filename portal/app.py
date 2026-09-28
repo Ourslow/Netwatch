@@ -1,6 +1,5 @@
 import csv
 import glob
-import hmac
 import io
 import json
 import os
@@ -21,6 +20,7 @@ from flask_login import (LoginManager, UserMixin,
                          login_required, current_user)
 
 import config
+from netwatch import users as nw_users
 from proxmox import client as px_client
 from esxi   import client as esxi_client
 from netwatch import health as nw_health
@@ -428,26 +428,62 @@ login_manager.login_message_category = "warning"
 
 
 class _User(UserMixin):
-    """Utilisateur unique — identité portée par la session."""
-    def __init__(self):
-        self.id = "admin"
+    """Compte nominatif (netwatch.users) : identifiant + rôle viewer / operator / admin."""
+    def __init__(self, username, role):
+        self.id = username
+        self.username = username
+        self.role = role
 
-
-_SINGLE_USER = _User()
+    def has_role(self, minimum):
+        return nw_users.ROLE_RANK.get(self.role, -1) >= nw_users.ROLE_RANK[minimum]
 
 
 @login_manager.user_loader
 def _load_user(user_id):
-    return _SINGLE_USER if user_id == "admin" else None
+    u = nw_users.get_active(user_id)   # compte supprimé ou désactivé → session invalide
+    return _User(u["username"], u["role"]) if u else None
 
 
-def _check_credentials(username: str, password: str) -> bool:
-    """Comparaison constant-time pour éviter les timing attacks."""
-    if not config.PORTAL_PASSWORD:
-        return False
-    ok_u = hmac.compare_digest(username.encode(), config.PORTAL_USERNAME.encode())
-    ok_p = hmac.compare_digest(password.encode(), config.PORTAL_PASSWORD.encode())
-    return ok_u and ok_p
+def _check_credentials(username: str, password: str):
+    """Compte (sans hash) si les identifiants sont valides, sinon None (temps constant sur le compte d'amorçage)."""
+    return nw_users.verify(username, password)
+
+
+def _forbidden(message):
+    """403 : JSON pour l'API, page d'erreur sinon."""
+    nw_users.log_event("forbidden", getattr(current_user, "username", None), _login_client_ip(),
+                       f"{request.method} {request.path}")
+    if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
+        return jsonify({"error": message}), 403
+    return render_template("403.html", message=message), 403
+
+
+def admin_required(fn):
+    """Réservé au rôle admin (après login_required)."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return login_manager.unauthorized()
+        if current_user.role != "admin":
+            return _forbidden("Réservé aux administrateurs.")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+@app.before_request
+def enforce_read_only_role():
+    """Rôle lecture : aucune action. Les demandes d'explication IA (POST sans effet
+    sur l'état) et la connexion restent permises."""
+    if request.method not in MUTATING_METHODS or not current_user.is_authenticated:
+        return None
+    if request.path in ("/login", "/csp-report") or request.path.endswith("/explain"):
+        return None
+    if current_user.role == "viewer":
+        return _forbidden("Rôle lecture seule : action non autorisée.")
+    return None
 
 
 # Anti-force-brute sur /login : échecs consécutifs comptés par adresse source,
@@ -762,13 +798,17 @@ def login():
         ip = _login_client_ip()
         wait = _login_lock_remaining(ip)
         if wait:
+            nw_users.log_event("login_locked", request.form.get("username", ""), ip, f"{wait} s")
             flash(f"Trop de tentatives — réessayez dans {wait} s.", "danger")
             return render_template("login.html"), 429
-        username = request.form.get("username", "")
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        if _check_credentials(username, password):
+        account = _check_credentials(username, password)
+        if account:
             _login_succeeded(ip)
-            login_user(_SINGLE_USER, remember=bool(request.form.get("remember")))
+            login_user(_User(account["username"], account["role"]), remember=bool(request.form.get("remember")))
+            nw_users.touch_login(account["username"])
+            nw_users.log_event("login", account["username"], ip, account["role"])
             next_page = request.args.get("next")
             if next_page:
                 from urllib.parse import urlparse, urljoin
@@ -778,6 +818,7 @@ def login():
                     next_page = None
             return redirect(next_page or url_for("dashboard"))
         _login_failed(ip)
+        nw_users.log_event("login_failed", username, ip)
         flash("Identifiants incorrects.", "danger")
     return render_template("login.html")
 
@@ -785,6 +826,7 @@ def login():
 @app.route("/logout")
 @login_required
 def logout():
+    nw_users.log_event("logout", current_user.username, _login_client_ip())
     logout_user()
     flash("Déconnecté.", "info")
     return redirect(url_for("login"))
@@ -799,10 +841,61 @@ def auth_check():
     retour à l'URL demandée (X-Forwarded-Uri, validée comme tout `next`)."""
     if current_user.is_authenticated:
         resp = make_response("", 204)
-        resp.headers["X-Webauth-User"] = config.PORTAL_USERNAME
+        # Grafana (auth proxy) : les administrateurs NetWatch sont « admin » côté Grafana,
+        # les autres comptes sont créés à la volée en lecteurs (GF_AUTH_PROXY_AUTO_SIGN_UP).
+        resp.headers["X-Webauth-User"] = "admin" if current_user.role == "admin" else current_user.username
         return resp
     wanted = request.headers.get("X-Forwarded-Uri") or "/"
     return redirect(url_for("login", next=wanted))
+
+
+# ============================================================
+# Comptes et rôles (admin)
+# ============================================================
+
+@app.route("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    return render_template("admin_users.html", users=nw_users.list_users(), events=nw_users.list_events(50),
+                           roles=nw_users.ROLES, role_labels=nw_users.ROLE_LABELS, min_password=nw_users.MIN_PASSWORD)
+
+
+@app.route("/admin/users", methods=["POST"])
+@login_required
+@admin_required
+def admin_users_create():
+    try:
+        u = nw_users.create_user(request.form.get("username", "").strip(), request.form.get("password", ""),
+                                 request.form.get("role", "viewer"), actor=current_user.username)
+        flash(f"Compte « {u['username']} » créé ({nw_users.ROLE_LABELS[u['role']]}).", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/users/<username>", methods=["POST"])
+@login_required
+@admin_required
+def admin_users_update(username):
+    action = request.form.get("action", "")
+    try:
+        if action in ("disable", "delete", "role") and username == current_user.username:
+            raise ValueError("Vous ne pouvez pas désactiver, supprimer ni rétrograder votre propre compte.")
+        if action == "role":
+            nw_users.set_role(username, request.form.get("role", ""), actor=current_user.username)
+        elif action == "password":
+            nw_users.set_password(username, request.form.get("password", ""), actor=current_user.username)
+        elif action in ("disable", "enable"):
+            nw_users.set_disabled(username, action == "disable", actor=current_user.username)
+        elif action == "delete":
+            nw_users.delete_user(username, actor=current_user.username)
+        else:
+            raise ValueError("Action inconnue.")
+        flash(f"Compte « {username} » mis à jour.", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("admin_users"))
 
 
 # ============================================================
