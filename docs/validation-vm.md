@@ -93,6 +93,26 @@ Si un point échoue ici, **s'arrêter** et remonter : `docker compose config`,
 Si la restauration ES échoue : `curl -s localhost:9200/_snapshot/netwatch/_all | python3 -m json.tool | head -40`
 et `docker compose logs --tail 50 elasticsearch`.
 
+### Résultat § 2 — 28/09/2026, `netwatch-test` (installation à blanc du matin)
+
+| Point | Résultat |
+|---|---|
+| `make backup` (1ᵉʳ essai) | ⚠ archive 1,6 Mo en 11 s, volumes et NetBox ✓, **mais pas de snapshot Elasticsearch** : le volume `es-snapshots` est créé `root:root` alors qu'ES tourne en uid 1000 → « path is not accessible on master node ». `alpine:3.20` téléchargée à la volée (impossible hors ligne). Corrigé (`f315a9b`) : chown du dépôt avant enregistrement, alpine pré-tirée par `install.sh`. |
+| `make backup` (après correctif) | ✅ 2,3 Mo en 11 s : configuration, 9 volumes, `netbox.sql.gz`, **snapshot ES (19 index)**, `manifest.txt` |
+| `make backup-config` | ✅ 8 Ko, quelques secondes |
+| Restauration config seule | ✅ `.env.bak-<date>` créé, portail redémarré, `diff .env .env.bak` vide |
+| Restauration complète (1ᵉʳ essai) | ❌ ES refuse le dépôt (« disabled to prevent data corruption » : contenu changé sous lui), `KeyError` → **script sorti avec la stack à 2 conteneurs**, hostgroup « A-SUPPRIMER » (créé après la sauvegarde) toujours présent. Corrigé (`0e19720`) : dépôt supprimé puis ré-enregistré, snapshot vérifié, `trap ERR` qui relance la stack, `portal/data/*.json` remplacé par l'archive. |
+| Restauration complète (après correctif) | ✅ **61 s** : config ✓, 9 volumes ✓, NetBox ✓, ES snapshot 19 index ✓, stack redémarrée + setup-es, portail redémarré. Trace « A-SUPPRIMER » disparue, mêmes 19 index, 23/23 conteneurs, login portail avec le mot de passe d'avant, `/grafana/` 200 via la session. |
+
+### Résultat § 4 — 28/09/2026
+
+| Point | Résultat |
+|---|---|
+| `git checkout HEAD~2` puis `scripts/upgrade.sh origin/main` | ✅ **13 s** : sauvegarde config (8 Ko), code `8267e81 → 0e19720`, dépendances, images, `up -d`, setup-es / netflow / data views ✓, portail redémarré, liste des commits, commande de retour arrière |
+| Index perdus | aucun (19 avant / 19 après) |
+| Branche après mise à jour | `main` |
+| Défaut | le health de fin s'exécute avant que le portail ne soit revenu (« Portail Flask HTTP 000 ») → attente ajoutée. Sans tag `vX.Y.Z`, la cible automatique est `origin/main` (le glob attrapait `v2-before-redesign`, corrigé `f315a9b`). |
+
 ## 3. Point d'entrée HTTPS unique (40 min)
 
 C'est le chantier le **moins sûr** : les sous-chemins de chaque outil n'ont jamais tourné.

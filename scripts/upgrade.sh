@@ -82,6 +82,8 @@ else
   make -s portal >/dev/null 2>&1 && ok "portail redémarré" || warn "portail non redémarré : make portal"
 fi
 
+# Le portail vient d'être relancé : lui laisser le temps de répondre avant le health (sinon « HTTP 000 » à tort)
+for _ in $(seq 1 15); do curl -sf -o /dev/null "${NETWATCH_FLASK_URL:-http://localhost:5050}/login" 2>/dev/null && break; sleep 2; done
 bash scripts/health-check.sh --no-color || true
 
 echo
