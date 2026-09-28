@@ -1,0 +1,41 @@
+name: "Demander un pilote"
+description: "Une sonde chez vous, 3 semaines, sur un périmètre non instrumenté — critères de succès fixés avant d'installer"
+title: "[pilote] "
+labels: ["pilote"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Le pilote est **gratuit**, en édition Community, avec un point d'étape par semaine et un retour écrit à la fin. Vous exploitez, nous accompagnons ; aucune donnée ne nous est transmise.
+  - type: input
+    id: orga
+    attributes:
+      label: "Organisation (type, taille, nombre de sites)"
+    validations:
+      required: true
+  - type: textarea
+    id: perimetre
+    attributes:
+      label: "Le périmètre que vous voulez instrumenter"
+      placeholder: "Une agence de 40 postes non couverte par la supervision centrale ; le VLAN serveurs d'un site secondaire ; un lab…"
+    validations:
+      required: true
+  - type: textarea
+    id: succes
+    attributes:
+      label: "À quoi vous verrez que le pilote a réussi"
+      placeholder: "Je vois les flux et les temps de réponse de l'ERP en moins d'une journée ; je qualifie un incident de lenteur plus vite ; j'ai un rapport à montrer"
+    validations:
+      required: true
+  - type: dropdown
+    id: moyens
+    attributes:
+      label: "Moyens disponibles"
+      multiple: true
+      options: ["Une VM Ubuntu (4 vCPU / 16 Go)", "Un port SPAN ou TAP", "Export NetFlow / IPFIX depuis un équipement", "Un inventaire IPAM (NetBox ou export)", "Rien de tout ça pour l'instant"]
+  - type: input
+    id: contact
+    attributes:
+      label: "Comment vous joindre (e-mail ou autre)"
+    validations:
+      required: true

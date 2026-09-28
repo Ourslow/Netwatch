@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: "Documentation et parcours de démo"
+    url: https://github.com/Ourslow/Netwatch#readme
+    about: "README, installation en une commande, parcours de démo, troubleshooting"
+  - name: "Site produit"
+    url: https://ourslow.github.io/Netwatch/
+    about: "Présentation, éditions, installation"

@@ -1,0 +1,48 @@
+name: "Rejoindre la bêta Pro"
+description: "Tester les fonctions Pro (IA locale, rapports, conformité, intégrations) sur votre sonde, avec un accompagnement direct"
+title: "[bêta Pro] "
+labels: ["beta-pro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de votre intérêt. La bêta Pro est **gratuite pendant sa durée** : vous utilisez l'édition Community (qui contient aujourd'hui tout le code), on active ensemble les fonctions Pro, et vous nous dites ce qui manque. En échange : un retour écrit à mi-parcours et à la fin. Aucune donnée réseau ne nous est transmise.
+  - type: input
+    id: orga
+    attributes:
+      label: "Organisation (type, taille)"
+      placeholder: "PME industrielle, 180 postes, 2 sites / MSP, 12 clients"
+    validations:
+      required: true
+  - type: dropdown
+    id: profil
+    attributes:
+      label: "Vous êtes"
+      options: ["DSI / responsable informatique", "Administrateur réseau / système", "MSP / intégrateur", "RSSI / consultant sécurité", "Autre"]
+    validations:
+      required: true
+  - type: textarea
+    id: besoin
+    attributes:
+      label: "Ce que vous attendez de la sonde"
+      placeholder: "Voir ce qui passe sur le réseau, expliquer les alertes à ma direction, justifier les lenteurs de l'ERP…"
+    validations:
+      required: true
+  - type: dropdown
+    id: etat
+    attributes:
+      label: "Où en êtes-vous"
+      options: ["Pas encore installée", "Installée, édition Community", "Installée, fonctions Pro déjà activées"]
+    validations:
+      required: true
+  - type: textarea
+    id: infra
+    attributes:
+      label: "Environnement (facultatif)"
+      placeholder: "VM Ubuntu 24.04 4 vCPU/16 Go, port SPAN sur le cœur, ~200 postes, NetFlow disponible sur le routeur"
+  - type: input
+    id: contact
+    attributes:
+      label: "Comment vous joindre (e-mail ou autre)"
+    validations:
+      required: true
