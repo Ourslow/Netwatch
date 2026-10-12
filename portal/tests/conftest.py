@@ -43,6 +43,11 @@ import pytest  # noqa: E402
 
 from netwatch import hostgroups, thresholds, dashboard_layout, users, license as nw_license  # noqa: E402
 
+try:   # extension Pro (pro/ du dépôt) : magasin de comptes nominatifs
+    from netwatch_pro import rbac  # noqa: E402
+except ModuleNotFoundError:
+    rbac = None
+
 
 @pytest.fixture(autouse=True)
 def data_dir(tmp_path, monkeypatch):
@@ -58,8 +63,10 @@ def data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(dashboard_layout, "DATA_DIR", str(d))
     monkeypatch.setattr(dashboard_layout, "LAYOUT_PATH", str(d / "dashboard_layout.json"))
     monkeypatch.setattr(users, "DATA_DIR", str(d))
-    monkeypatch.setattr(users, "USERS_PATH", str(d / "users.json"))
     monkeypatch.setattr(users, "AUTH_LOG_PATH", str(d / "auth.log"))
+    if rbac is not None:
+        monkeypatch.setattr(rbac, "DATA_DIR", str(d))
+        monkeypatch.setattr(rbac, "USERS_PATH", str(d / "users.json"))
     monkeypatch.setattr(nw_license, "DATA_DIR", str(d))
     monkeypatch.setattr(nw_license, "LICENSE_FILE", str(d / "license.key"))
     return d

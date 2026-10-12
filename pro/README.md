@@ -13,7 +13,12 @@ pro/netwatch_pro/
   llmops.py          agrégation des appels IA (page Statut)
   reports.py         /reports, /api/reports/generate, /reports/download/<pdf>
   compliance.py      /compliance — NIST CSF 2.0, ANSSI, ISO 27001 (NIS2 vient du portail)
-  templates/pro/     reports.html, compliance.html, _status_llmops.html
+  rbac.py            magasin de comptes nominatifs (users.json) enregistré auprès du portail ; /admin/users
+  templates/pro/     reports.html, compliance.html, admin_users.html, _status_llmops.html
+pro/scripts/
+  generate-report-pdf.py   rapport exécutif en PDF (appelé par reports.py, n8n ou cron)
+  itsm-sync.py             poussée des tickets YAML vers ServiceNow / Jira (docs/itsm-setup.md)
+  n8n-servicenow.json, n8n-jira.json   workflows n8n correspondants
 ```
 
 Règles :

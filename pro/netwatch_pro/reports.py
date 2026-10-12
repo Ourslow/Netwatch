@@ -1,7 +1,7 @@
 """
 Rapports PDF planifiables (édition Pro) — historique, génération à la demande
 (bouton du portail ou n8n), téléchargement. La génération appelle
-scripts/automation/generate-report-pdf.py du dépôt, qui imprime la page
+pro/scripts/generate-report-pdf.py, qui imprime la page
 /report (Community) ; les PDF vont dans reports/ à la racine.
 """
 import json
@@ -43,7 +43,7 @@ def register(bp, api):
     def api_reports_generate():
         """Déclenche generate-report-pdf.py à la demande (bouton portail ou n8n)."""
         root = _root()
-        script = os.path.join(root, "scripts", "automation", "generate-report-pdf.py")
+        script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "generate-report-pdf.py")
         if not os.path.isfile(script):
             return jsonify({"error": "generate-report-pdf.py introuvable"}), 503
         try:

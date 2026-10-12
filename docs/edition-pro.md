@@ -64,19 +64,22 @@ Community les appellent directement et n'ont pas à savoir qui les sert.
 | Fonction (`PRO_FEATURES`) | Module | Contenu |
 |---|---|---|
 | `ia` | `ia.py`, `llm_client.py`, `llmops.py` | explication d'alertes, résumé exécutif, narration PCAP (Ollama, 100 % on-prem), carte LLMOps de la page Statut, variable `ai_enabled` |
-| `reports` | `reports.py`, `templates/pro/reports.html` | historique, génération à la demande (appelle `scripts/automation/generate-report-pdf.py`), téléchargement |
+| `reports` | `reports.py`, `templates/pro/reports.html`, `pro/scripts/generate-report-pdf.py` | historique, génération à la demande ou planifiée (n8n, cron), téléchargement |
 | `compliance` | `compliance.py`, `templates/pro/compliance.html` | NIST CSF 2.0, ANSSI, ISO 27001 ; NIS2 reste dans `netwatch/referentials.py` (Community, utilisé par le rapport exécutif) |
+| `rbac` | `rbac.py`, `templates/pro/admin_users.html` | magasin de comptes nominatifs (`portal/data/users.json`, scrypt), rôles lecture / opérateur / administrateur, page *Comptes et rôles* |
+| `itsm` | `pro/scripts/itsm-sync.py`, `n8n-servicenow.json`, `n8n-jira.json` | synchronisation des tickets vers ServiceNow / Jira (`docs/itsm-setup.md`) |
 
-Restent côté Community pour l'instant, à traiter dans une seconde passe :
+Côté Community, ce qui est partagé par les deux éditions et reste dans `portal/` :
 
-- **Comptes et rôles** (`rbac`) : `netwatch/users.py` porte aussi l'authentification du compte
-  d'amorçage, partagée par les deux éditions. Découpage prévu : Community = un compte
-  administrateur ; Pro = comptes nominatifs, rôles, journal. Bridage par licence déjà possible.
-- **ITSM** (`itsm`) et les scripts de rapports planifiés : `scripts/automation/itsm-sync.py`,
-  `create-ticket.py`, `escalade.py`, `generate-report-pdf.py`, `weekly-report.py`,
-  `daily-npm-report.py` et les workflows n8n Jira / ServiceNow / rapports. Ce sont des scripts
-  hors portail ; ils iront dans `pro/scripts/` avec leurs workflows, et `docs/itsm-setup.md`
-  / `docs/n8n-setup.md` suivront.
+- **Authentification** (`netwatch/users.py`) : compte d'amorçage `PORTAL_USERNAME` /
+  `PORTAL_PASSWORD` (administrateur), rôles, garde-fou « rôle lecture » (`before_request`),
+  journal `portal/data/auth.log`, `/auth/check` pour Caddy / Grafana. L'extension y enregistre son
+  magasin de comptes (`api.set_user_store`) : les comptes stockés sont interrogés en premier, le
+  compte d'amorçage reste un secours. Sans extension : un seul compte, administrateur.
+- **Tickets locaux et automatisations** (`scripts/automation/`) : `create-ticket.py` (tickets YAML
+  dans `tickets/drafts/`, utilisé par `npm-alerts.py`, `iface-saturation.py`, `escalade.py`),
+  `weekly-report.py`, `daily-npm-report.py` et leurs workflows n8n. Seule la **poussée vers un
+  ITSM** est Pro.
 - **Support** (`support`) : pas de code, c'est le contrat.
 
 ## 5. Déploiement chez un client (après le split)
@@ -100,7 +103,8 @@ déclare la version minimale du portail Community qu'elle requiert (à ajouter d
 1. `git subtree split --prefix=pro -b pro-export` puis push de cette branche dans le dépôt privé
    `netwatch-pro` (historique conservé).
 2. Dans ce dépôt : `git rm -r pro/`, le test `test_intree_extension_is_loaded` devient un test de
-   l'absence (Community pure), `make lint` et la CI retirent `pro` de leurs chemins.
+   l'absence (Community pure), `test_pro_rbac.py` part avec le paquet, `pytest.ini` / `make lint` /
+   la CI retirent `pro` de leurs chemins.
 3. CI du dépôt privé : les mêmes tests que `portal/tests/test_extensions.py`, lancés contre un
    checkout du dépôt Community à la version minimale supportée.
 4. `docs/licence.md`, le site et ce document : remplacer « pendant la validation » par la
@@ -111,6 +115,8 @@ déclare la version minimale du portail Community qu'elle requiert (à ajouter d
 - `portal/tests/test_extensions.py` : chargeur (désactivé, absent, paquet factice, paquet cassé),
   extension `pro/` du dépôt (menu, palette, routes, carte de statut).
 - `portal/tests/test_license.py` : bridage 402 des routes Pro quand `LICENSE_ENFORCE=true`.
+- `portal/tests/test_pro_rbac.py` : magasin de comptes de l'extension (création, rôles, garde-fous,
+  journal) ; `test_community_auth_without_user_store` : compte d'amorçage seul.
 - `portal/tests/test_csp.py` : les templates de `pro/` suivent les mêmes règles CSP (nonce, pas de
   gestionnaire inline).
 - `make lint` et la CI passent `ruff` sur `pro/`.

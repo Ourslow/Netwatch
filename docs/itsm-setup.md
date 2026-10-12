@@ -1,8 +1,8 @@
 # ITSM Setup — ServiceNow + JIRA via n8n
 
-Guide de configuration de l'intégration ITSM de NetWatch.  
-Script : `scripts/automation/itsm-sync.py`  
-Workflows n8n : `scripts/automation/n8n-servicenow.json` / `n8n-jira.json`
+Guide de configuration de l'intégration ITSM de NetWatch (**édition Pro**, voir `edition-pro.md`).  
+Script : `pro/scripts/itsm-sync.py`  
+Workflows n8n : `pro/scripts/n8n-servicenow.json` / `n8n-jira.json`
 
 ---
 
@@ -146,7 +146,7 @@ JIRA_PROJECT_KEY=NOC
 ### 2. Importer le workflow ServiceNow
 
 1. Dans n8n : **Workflows > Import from file**
-2. Sélectionner `scripts/automation/n8n-servicenow.json`
+2. Sélectionner `pro/scripts/n8n-servicenow.json`
 3. Activer le workflow (bouton toggle en haut à droite)
 
 Le workflow :
@@ -158,7 +158,7 @@ Le workflow :
 ### 3. Importer le workflow JIRA
 
 1. **Workflows > Import from file**
-2. Sélectionner `scripts/automation/n8n-jira.json`
+2. Sélectionner `pro/scripts/n8n-jira.json`
 3. Activer le workflow
 
 Le workflow :
@@ -174,11 +174,11 @@ Dans n8n : **Executions** — chaque run affiche stdout, le résultat du parsing
 
 ```bash
 # Tester sans créer de tickets ITSM
-python3 /home/ourslow/code/netwatch/scripts/automation/itsm-sync.py \
+python3 /home/ourslow/code/netwatch/pro/scripts/itsm-sync.py \
   --backend servicenow --dry-run --verbose
 
 # Lister les tickets en attente (aucune action ITSM)
-python3 /home/ourslow/code/netwatch/scripts/automation/itsm-sync.py \
+python3 /home/ourslow/code/netwatch/pro/scripts/itsm-sync.py \
   --backend none --verbose
 ```
 

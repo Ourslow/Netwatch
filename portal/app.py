@@ -703,53 +703,8 @@ def auth_check():
 
 
 # ============================================================
-# Comptes et rôles (admin)
+# Licence (admin) — les comptes nominatifs (/admin/users) sont dans l'extension Pro
 # ============================================================
-
-@app.route("/admin/users")
-@login_required
-@admin_required
-def admin_users():
-    return render_template("admin_users.html", users=nw_users.list_users(), events=nw_users.list_events(50),
-                           roles=nw_users.ROLES, role_labels=nw_users.ROLE_LABELS, min_password=nw_users.MIN_PASSWORD)
-
-
-@app.route("/admin/users", methods=["POST"])
-@login_required
-@admin_required
-def admin_users_create():
-    try:
-        u = nw_users.create_user(request.form.get("username", "").strip(), request.form.get("password", ""),
-                                 request.form.get("role", "viewer"), actor=current_user.username)
-        flash(f"Compte « {u['username']} » créé ({nw_users.ROLE_LABELS[u['role']]}).", "success")
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    return redirect(url_for("admin_users"))
-
-
-@app.route("/admin/users/<username>", methods=["POST"])
-@login_required
-@admin_required
-def admin_users_update(username):
-    action = request.form.get("action", "")
-    try:
-        if action in ("disable", "delete", "role") and username == current_user.username:
-            raise ValueError("Vous ne pouvez pas désactiver, supprimer ni rétrograder votre propre compte.")
-        if action == "role":
-            nw_users.set_role(username, request.form.get("role", ""), actor=current_user.username)
-        elif action == "password":
-            nw_users.set_password(username, request.form.get("password", ""), actor=current_user.username)
-        elif action in ("disable", "enable"):
-            nw_users.set_disabled(username, action == "disable", actor=current_user.username)
-        elif action == "delete":
-            nw_users.delete_user(username, actor=current_user.username)
-        else:
-            raise ValueError("Action inconnue.")
-        flash(f"Compte « {username} » mis à jour.", "success")
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    return redirect(url_for("admin_users"))
-
 
 @app.route("/admin/license")
 @login_required

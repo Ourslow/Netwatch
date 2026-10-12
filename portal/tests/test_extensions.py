@@ -33,13 +33,16 @@ def _fake_package(tmp_path, body):
 
 
 @pytest.fixture(autouse=True)
-def _restore_state():
-    """Chaque test repart de l'état réel (extension pro/ chargée par app.py) après son passage."""
+def _restore_state(app_module):
+    """Chaque test repart de l'état réel (extension pro/ chargée par app.py — importé d'abord,
+    sinon on sauverait un état vide) et le retrouve après son passage, magasin de comptes compris."""
+    from netwatch import users as nw_users
     saved = dict(nw_extensions.STATE)
-    saved_api = nw_extensions._API
+    saved_api, saved_store = nw_extensions._API, nw_users.store()
     yield
     nw_extensions.STATE.update(saved)
     nw_extensions._API = saved_api
+    nw_users.set_store(saved_store)
 
 
 @pytest.fixture
@@ -128,10 +131,12 @@ def test_fake_package_registers_everything(tmp_path, _forget_fake_package):
 
 def test_broken_package_does_not_prevent_startup(tmp_path, _forget_fake_package):
     import sys
+    from netwatch import users as nw_users
     sys.modules.pop("netwatch_pro", None)
     path = _fake_package(tmp_path, '''
         def register(api):
             api.add_nav("report", "Moitié", "pro.x", "bi-x")
+            api.set_user_store(object())
             raise RuntimeError("boum")
     ''')
     app = Flask("x")
@@ -139,6 +144,7 @@ def test_broken_package_does_not_prevent_startup(tmp_path, _forget_fake_package)
     st = nw_extensions.STATE
     assert st["loaded"] is False and "RuntimeError: boum" in st["error"]
     assert api.nav["report"] == []   # rien de ce qu'elle a déclaré à moitié ne fuit
+    assert nw_users.store() is None  # ni son magasin de comptes
     assert "erreur de chargement" in nw_extensions.describe()
     assert app.test_client().get("/nope").status_code == 404
 
@@ -155,7 +161,7 @@ def test_unknown_nav_section_is_refused():
 def test_intree_extension_is_loaded(app_module):
     st = nw_extensions.STATE
     assert st["loaded"] and st["name"] == "netwatch-pro"
-    assert set(st["features"]) == {"ia", "reports", "compliance"}
+    assert set(st["features"]) == {"ia", "reports", "compliance", "rbac"}
     assert "pro/" in st["source"]
 
 
@@ -177,3 +183,15 @@ def test_status_page_renders_extension_cards(logged_in, monkeypatch):
     html = resp.get_data(as_text=True)
     assert "netwatch-pro" in html          # ligne « Extension Pro » de la carte Licence
     assert "Assistant IA — usage" not in html   # édition Core : aucun appel IA journalisé → carte masquée
+
+
+def test_community_auth_without_user_store(logged_in, monkeypatch):
+    """Sans extension : seul le compte d'amorçage du .env existe, et il reste administrateur."""
+    from netwatch import users as nw_users
+    monkeypatch.setattr(nw_users, "_STORE", None)
+    assert nw_users.verify("admin", "test-password")["role"] == "admin"
+    assert nw_users.verify("admin", "faux") is None and nw_users.verify("autre", "test-password") is None
+    assert nw_users.list_users() == [nw_users.env_admin()]
+    assert nw_users.get_user("autre") is None
+    nw_users.touch_login("admin")   # sans magasin : rien à écrire, pas d'erreur
+    assert logged_in.get("/auth/check").headers["X-Webauth-User"] == "admin"

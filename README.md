@@ -645,7 +645,7 @@ Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log
 | IA locale | Ollama / Mistral | — |
 | IPS collaboratif | CrowdSec | latest |
 | Automatisation alertes | n8n | 2.x |
-| Intégration ITSM | itsm-sync.py (ServiceNow + JIRA) | — |
+| Intégration ITSM (Pro) | `pro/scripts/itsm-sync.py` (ServiceNow + JIRA) | — |
 | Graphe IOC | NetworkX + elasticsearch-py | 3.x / 8.x |
 | Orchestration | Docker Compose | v2 |
 | OS cible | Ubuntu | 22.04 LTS |
@@ -676,7 +676,7 @@ Planifier : `0 2 * * * cd /opt/netwatch && make backup KEEP=7 >> logs/backup.log
 | **Dictionnaire applicatif** | **Mapping SNI/domaine → app métier (Zeek ssl.log)** | Riverbed AppFlow (1300+ sign. DPI) · Netscout DPI |
 | **Ratio zero-window TCP** | **`conn.log.history` → ratio + top IPs** | Netscout nGeniusONE TCP/IP Triage · Riverbed |
 | Corrélation multi-sources | Dashboard multi-moteurs | nGeniusONE Service Triage |
-| Intégration ITSM | ServiceNow + JIRA (itsm-sync.py) | Intégrations natives |
+| Intégration ITSM | ServiceNow + JIRA (édition Pro) | Intégrations natives |
 | Rapport conformité | PDF automatique (Flask) | SIEM intégré |
 | Coût | **Gratuit** | 10 000 – 100 000+ €/an |
 
@@ -715,10 +715,13 @@ netwatch/
 │   │   └── pcap-tcp-analysis.py    # Analyse conversations TCP (tshark) par point d'écoute
 │   └── automation/
 │       ├── create-ticket.py        # Création YAML ticket depuis alerte ES (CLI)
-│       ├── generate-report-pdf.py  # Génération rapport PDF planifiable + exports CSV
 │       ├── n8n-alertes-teams.json  # Workflow n8n alertes → Teams
 │       ├── n8n-auto-tickets.json   # Workflow n8n alertes critiques → tickets
 │       └── deploy-n8n-workflow.sh  # Import auto workflow via API n8n
+│
+├── pro/                            # Édition Pro (docs/edition-pro.md) — paquet chargé par le portail
+│   ├── netwatch_pro/               # IA, rapports PDF, conformité, comptes et rôles
+│   └── scripts/                    # generate-report-pdf.py, itsm-sync.py, workflows n8n ITSM
 │
 ├── snort/                          # IDS signatures MITRE
 │   ├── Dockerfile                  # Build from source + libdaq + tcmalloc

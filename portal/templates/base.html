@@ -223,11 +223,6 @@
       </li>
       {% if current_user.is_authenticated and current_user.role == 'admin' %}
       <li class="nav-item">
-        <a href="{{ url_for('admin_users') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin_users') %}active{% endif %}">
-          <i class="bi bi-people"></i> <span data-i18n="nav_users">Comptes et rôles</span>
-        </a>
-      </li>
-      <li class="nav-item">
         <a href="{{ url_for('admin_license') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin_license') %}active{% endif %}">
           <i class="bi bi-award"></i> <span data-i18n="nav_license">Licence</span>
         </a>

@@ -79,6 +79,11 @@ class ExtensionAPI:
         """Variable de template (globale) — ex. ai_enabled."""
         self.globals[name] = value
 
+    def set_user_store(self, store):
+        """Comptes nominatifs : magasin interrogé avant le compte d'amorçage (netwatch.users)."""
+        from netwatch import users as nw_users
+        nw_users.set_store(store)
+
     # ── Lecture (portail) ─────────────────────────────────────────────────
     def status_extra(self):
         """Appelle chaque fournisseur de statut ; une erreur n'en masque pas un autre."""
@@ -156,6 +161,7 @@ def load(app, *, login_required, admin_required, pro_required, config, enabled=N
             # On repart d'un objet vierge : rien de ce que l'extension a pu déclarer à moitié ne doit fuir.
             api_obj = ExtensionAPI(app, login_required=login_required, admin_required=admin_required,
                                    pro_required=pro_required, config=config)
+            api_obj.set_user_store(None)
             _API = api_obj
     else:
         STATE["source"] = "désactivée (NETWATCH_PRO=off)"

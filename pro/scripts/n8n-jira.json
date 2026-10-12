@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "command": "python3 /home/ourslow/code/netwatch/scripts/automation/itsm-sync.py --backend jira --verbose 2>&1; echo \"EXIT:$?\""
+        "command": "python3 /home/ourslow/code/netwatch/pro/scripts/itsm-sync.py --backend jira --verbose 2>&1; echo \"EXIT:$?\""
       },
       "id": "f8a9b0c1-0002-0002-0002-000000000002",
       "name": "Exécuter itsm-sync.py (JIRA)",

@@ -1,7 +1,8 @@
-"""Comptes nominatifs et rôles : compte d'amorçage, création, lecture seule, opérateur, admin, journal."""
+"""Comptes nominatifs et rôles (extension Pro, netwatch_pro.rbac) : compte d'amorçage, création, lecture seule, opérateur, admin, journal."""
 import json
 
 from netwatch import users as nw_users
+from netwatch_pro import rbac
 
 PW = "MotDePasse-Test-123"
 
@@ -27,7 +28,7 @@ def test_admin_creates_user_and_viewer_is_read_only(logged_in, app):
     client = app.test_client()
     u = _create(logged_in, "lecture", "viewer")
     assert u and u["role"] == "viewer" and "password_hash" not in u
-    assert json.load(open(nw_users.USERS_PATH, encoding="utf-8"))["users"][0]["password_hash"].startswith("scrypt:")
+    assert json.load(open(rbac.USERS_PATH, encoding="utf-8"))["users"][0]["password_hash"].startswith("scrypt:")
 
     assert _login(client, "lecture", PW).status_code == 302
     assert client.get("/hostgroups").status_code == 200
@@ -78,9 +79,9 @@ def test_disabled_user_cannot_login_and_last_admin_is_protected(logged_in, app, 
     import pytest
     import config
     monkeypatch.setattr(config, "PORTAL_PASSWORD", "")
-    assert nw_users.active_admin_count() == 1
-    for call in (lambda: nw_users.set_role("second", "viewer"), lambda: nw_users.set_disabled("second", True),
-                 lambda: nw_users.delete_user("second")):
+    assert rbac.active_admin_count() == 1
+    for call in (lambda: rbac.set_role("second", "viewer"), lambda: rbac.set_disabled("second", True),
+                 lambda: rbac.delete_user("second")):
         with pytest.raises(ValueError, match="dernier administrateur"):
             call()
     assert nw_users.get_user("second")["role"] == "admin" and not nw_users.get_user("second")["disabled"]
