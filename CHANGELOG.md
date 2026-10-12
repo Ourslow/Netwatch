@@ -40,6 +40,18 @@ La version courante est dans `VERSION` ; `scripts/upgrade.sh` affiche les commit
   (`ES_RETENTION_NETFLOW_DAYS`), `netwatch-detections` (beacons/autoblock, `ES_RETENTION_DETECTIONS_DAYS`
   90 j) ; index existants rattachés ; ligne « Rétention ES » dans `make health` ; `make arkime-expire`.
 
+- Découpage Community / Pro : les fonctions Pro (assistant IA, rapports PDF, conformité
+  multi-référentiels) sortent de `portal/app.py` vers un paquet séparé `netwatch_pro`
+  (`pro/netwatch_pro/`, blueprint `pro`, templates `pro/`), chargé au démarrage par
+  `portal/netwatch/extensions.py` s'il est présent (`NETWATCH_PRO_PATH`, `pro/` du dépôt, ou
+  paquet installé ; `NETWATCH_PRO=off` le désactive). Contrat d'extension : blueprints, entrées de
+  menu et de palette, cartes de la page Statut, variables de template, décorateurs du portail.
+  Absent ou cassé → édition Community, le portail démarre quand même. NIS2 reste dans
+  `netwatch/referentials.py` (rapport exécutif Community). État visible sur la page Statut et
+  dans `make license-status`. Le paquet reste dans le dépôt jusqu'à la fin de la validation
+  terrain ; procédure de split, déploiement client et reste à découper (comptes et rôles, ITSM,
+  scripts planifiés) dans `docs/edition-pro.md`.
+
 ### Corrigé
 - La politique ILM `netflow-*` attendait un rollover sur un alias inexistant : les index restaient
   bloqués à `check-rollover-ready` et n'étaient jamais supprimés. Plus de rollover (index journaliers),

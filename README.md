@@ -434,7 +434,7 @@ SLACK_WEBHOOK_URL=                             # Optionnel
 
 > **Deux éditions, un seul dépôt.** *Core* : `COMPOSE_PROFILES` et `OLLAMA_URL` vides — le conteneur Ollama n'est jamais lancé, le portail masque l'explication d'alertes, la narration PCAP, et le résumé exécutif. *IA* : `COMPOSE_PROFILES=ia` + `OLLAMA_URL` + `make llm-pull` une fois (prévoir 4-5 Go de RAM de plus avec Mistral). Passer de l'une à l'autre ne touche à aucune donnée.
 
-> **Community / Pro.** L'édition Pro (assistant IA, rapports planifiables, conformité, ITSM, comptes et rôles, support) s'active par une licence signée, vérifiée **hors ligne** depuis la page *Licence* du portail — aucun appel sortant. `LICENSE_ENFORCE=false` par défaut : pendant la phase de validation, tout reste disponible et la licence est seulement affichée. Émission, renouvellement, rotation des clés : [`docs/licence.md`](docs/licence.md).
+> **Community / Pro.** L'édition Pro (assistant IA, rapports planifiables, conformité, ITSM, comptes et rôles, support) s'active par une licence signée, vérifiée **hors ligne** depuis la page *Licence* du portail — aucun appel sortant. `LICENSE_ENFORCE=false` par défaut : pendant la phase de validation, tout reste disponible et la licence est seulement affichée. Émission, renouvellement, rotation des clés : [`docs/licence.md`](docs/licence.md). Le code Pro est un paquet séparé (`netwatch_pro`, dans `pro/` pendant la validation) que le portail charge s'il est présent — sans lui, le portail est l'édition Community : [`docs/edition-pro.md`](docs/edition-pro.md).
 
 ### 4. Permissions Filebeat
 

@@ -23,6 +23,8 @@ NW1.<kid>.<charge utile base64url>.<signature base64url>
 
 Fonctions et clés : `ia`, `reports`, `compliance`, `itsm`, `rbac`, `support`. Une licence sans `features` couvre tout.
 
+Le code de ces fonctions est un paquet séparé (`netwatch_pro`, chargé par le portail s'il est présent) : découpage, contrat d'extension et déploiement dans [`edition-pro.md`](edition-pro.md).
+
 ## Côté éditeur
 
 L'outil `scripts/license/netwatch-license.py` (dépend de `cryptography`) :

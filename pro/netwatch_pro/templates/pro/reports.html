@@ -46,7 +46,7 @@
           </td>
           <td class="text-end">
             {% if e.status == 'finished' %}
-            <a href="{{ url_for('reports_download', filename=e.filename) }}" class="btn btn-sm btn-outline-success">
+            <a href="{{ url_for('pro.reports_download', filename=e.filename) }}" class="btn btn-sm btn-outline-success">
               <i class="bi bi-download me-1"></i>PDF
             </a>
             {% endif %}

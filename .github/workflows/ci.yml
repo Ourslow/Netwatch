@@ -18,7 +18,7 @@ jobs:
           cache-dependency-path: portal/requirements.txt
       - run: pip install -r portal/requirements.txt pytest ruff
       - name: Lint (ruff)
-        run: ruff check portal scripts simulate-traffic.py
+        run: ruff check portal pro scripts simulate-traffic.py
       - name: Tests portail + conventions
         run: pytest
       - name: Makefile — les cibles se parsent (make -n)

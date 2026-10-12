@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
+PRO_TEMPLATES = Path(__file__).resolve().parents[2] / "pro" / "netwatch_pro" / "templates"
 
 
 def _csp(resp):
@@ -62,7 +63,7 @@ def test_csp_report_endpoint_is_public_and_tolerant(client):
 
 def test_templates_have_no_inline_handlers_and_scripts_carry_nonce():
     """Interdits par la CSP : onclick= & co ; obligatoire : nonce sur chaque <script> inline exécutable."""
-    for tpl in sorted(TEMPLATES.glob("*.html")):
+    for tpl in sorted(TEMPLATES.glob("*.html")) + sorted(PRO_TEMPLATES.rglob("*.html")):
         text = tpl.read_text(encoding="utf-8")
         for i, line in enumerate(text.splitlines(), 1):
             assert not re.search(r'\son[a-z]+="', line), f"{tpl.name}:{i} — gestionnaire inline"

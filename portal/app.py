@@ -26,16 +26,16 @@ from proxmox import client as px_client
 from esxi   import client as esxi_client
 from netwatch import health as nw_health
 from netwatch import es_client
-from netwatch import llm_client
 from netwatch import audit as nw_audit
 from netwatch import incidents as nw_incidents
 from netwatch import hostgroups as nw_hostgroups
 from netwatch.experience import app_dictionary as nw_app_dictionary
-from netwatch import llmops as nw_llmops
 from netwatch import thresholds as nw_thresholds
 from netwatch import dashboard_layout as nw_dashboard_layout
 from netwatch import probes as nw_probes
 from netwatch import netbox as nw_netbox
+from netwatch import extensions as nw_extensions
+from netwatch.referentials import NIS2_MATRIX
 
 # ============================================================
 # Données de comparaison (matrice feature × outil) — alignées sur
@@ -161,171 +161,6 @@ COMPARE_MATRIX = [
              "netscout": "Élevée", "gigamon": "Élevée", "riverbed": "Élevée"},
         ],
     },
-]
-
-# ============================================================
-# Matrice NIS2 — mapping mesures techniques NetWatch ↔ article 21.2
-# Couverture : "full" | "partial" | "none" (honnête : NetWatch est un outil
-# de détection/réponse réseau, pas une suite GRC complète)
-# ============================================================
-
-NIS2_MATRIX = [
-    {"ref": "Art. 21.2 (a)", "title": "Analyse des risques & politiques de sécurité des SI",
-     "coverage": "partial",
-     "netwatch": "Visibilité réseau continue (top-talkers, services exposés, GeoIP) et threat intel alimentent l'analyse de risque. NetWatch n'édite pas les politiques elles-mêmes.",
-     "components": ["Dashboards", "Threat Intel", "GeoIP"]},
-    {"ref": "Art. 21.2 (b)", "title": "Gestion des incidents — détection & réponse",
-     "coverage": "full",
-     "netwatch": "Cœur de NetWatch : détection multi-moteurs (Snort 3 + Suricata 7) sur le même trafic, corrélation, mapping MITRE ATT&CK, alerting temps réel et réponse automatique (AutoBlock iptables). Détection de beaconing C2 et de DNS tunneling (RITA-lite).",
-     "components": ["Snort 3", "Suricata 7", "AutoBlock", "beacon-detect", "MITRE ATT&CK", "Grafana alerting"]},
-    {"ref": "Art. 21.2 (c)", "title": "Continuité d'activité & gestion de crise (sauvegarde, PRA)",
-     "coverage": "none",
-     "netwatch": "Hors périmètre : NetWatch ne gère ni sauvegarde ni plan de reprise. Apporte indirectement la supervision de disponibilité pour détecter une indisponibilité de service.",
-     "components": ["Prometheus (disponibilité)"]},
-    {"ref": "Art. 21.2 (d)", "title": "Sécurité de la chaîne d'approvisionnement",
-     "coverage": "partial",
-     "netwatch": "Détecte les communications sortantes suspectes (C2, domaines DGA), fingerprinting JA3/HASSH des clients/serveurs, threat intel sur IoC. Ne couvre pas l'évaluation contractuelle des fournisseurs.",
-     "components": ["JA3/HASSH", "Threat Intel", "beacon-detect"]},
-    {"ref": "Art. 21.2 (e)", "title": "Sécurité acquisition/dév./maintenance & vulnérabilités",
-     "coverage": "partial",
-     "netwatch": "Détecte les tentatives d'exploitation via signatures IDS (Snort community + Suricata ET Open). Ne réalise pas de scan de vulnérabilités ni de gestion du cycle de développement.",
-     "components": ["Snort 3", "Suricata 7 (ET Open)"]},
-    {"ref": "Art. 21.2 (f)", "title": "Évaluation de l'efficacité des mesures",
-     "coverage": "partial",
-     "netwatch": "Dashboards, métriques et rapport exécutif (avec résumé IA) donnent une mesure objective de l'activité de détection et de la posture de sécurité. Pas d'audit de conformité formalisé.",
-     "components": ["Dashboards", "Rapport exécutif", "Assistant IA"]},
-    {"ref": "Art. 21.2 (g)", "title": "Cyber-hygiène & formation",
-     "coverage": "partial",
-     "netwatch": "Met en évidence les mauvaises pratiques (identifiants en clair sur HTTP, TLS obsolète) — support concret de sensibilisation. Ne dispense pas la formation elle-même.",
-     "components": ["Règles NETWATCH custom"]},
-    {"ref": "Art. 21.2 (h)", "title": "Cryptographie & chiffrement",
-     "coverage": "partial",
-     "netwatch": "Détecte le chiffrement faible/obsolète (TLSv1.0, certificats expirés) et l'absence de chiffrement (mots de passe en clair). N'impose pas de politique cryptographique.",
-     "components": ["Zeek SSL/TLS", "Règles TLS custom"]},
-    {"ref": "Art. 21.2 (i)", "title": "Contrôle d'accès & gestion des actifs",
-     "coverage": "partial",
-     "netwatch": "Inventaire passif des actifs et services vus sur le réseau (known-hosts, known-services). Le portail applique lui-même un contrôle d'accès (auth, cookies durcis). Pas de gestion IAM.",
-     "components": ["Zeek known-hosts/services", "Portail (Flask-Login)"]},
-    {"ref": "Art. 21.2 (j)", "title": "MFA & communications sécurisées",
-     "coverage": "none",
-     "netwatch": "Hors périmètre côté SI surveillé. À noter : l'assistant IA et toute la stack sont 100 % on-prem — souveraineté des données, aucune donnée ne sort du SI.",
-     "components": ["—"]},
-]
-
-# NIST Cybersecurity Framework 2.0 — par fonction (NetWatch = NDR → fort sur Detect/Respond)
-NIST_CSF_MATRIX = [
-    {"ref": "GV — Govern", "title": "Gouvernance de la cybersécurité",
-     "coverage": "partial",
-     "netwatch": "Dashboards, métriques et rapport exécutif alimentent le pilotage et la prise de décision. NetWatch n'édite pas la stratégie ni les politiques.",
-     "components": ["Dashboards", "Rapport exécutif"]},
-    {"ref": "ID — Identify", "title": "Connaissance du contexte et des actifs",
-     "coverage": "partial",
-     "netwatch": "Inventaire passif des actifs et services observés sur le réseau (known-hosts/services), threat intel sur IoC. Pas de gestion d'inventaire formelle.",
-     "components": ["Zeek known-hosts/services", "Threat Intel", "GeoIP"]},
-    {"ref": "PR — Protect", "title": "Mesures de protection",
-     "coverage": "partial",
-     "netwatch": "Détecte les faiblesses (crypto obsolète, identifiants en clair) ; le portail applique un contrôle d'accès durci. NetWatch ne protège pas activement (ni pare-feu, ni IAM).",
-     "components": ["Règles TLS custom", "Portail (Flask-Login)"]},
-    {"ref": "DE — Detect", "title": "Détection des événements et anomalies",
-     "coverage": "full",
-     "netwatch": "Cœur de NetWatch : surveillance continue multi-moteurs (Snort + Suricata), détection d'anomalies (beaconing C2, DNS tunneling), corrélation et mapping MITRE ATT&CK.",
-     "components": ["Snort 3", "Suricata 7", "beacon-detect", "MITRE ATT&CK", "Zeek"]},
-    {"ref": "RS — Respond", "title": "Réponse aux incidents",
-     "coverage": "full",
-     "netwatch": "Alerting temps réel, blocage automatique des IP malveillantes (AutoBlock), et assistant IA qui explique chaque alerte pour accélérer l'analyse et la décision.",
-     "components": ["Grafana alerting", "AutoBlock", "Assistant IA"]},
-    {"ref": "RC — Recover", "title": "Reprise après incident",
-     "coverage": "none",
-     "netwatch": "Hors périmètre : NetWatch ne gère pas la restauration ni la reprise d'activité.",
-     "components": ["—"]},
-]
-
-# ANSSI — Guide d'hygiène informatique + recommandations détection (PA-022)
-ANSSI_MATRIX = [
-    {"ref": "Hygiène · journalisation", "title": "Journaliser, analyser et corréler les événements",
-     "coverage": "full",
-     "netwatch": "Logs JSON normalisés des 3 moteurs centralisés dans Elasticsearch, corrélation multi-moteurs et tableaux de bord Grafana — répond directement à l'exigence de journalisation/analyse.",
-     "components": ["Zeek", "Filebeat", "Elasticsearch", "Grafana"]},
-    {"ref": "PA-022 · détection", "title": "Supervision de sécurité & détection des comportements anormaux",
-     "coverage": "full",
-     "netwatch": "Détection par signatures (Snort/Suricata) et comportementale (beaconing, DNS tunneling, scans). Couvre la logique d'une sonde de détection réseau recommandée par l'ANSSI.",
-     "components": ["Snort 3", "Suricata 7", "beacon-detect"]},
-    {"ref": "Hygiène · cartographie", "title": "Connaître le SI et maîtriser les flux réseau",
-     "coverage": "partial",
-     "netwatch": "Cartographie passive des flux, services et destinations externes (GeoIP, top-talkers). N'impose pas le cloisonnement.",
-     "components": ["Zeek", "GeoIP", "Top-talkers"]},
-    {"ref": "Hygiène · incidents", "title": "Gérer les incidents de sécurité",
-     "coverage": "partial",
-     "netwatch": "Détection, alerting et réponse automatique (AutoBlock) + aide à l'analyse par l'IA. Ne formalise pas le processus complet de gestion d'incident.",
-     "components": ["AutoBlock", "Assistant IA"]},
-    {"ref": "Hygiène · chiffrement", "title": "Chiffrer les flux sensibles",
-     "coverage": "partial",
-     "netwatch": "Détecte les protocoles obsolètes (TLSv1.0) et les flux en clair (mots de passe HTTP). N'impose pas le chiffrement.",
-     "components": ["Zeek SSL/TLS", "Règles custom"]},
-    {"ref": "Hygiène · sauvegarde", "title": "Sauvegarder et assurer la continuité",
-     "coverage": "none",
-     "netwatch": "Hors périmètre.",
-     "components": ["—"]},
-    {"ref": "Hygiène · authentification", "title": "Authentification forte (MFA)",
-     "coverage": "none",
-     "netwatch": "Hors périmètre côté SI surveillé.",
-     "components": ["—"]},
-]
-
-# ISO/IEC 27001 / 27002:2022 — contrôles de l'Annexe A pertinents
-ISO27001_MATRIX = [
-    {"ref": "A.5.7", "title": "Renseignement sur les menaces (threat intelligence)",
-     "coverage": "full",
-     "netwatch": "Zeek Intel Framework (watchlists IP/domaines) + signatures ET Open : intègre et exploite le renseignement sur les menaces.",
-     "components": ["Zeek Intel", "Suricata ET Open"]},
-    {"ref": "A.8.15", "title": "Journalisation (logging)",
-     "coverage": "full",
-     "netwatch": "Journalisation centralisée et structurée de l'activité réseau et des détections dans Elasticsearch.",
-     "components": ["Filebeat", "Elasticsearch"]},
-    {"ref": "A.8.16", "title": "Activités de surveillance (monitoring)",
-     "coverage": "full",
-     "netwatch": "Surveillance continue du trafic et des anomalies par les 3 moteurs, dashboards temps réel et alerting.",
-     "components": ["Snort 3", "Suricata 7", "Grafana"]},
-    {"ref": "A.8.20", "title": "Sécurité des réseaux",
-     "coverage": "partial",
-     "netwatch": "Visibilité et détection sur les réseaux ; ne réalise pas la segmentation ni le filtrage actif (hors blocage AutoBlock).",
-     "components": ["Zeek", "AutoBlock"]},
-    {"ref": "A.5.25", "title": "Évaluation et décision sur les événements de sécurité",
-     "coverage": "partial",
-     "netwatch": "Corrélation, scoring de sévérité et triage des alertes ; explication IA pour aider à la décision.",
-     "components": ["Corrélation", "Assistant IA"]},
-    {"ref": "A.5.26", "title": "Réponse aux incidents de sécurité",
-     "coverage": "partial",
-     "netwatch": "Alerting et réponse automatisée (AutoBlock). Ne couvre pas l'ensemble du cycle de gestion d'incident.",
-     "components": ["Grafana alerting", "AutoBlock"]},
-    {"ref": "A.8.24", "title": "Utilisation de la cryptographie",
-     "coverage": "partial",
-     "netwatch": "Détecte le chiffrement faible/obsolète et les certificats expirés. N'applique pas de politique cryptographique.",
-     "components": ["Zeek SSL/TLS"]},
-    {"ref": "A.5.9", "title": "Inventaire des actifs",
-     "coverage": "partial",
-     "netwatch": "Inventaire passif des hôtes et services vus sur le réseau. Pas de CMDB.",
-     "components": ["Zeek known-hosts/services"]},
-]
-
-# Référentiels exposés sur la page /compliance
-REFERENTIALS = [
-    {"id": "nis2",  "name": "NIS2",
-     "label": "Directive UE 2022/2555 — art. 21.2",
-     "intro": "Les 10 mesures techniques et organisationnelles minimales imposées aux entités essentielles et importantes.",
-     "measures": NIS2_MATRIX},
-    {"id": "nist",  "name": "NIST CSF 2.0",
-     "label": "Cadre international — 6 fonctions",
-     "intro": "NetWatch est une solution NDR : il couvre pleinement les fonctions Detect et Respond, cœur de la lutte contre les incidents.",
-     "measures": NIST_CSF_MATRIX},
-    {"id": "anssi", "name": "ANSSI",
-     "label": "Guide d'hygiène + PA-022 (détection)",
-     "intro": "Référentiel français de référence : NetWatch répond directement aux exigences de journalisation, supervision et détection.",
-     "measures": ANSSI_MATRIX},
-    {"id": "iso",   "name": "ISO/IEC 27001 · 27002:2022",
-     "label": "Contrôles de l'Annexe A",
-     "intro": "Contrôles de sécurité que les organisations certifient : NetWatch outille directement la journalisation, la surveillance et le renseignement sur les menaces.",
-     "measures": ISO27001_MATRIX},
 ]
 
 app = Flask(__name__)
@@ -777,8 +612,6 @@ def _inject_globals():
             "netbox": config.NETWATCH_NETBOX_URL,
         },
         "netbox_enabled": nw_netbox.configured(),
-        # Édition IA : boutons ✨, résumé exécutif
-        "ai_enabled": config.AI_ENABLED,
         # Licence Pro (édition, état, tolérance) : bandeau et pages Statut / Licence
         "license": nw_license.status() if current_user.is_authenticated else None,
     }
@@ -1271,12 +1104,12 @@ def _proxmox_snapshot(px, with_vms=False):
 def status():
     px = get_proxmox()
     hours = _range()[1]   # lit request/cookie : à résoudre ICI, pas dans un thread (pas de contexte Flask)
-    # Health checks HTTP, Proxmox, stats LLMOps, sondes actives : indépendants → en parallèle
-    (services, global_status), (node_status, _), (llmops_stats, _), (probes, probes_err) = es_client.run_parallel(
+    # Health checks HTTP, Proxmox, sondes actives, cartes de l'extension Pro : indépendants → en parallèle
+    (services, global_status), (node_status, _), (probes, probes_err), ext_status = es_client.run_parallel(
         _check_health,
         lambda: _proxmox_snapshot(px),
-        lambda: nw_llmops.get_llmops_stats(days=7),
         lambda: _safe(lambda: nw_probes.get_probes(hours=hours), ([], None)),
+        nw_extensions.api().status_extra,
     )
 
     return render_template(
@@ -1295,7 +1128,7 @@ def status():
         config_grafana_url=config.NETWATCH_GRAFANA_URL,
         config_prometheus_url=config.NETWATCH_PROMETHEUS_URL,
         config_autoblock_url=config.NETWATCH_AUTOBLOCK_URL,
-        llmops=llmops_stats,
+        ext=ext_status,
         lic=nw_license.status(),
     )
 
@@ -1355,78 +1188,6 @@ def report():
         audit          = audit_result,
         generated_at   = datetime.now().strftime("%d/%m/%Y à %H:%M"),
     )
-
-
-# ============================================================
-# Rapports PDF — historique + génération à la demande/planifiée
-# ============================================================
-
-_REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "reports")
-
-
-@app.route("/reports")
-@login_required
-def reports_page():
-    index_path = os.path.join(_REPORTS_DIR, "index.json")
-    entries = []
-    try:
-        with open(index_path, encoding="utf-8") as f:
-            entries = json.load(f)
-    except Exception:
-        pass
-    return render_template("reports.html", entries=entries)
-
-
-@app.route("/api/reports/generate", methods=["POST"])
-@login_required
-@pro_required("reports")
-def api_reports_generate():
-    """Déclenche generate-report-pdf.py à la demande (bouton portail ou n8n)."""
-    netwatch_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    script = os.path.join(netwatch_root, "scripts", "automation", "generate-report-pdf.py")
-    if not os.path.isfile(script):
-        return jsonify({"error": "generate-report-pdf.py introuvable"}), 503
-    try:
-        # username/password passés par variables d'environnement (déjà lues en
-        # fallback par generate-report-pdf.py) plutôt qu'en argument CLI — un
-        # argument de ligne de commande est visible de tout utilisateur local
-        # via `ps`/`/proc/<pid>/cmdline` pendant l'exécution du subprocess.
-        result = subprocess.run(
-            ["python3", script,
-             "--portal-url", request.host_url.rstrip("/"),
-             "--output-dir", _REPORTS_DIR],
-            cwd=netwatch_root,
-            capture_output=True,
-            timeout=90,
-            check=False,
-            env={**os.environ, "PORTAL_USERNAME": config.PORTAL_USERNAME,
-                 "PORTAL_PASSWORD": config.PORTAL_PASSWORD},
-        )
-        if result.returncode != 0:
-            app.logger.warning("generate-report-pdf.py exited %d: %s", result.returncode,
-                                (result.stderr or b"").decode(errors="replace")[:400])
-            return jsonify({"error": "Génération échouée — voir les logs du portail"}), 503
-    except subprocess.TimeoutExpired:
-        return jsonify({"error": "Génération trop longue (> 90s)"}), 503
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 503
-
-    index_path = os.path.join(_REPORTS_DIR, "index.json")
-    try:
-        with open(index_path, encoding="utf-8") as f:
-            entries = json.load(f)
-        return jsonify(entries[0] if entries else {})
-    except Exception:
-        return jsonify({"status": "unknown"})
-
-
-@app.route("/reports/download/<path:filename>")
-@login_required
-def reports_download(filename):
-    safe_name = secure_filename(filename)
-    if not safe_name.endswith(".pdf"):
-        return jsonify({"error": "Fichier invalide"}), 400
-    return send_from_directory(_REPORTS_DIR, safe_name, as_attachment=True)
 
 
 @app.route("/alerts")
@@ -2000,43 +1761,6 @@ def hostgroup_dashboard(name):
     return render_template("hostgroup_dashboard.html", group=groups[name], dashboard=dashboard)
 
 
-_AI_DISABLED = {"error": "Assistant IA désactivé (édition Core) — renseigner OLLAMA_URL et COMPOSE_PROFILES=ia dans .env"}
-
-
-@app.route("/api/explain", methods=["POST"])
-@login_required
-@pro_required("ia")
-def api_explain():
-    """Explique une alerte IDS en langage naturel via l'assistant LLM local (Ollama)."""
-    if not config.AI_ENABLED:
-        return jsonify(_AI_DISABLED), 503
-    alert = request.get_json(silent=True) or {}
-    if not alert.get("signature"):
-        return jsonify({"error": "Alerte invalide"}), 400
-
-    explanation, error = llm_client.explain_alert(alert)
-    if error:
-        return jsonify({"error": error}), 503
-    return jsonify({"explanation": explanation})
-
-
-@app.route("/api/summary")
-@login_required
-@pro_required("ia")
-def api_summary():
-    """Résumé exécutif IA des alertes récentes (utilisé sur /report)."""
-    if not config.AI_ENABLED:
-        return jsonify(_AI_DISABLED), 503
-    alerts_list, es_error = es_client.get_recent_alerts(size=30)
-    if es_error:
-        return jsonify({"error": es_error}), 503
-
-    summary, llm_error = llm_client.summarize_alerts(alerts_list)
-    if llm_error:
-        return jsonify({"error": llm_error}), 503
-    return jsonify({"summary": summary})
-
-
 @app.route("/compare")
 @login_required
 def compare():
@@ -2051,21 +1775,6 @@ def compare():
 @login_required
 def audit():
     return render_template("audit.html", result=nw_audit.run_audit())
-
-
-@app.route("/compliance")
-@login_required
-@pro_required("compliance")
-def compliance():
-    def _summary(measures):
-        return {
-            "full":    sum(1 for m in measures if m["coverage"] == "full"),
-            "partial": sum(1 for m in measures if m["coverage"] == "partial"),
-            "none":    sum(1 for m in measures if m["coverage"] == "none"),
-            "total":   len(measures),
-        }
-    referentials = [{**r, "summary": _summary(r["measures"])} for r in REFERENTIALS]
-    return render_template("compliance.html", referentials=referentials)
 
 
 @app.route("/graph")
@@ -2878,20 +2587,13 @@ def pcap_analysis_export_csv():
     return resp
 
 
-@app.route("/api/pcap-analysis/explain", methods=["POST"])
-@login_required
-@pro_required("ia")
-def api_pcap_analysis_explain():
-    """Génère une analyse narrative IA d'une conversation TCP (via Ollama)."""
-    if not config.AI_ENABLED:
-        return jsonify(_AI_DISABLED), 503
-    conv = request.get_json(silent=True) or {}
-    if not conv:
-        return jsonify({"error": "Conversation manquante"}), 400
-    text, error = llm_client.explain_tcp_conversation(conv)
-    if error:
-        return jsonify({"error": error}), 503
-    return jsonify({"explanation": text})
+# ============================================================
+# Extension Pro (paquet netwatch_pro) — chargée après toutes les routes
+# Community : blueprints, menu, cartes de statut. Absente → édition Community.
+# ============================================================
+
+nw_extensions.load(app, login_required=login_required, admin_required=admin_required,
+                   pro_required=pro_required, config=config)
 
 
 # ============================================================

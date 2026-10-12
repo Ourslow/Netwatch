@@ -15,7 +15,7 @@ import requests
 import config
 
 from datetime import datetime, timezone
-from . import es_client
+from netwatch import es_client
 
 _TIMEOUT = config.OLLAMA_TIMEOUT  # configurable via OLLAMA_TIMEOUT (inférence CPU lente)
 

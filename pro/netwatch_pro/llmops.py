@@ -5,7 +5,7 @@ Experience Monitoring — l'IA du portail est on-prem, mais monitorée
 elle-même (latence, disponibilité, volume) comme n'importe quel service.
 """
 
-from . import es_client
+from netwatch import es_client
 
 
 def get_llmops_stats(days=7):

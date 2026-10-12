@@ -13,7 +13,7 @@ version:
 
 # Édition et licence Pro (docs/licence.md)
 license-status:
-	@cd portal && $$( [ -x .venv/bin/python3 ] && echo .venv/bin/python3 || echo python3 ) -c "from netwatch import license as l; print(l.describe())"
+	@cd portal && $$( [ -x .venv/bin/python3 ] && echo .venv/bin/python3 || echo python3 ) -c "from netwatch import license as l, extensions as e; print(l.describe()); print(e.describe())"
 
 # Sauvegarde complète (config, volumes, NetBox, snapshot ES) → backups/ ; KEEP=n pour ne garder que n archives
 backup:
@@ -51,7 +51,7 @@ test:
 	@python3 -m pytest
 
 lint:
-	@python3 -m ruff check portal scripts simulate-traffic.py
+	@python3 -m ruff check portal pro scripts simulate-traffic.py
 	@find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 bash -n && echo "bash -n : OK"
 
 check: lint test

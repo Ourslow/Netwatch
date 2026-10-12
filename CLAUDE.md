@@ -11,7 +11,7 @@
 Référence : `private/docs/positionnement-produit.md`. Résumé :
 - Sonde NPM + NDR self-hosted pour PME 50-500 postes et MSP francophones. Pas de SaaS de données (control plane hébergé envisagé en phase 2, § 6.5).
 - Édition **Community** (AGPL v3, ce dépôt, complète pour une sonde utile) + édition **Pro** (abonnement, clé de licence : IA, rapports, conformité, ITSM, RBAC, support). Jamais payant : doc, moteurs, dashboards Grafana, install, health.
-- Fait (28/09/2026) : tests + CI, proxy TLS + auth unifiée (Caddy), install/upgrade/backup validés sur machine neuve, tag v2.1.0, images GHCR, CSP, ILM. Reste : RBAC, licence hors ligne, split Pro, validation terrain (10 conversations + pilote), nom.
+- Fait (12/10/2026) : tests + CI, proxy TLS + auth unifiée (Caddy), install/upgrade/backup validés sur machine neuve, tags v2.1.0 / v2.2.0, images GHCR, CSP, ILM, RBAC, licence hors ligne. Split Community / Pro commencé le 12/10 : mécanisme d'extension (`portal/netwatch/extensions.py`) + paquet `pro/netwatch_pro` (IA, rapports, conformité) chargé par le portail — reste à découper : comptes et rôles, ITSM, scripts planifiés (`docs/edition-pro.md` § 4). Le paquet reste dans le dépôt jusqu'à la fin de la validation terrain ; le dépôt privé `netwatch-pro` n'existe pas encore. Reste aussi : validation terrain (10 conversations + pilote), nom (INPI/TMview).
 - Prérequis avant le premier euro : clarification écrite de la propriété intellectuelle (§ 9 du positionnement).
 
 ## CONCEPT
@@ -31,12 +31,14 @@ Trois moteurs d'analyse (Zeek, Snort 3, Suricata 7) sur le même trafic, NetFlow
 - Conteneurs préfixés `netwatch-` ; règles custom Snort SID 1000001-1000999, Suricata SID 2000001-2000999.
 - Pas de gestionnaire `onclick=` inline ni de `<script>` sans `nonce="{{ csp_nonce }}"` dans les templates (CSP, `test_csp.py`).
 - Aucune mention d'employeur / école / client dans le dépôt (`test_neutrality.py`).
+- Toute nouvelle fonction Pro va dans `pro/netwatch_pro/` (blueprint `pro`, templates sous `templates/pro/`, `api.pro_required(<clé de PRO_FEATURES>)`), jamais dans `portal/app.py` ; le paquet importe `config` et `netwatch.*`, jamais `app`.
 
 ## FICHIERS CLÉS
 - `docker-compose.yml` (+ `sensors.yml`, `data.yml`) — orchestration
 - `install.sh`, `scripts/upgrade.sh`, `scripts/backup.sh`, `scripts/restore.sh`, `scripts/health-check.sh`, `scripts/setup-ilm.sh`, `setup-es.sh` — exploitation
 - `caddy/Caddyfile` — point d'entrée HTTPS unique, auth unifiée via `/auth/check`
 - `portal/` — portail Flask (app.py, config.py, templates, static, tests) ; `portal/config.py` porte le nom, la version (`VERSION`) et la licence
+- `pro/netwatch_pro/` — extension de l'édition Pro (IA, rapports PDF, conformité), chargée par `portal/netwatch/extensions.py` ; contrat et procédure de split dans `docs/edition-pro.md`
 - `brand/` — logo et charte ; `site/` — site GitHub Pages ; `docs/` — documentation publique
 - `VERSION`, `CHANGELOG.md`, `.github/workflows/` (ci, images, pages)
 
